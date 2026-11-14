@@ -464,7 +464,65 @@ function sensitivity(P, kind) {
   return { base, rows };
 }
 
-if (typeof module !== 'undefined') module.exports = { defaults, solve, qLimits, dP, Kpa, tCool, aRing, vAtT, sensitivity, diagnostics, checkSet, PLASTICS, aLine, mvsT, qTherm, qForce, wallShear, viscosity };
+/* ---- тест экструдата (тест 2): разбор замеров свободной нити. Чистая функция, без интерфейса ----
+   rows: [{T, Q, d: [диаметры, мм], def: 'none'|'rough'|'break'|'bubble'|'color'}]
+   Дефект break/rough — недоплав (предел потока), bubble/color — деградация (предел температуры).
+   Возвращает {outs: {tMin, tMax, tOpt}, lines, warn} или null, если замеров не хватает. */
+function analyzeStrands(rows, o = {}) {
+  const cvMax = Number.isFinite(o.cvMax) ? o.cvMax : 5, warn = [], lines = [];
+  const cls = [];
+  for (const r of rows) {
+    const d = (r.d || []).filter(x => Number.isFinite(x) && x > 0);
+    const m = d.length ? d.reduce((a, b) => a + b, 0) / d.length : null;
+    const cv = d.length >= 2 ? Math.sqrt(d.reduce((a, b) => a + (b - m) ** 2, 0) / (d.length - 1)) / m * 100 : null;
+    let st;
+    if (r.def === 'break' || r.def === 'rough') st = 'starve';
+    else if (d.length < 2) return null;
+    else if (r.def === 'bubble' || r.def === 'color') st = 'deg';
+    else st = cv > cvMax ? 'unstable' : 'ok';
+    cls.push({ T: r.T, Q: r.Q, st, m, cv });
+  }
+  const Ts = [...new Set(cls.map(x => x.T))].sort((a, b) => a - b);
+  const Qs = [...new Set(cls.map(x => x.Q))].sort((a, b) => a - b);
+  if (Ts.length < 2 || Qs.length < 2) return null;   // окно не определить по одной точке
+  const Qmin = Qs[0];
+  const qClean = {};
+  Ts.forEach(T => { const ok = cls.filter(x => x.T === T && x.st === 'ok').map(x => x.Q); qClean[T] = ok.length ? Math.max(...ok) : null; });
+  const tMinI = Ts.findIndex(T => qClean[T] !== null);
+  if (tMinI < 0) {
+    Ts.forEach(T => lines.push('T = ' + T + ' °C: нет чистой нити'));
+    return { outs: {}, lines, warn: ['Ни при одной температуре нет чистой нити: проверьте сушку, сопло и диапазон плана.'] };
+  }
+  const tMin = Ts[tMinI];
+  const degI = Ts.findIndex(T => cls.find(x => x.T === T && x.Q === Qmin).st === 'deg');
+  if (degI === 0) {
+    Ts.forEach(T => lines.push('T = ' + T + ' °C: нет чистой нити'));
+    return { outs: {}, lines, warn: ['Деградация уже при первой температуре плана: снизьте первую температуру плана.'] };
+  }
+  const tMax = degI < 0 ? Ts[Ts.length - 1] : Ts[degI - 1];
+  if (degI < 0) warn.push('Деградация не найдена в плане: поднимите температуры плана и повторите тест.');
+  if (tMax < tMin) return { outs: {}, lines, warn: ['Окно закрыто: чистая нить есть только там, где уже начинается деградация.'] };
+  Ts.forEach(T => {
+    let s = 'T = ' + T + ' °C: ';
+    if (T < tMin) s += 'нет чистой нити (недоплав на всех потоках плана)';
+    else if (T > tMax) s += 'исключена: деградация на потоке ' + Qmin + ' мм³/с';
+    else s += 'чистый поток до ' + (qClean[T] === null ? 'нет' : qClean[T] + ' мм³/с');
+    lines.push(s);
+  });
+  const win = Ts.filter(T => T >= tMin && T <= tMax && qClean[T] !== null);
+  const qBest = Math.max(...win.map(T => qClean[T]));
+  const tOpt = win.find(T => qClean[T] === qBest);
+  const ok = cls.filter(x => x.T === tOpt && x.st === 'ok');
+  lines.unshift('Окно: T_min ' + tMin + ' °C, T_max ' + tMax + ' °C (граница деградации при потоке ' + Qmin + ' мм³/с)');
+  lines.push('T_opt = ' + tOpt + ' °C: наибольший чистый поток ' + qBest + ' мм³/с, рабочий с запасом 10 % = ' + Math.round(qBest * 0.9 * 10) / 10 + ' мм³/с');
+  if (o.nozzle && ok.length) {
+    const sw = ok.reduce((a, x) => a + x.m, 0) / ok.length;
+    lines.push('Диаметр чистой нити при T_opt: ' + sw.toFixed(3).replace('.', ',') + ' мм (раздувание ' + ((sw / o.nozzle - 1) * 100).toFixed(0) + ' % к соплу)');
+  }
+  return { outs: { tMin, tMax, tOpt }, lines, warn };
+}
+
+if (typeof module !== 'undefined') module.exports = { defaults, solve, qLimits, dP, Kpa, tCool, aRing, vAtT, sensitivity, diagnostics, checkSet, PLASTICS, aLine, mvsT, qTherm, qForce, wallShear, viscosity, analyzeStrands };
 /* ============ ИНТЕРФЕЙС ============ */
 const $ = (s, r = document) => r.querySelector(s);
 const f = (x, d = 1) => Number.isFinite(x) ? x.toFixed(d).replace('.', ',') : '∞';
@@ -1146,7 +1204,8 @@ const prName = () => P.printer === 'Свое' ? (P.prBase || 'Bambu Lab A1') + '
 function tv(id, k, def) { const v = TS[id] && TS[id][k]; const n = typeof v === 'number' ? v : parseFloat(v); return Number.isFinite(n) ? n : def; }
 function ensurePlan(P) {
   const set = (id, k, v) => { TS[id] = TS[id] || {}; if (TS[id][k] === undefined) TS[id][k] = v; };
-  set('temp', 'base', P.tOpt); set('temp', 'thr', 2);
+  set('temp', 't0', P.tOpt - 15); set('temp', 'dT', 10); set('temp', 'nT', 4);
+  set('temp', 'qLo', 4); set('temp', 'qHi', 12); set('temp', 'qN', 3); set('temp', 'cvMax', 5); set('temp', 'strandL', 30); set('temp', 'zTop', 60);
   set('fr', 'center', 1.0); set('fr', 'wnom', P.w);
   if (!TS.fr.order) TS.fr.order = [0, 1, 2, 3, 4, 5, 6].sort(() => Math.random() - 0.5);
   set('pa', 'qLo', Math.max(2, Math.round(P.mvsRef * 0.25))); set('pa', 'qHi', Math.max(4, Math.round(P.mvsRef * 0.6)));
@@ -1160,7 +1219,13 @@ function ensurePlan(P) {
 /* планы стадий: используются и в таблицах, и в G-code */
 function planOf(id, P) {
   const A = h => aLine(P, h);
-  if (id === 'temp') { const b = tv('temp', 'base', P.tOpt); return { T: [-10, -5, 0, 5, 10].map(d => b + d) }; }
+  if (id === 'temp') {
+    const t0 = tv('temp', 't0', P.tOpt - 15), dT = Math.max(1, tv('temp', 'dT', 10)), nT = clamp(Math.round(tv('temp', 'nT', 4)), 2, 8);
+    const qLo = Math.max(1, tv('temp', 'qLo', 4)), qHi = Math.max(qLo, tv('temp', 'qHi', 12)), qN = clamp(Math.round(tv('temp', 'qN', 3)), 2, 5);
+    const T = Array.from({ length: nT }, (_, i) => t0 + i * dT);
+    const Q = qN === 2 ? [qLo, qHi] : Array.from({ length: qN }, (_, j) => rnd(qLo + j * (qHi - qLo) / (qN - 1), 1));
+    return { T, Q, cvMax: tv('temp', 'cvMax', 5), L: tv('temp', 'strandL', 30), Z: tv('temp', 'zTop', 60) };
+  }
   if (id === 'fr') { const c = tv('fr', 'center', 1), o = TS.fr.order || [0, 1, 2, 3, 4, 5, 6]; return { fr: [-3, -2, -1, 0, 1, 2, 3].map(i => rnd(c + i * 0.02, 3)), order: o }; }
   if (id === 'pa') {
     const a = A(0.2), N = 13, st = tv('pa', 'kStep', 0.005);
@@ -1196,14 +1261,13 @@ CALC.diam = (P) => {
   return { outs: { filDAct: rnd(m, 3), filTol: Math.max(0.005, rnd(tol, 3)) }, lines: ['n = ' + d.length + ', среднее ' + f(m, 3) + ' мм, SD ' + f(s, 3) + ' мм', 'мин ' + f(mn, 2) + ', макс ' + f(mx, 2) + ' мм', 'Ошибка потока из-за диаметра: ' + f((Math.pow(m / P.filD, 2) - 1) * 100, 1) + ' %'], warn };
 };
 CALC.temp = (P) => {
-  const t = TS.temp || {}, pl = planOf('temp', P), cnt = nums(t.strings), adh = parseFloat(t.adh);
-  if (cnt.length < 5 || !Number.isFinite(adh)) return null;
-  const thr = tv('temp', 'thr', 2), ok = pl.T.filter((T, i) => cnt[i] <= thr), warn = [];
-  const tMin = pl.T[clamp(Math.round(adh), 1, 5) - 1], tMax = ok.length ? Math.max(...ok) : null;
-  if (tMax === null) return { outs: {}, lines: ['Нити превышают порог на всех стадиях'], warn: ['Снизьте температуры плана или проверьте сухость нити и ретракцию.'] };
-  if (tMax < tMin) warn.push('Окно закрыто: при T, где адгезия достаточна, нити уже превышают порог. Нужна сушка или другая ретракция.');
-  const tOpt = Math.round(clamp(tMin + 5, Math.min(tMin, tMax), Math.max(tMin, tMax)));
-  return { outs: { tMin, tMax, tOpt }, lines: ['Нижняя граница по адгезии: ' + tMin + ' °C', 'Верхняя граница по нитям (не более ' + thr + '): ' + tMax + ' °C', 'T_opt = нижняя граница + 5 °C = ' + tOpt + ' °C'], warn };
+  const t = TS.temp || {}, pl = planOf('temp', P), rows = [];
+  pl.T.forEach((T, i) => pl.Q.forEach((Q, j) => {
+    const d = nums(t['d' + i + '_' + j]);
+    if (d.length) rows.push({ T, Q, d, def: t['f' + i + '_' + j] || 'none' });
+  }));
+  if (!rows.length) return null;
+  return analyzeStrands(rows, { cvMax: pl.cvMax, nozzle: P.nozzleD });
 };
 CALC.fr = (P) => {
   const t = TS.fr || {}, pl = planOf('fr', P), wn = tv('fr', 'wnom', P.w), xs = [], ys = [], means = [];
@@ -1347,22 +1411,27 @@ GEN.fr = (P) => {
   g.tail(); return g.text();
 };
 GEN.temp = (P) => {
-  const pl = planOf('temp', P), h = 0.2, w = P.w, A = aLine(P, h), Wl = 60;
-  const g = GB(P, 'ТЕСТ ТЕМПЕРАТУРНОГО ОКНА', ['Пять стадий T = ' + pl.T.join(', ') + ' °C. На каждой: пара башен (счет нитей) и стенка 60 мм × 15 мм (излом).', 'Башни: 25 слоев, 6 челночных перемещений между башнями на слой, ретракция 0,8 мм.', 'Обдув постоянный 100 %.']);
-  g.head(100);
-  pl.T.forEach((T, i) => {
-    const y0 = 40 + i * 42;
-    g.c('--- Стадия ' + (i + 1) + ': ' + T + ' °C ---'); g.r('M109 S' + T);
-    g.hopTo(50 + 4, y0, 0.2); g.ring(50, y0, 4, 0, 30, A, undefined);
-    for (let k = 1; k <= 25; k++) {
-      if (k > 1) g.zs(k * h);
-      g.ring(50, y0, 4, 0, 40, A);
-      for (let c = 0; c < 6; c++) { g.ret(); g.mv(100 + 4, y0, 150); g.unret(); g.ret(); g.mv(50 + 4, y0, 150); g.unret(); }
-      g.ret(); g.mv(104, y0, 150); g.unret(); g.ring(100, y0, 4, 0, 40, A); g.ret(); g.mv(54, y0, 150); g.unret();
-    }
-    g.hopTo(140, y0, 0.2); g.ext(200, y0, 25, aLine({ w: w + 0.03 }, 0.2), 1.1);
-    for (let k = 2; k <= 75; k++) { g.zs(k * h); g.ext(k % 2 ? 200 : 140, y0, 40, A); }
-  });
+  const pl = planOf('temp', P), An = PI * Math.pow(P.nozzleD / 2, 2), Af = filA(P);
+  const V = pl.L * An, E = V / Af, EP = 30 / Af, n = pl.T.length * pl.Q.length;
+  const g = GB(P, 'ТЕСТ ЭКСТРУДАТА: СВОБОДНАЯ НИТЬ', [
+    'Печати нет. Сопло поднято на ' + pl.Z + ' мм, головка проводит нить в воздухе: ' + n + ' нитей, температура ' + pl.T.join(', ') + ' °C, поток ' + pl.Q.map(q => fmtN(q, 1)).join(', ') + ' мм³/с.',
+    'Головка идёт со скоростью истечения v = Q / A сопла, поэтому объём каждой нити одинаков: ' + fmtN(V, 2) + ' мм³ (ход экструдера ' + fmtN(E, 4) + ' мм нити).',
+    'Точки замера штангенциркулем: +3, +15 и +27 мм от начала нити при длине ' + pl.L + ' мм. Обдув выключен.',
+    'Продувка 30 мм³ перед каждой нитью идёт в замер не участвует: она ложится отдельной кляксой в 12 мм до начала нити.']);
+  g.head(0);
+  let prevT = null, k = 0;
+  pl.T.forEach((T, r) => pl.Q.forEach((Q, c) => {
+    const v = Q / An, x = 70 + c * (pl.L + 18), y = 90 + r * 18;
+    k++;
+    g.c('--- нить ' + k + ' из ' + n + ': T = ' + T + ' °C, Q = ' + fmtN(Q, 1) + ' мм³/с, v = ' + fmtN(v, 1) + ' мм/с, x = ' + x + ', y = ' + y + ' ---');
+    if (T !== prevT) { g.r('M109 S' + T); g.r('G4 P20000'); prevT = T; }
+    g.zs(pl.Z + 5, true); g.mv(x - 12, y, 250); g.zs(pl.Z);
+    g.c('продувка, в замер не идёт'); g.r('G1 E' + fmtN(EP, 3) + ' F300'); g.r('G4 P400'); g.ret();
+    g.mv(x, y, 250); g.unret();
+    g.c('нить: замеры примерно на X = ' + (x + 3) + ', ' + (x + 15) + ', ' + (x + 27));
+    g.ext(x + pl.L, y, v, An, 1);
+    if (k < n) g.ret();
+  }));
   g.tail(); return g.text();
 };
 GEN.pa = (P) => {
@@ -1430,11 +1499,12 @@ const META = {
     fixed: ['одна и та же катушка, нить размотана без натяжения', 'штангенциркуль без усилия на губках'], resp: 'размер в мм, 20 точек по длине нити',
     steps: ['Размотайте около 2 м нити. Сделайте метки через каждые 10 см.', 'В каждой точке измерьте диаметр в двух перпендикулярных направлениях: так видна овальность.', 'Вносите все значения (минимум 6, лучше 40) через пробел.', 'Калькулятор берет среднее как фактический диаметр, а наибольшее отклонение как допуск.'],
     in: [{ k: 'd', l: 'Измерения диаметра, мм', t: 'list', hint: '1.74 1.75 1.76 1.75 …' }] },
-  temp: { n: 2, title: 'Температурное окно', sets: 'T мин., T макс., T_opt', vary: 'температура сопла: 5 стадий по 5 °C',
-    fixed: ['слой, ширина, скорость, обдув, ретракция', 'условия печати одинаковы на всех стадиях'], resp: 'число нитей между башнями (счет) и место излома стенки (категория)',
-    steps: ['Задайте в плане центральную температуру из паспорта катушки. Стадии идут от −10 до +10 °C.', 'Скопируйте G-code (или промпт для ИИ), вставьте после стартового блока Bambu Studio и напечатайте.', 'Нити: для каждой стадии посчитайте нити между двумя башнями. Не оценивайте на глаз «много или мало»: ведите счет.', 'Адгезия: согните стенку на 90° у линии слоя. Чистый ровный излом по границе слоя означает плохую адгезию, неровный излом, деформация или побеление означают хорошую.', 'Внесите счет нитей по пяти стадиям и номер самой холодной стадии, у которой нет ровного излома по границе слоя.', 'Температурную башню с визуальным выбором здесь не используют: она смешивает температуру с временем слоя и обдувом.'],
-    plan: [{ k: 'base', l: 'Центр плана, °C', u: '°C' }, { k: 'thr', l: 'Допустимо нитей на стадию', u: 'шт' }],
-    in: [{ k: 'strings', l: 'Нитей по стадиям 1–5', t: 'list', hint: '0 1 1 4 9' }, { k: 'adh', l: 'Самая холодная стадия с хорошей адгезией (1–5)', t: 'num' }] },
+  temp: { n: 2, title: 'Экструдат: окно сопла', sets: 'T мин., T макс., T_opt', vary: 'температура: ступени по 10 °C; поток: 2–5 уровней',
+    fixed: ['сопло 0,4 мм, одна катушка, обдув 0 %', 'сопло поднято на 60 мм, нить 30 мм, продувка 30 мм³ перед каждой нитью', 'печати нет: слоёв, сцепления и охлаждения нет'],
+    resp: 'три диаметра нити штангенциркулем (по ним CV) и один дефект на нить из списка',
+    steps: ['Задайте в плане первую температуру, шаг и число ступеней, а также нижний и верхний поток. По умолчанию 4 температуры и 3 потока: 12 нитей.', 'Скопируйте G-code, вставьте после стартового блока Bambu Studio и запустите. Печати нет: сопло поднято, головка проводит нить в воздухе и опускает её на стол.', 'Для каждой нити измерьте диаметр штангенциркулем в трёх точках: +3, +15 и +27 мм от начала. Губки без усилия, нить не сдавливать.', 'Отметьте дефект: шероховатость и разрыв означают недоплав (мало тепла на этот поток), пузыри и потемнение означают деградацию (пластик слишком долго в горячем сопле).', 'Внесите диаметры через пробел и дефект для каждой нити. Калькулятор считает CV и берёт чистые нити: без дефекта и с CV не выше порога.', 'T_min — первая температура с чистой нитью. T_max — последняя перед деградацией на самом малом потоке. T_opt — температура с наибольшим чистым потоком, при равном потоке берётся более низкая.', 'Если деградации нет ни на одной ступени, тест сообщит об этом: поднимите температуры плана и повторите.'],
+    plan: [{ k: 't0', l: 'Первая температура, °C', u: '°C' }, { k: 'dT', l: 'Шаг температуры, °C', u: '°C' }, { k: 'nT', l: 'Ступеней температуры', u: 'шт' }, { k: 'qLo', l: 'Нижний поток, мм³/с', u: 'мм³/с' }, { k: 'qHi', l: 'Верхний поток, мм³/с', u: 'мм³/с' }, { k: 'qN', l: 'Уровней потока', u: 'шт' }, { k: 'cvMax', l: 'Порог CV диаметра, %', u: '%' }, { k: 'strandL', l: 'Длина нити, мм', u: 'мм' }, { k: 'zTop', l: 'Высота сопла, мм', u: 'мм' }],
+    in: [] },
   fr: { n: 3, title: 'Flow Ratio', sets: 'Flow Ratio материала', vary: 'Flow Ratio: 7 образцов с шагом 0,02',
     fixed: ['скорость 15 мм/с, поток ниже 1,5 мм³/с (PA и MVS не влияют)', 'прямые стенки, температура T_opt, один и тот же слой'], resp: 'толщина стенки штангенциркулем, среднее по 12 точкам на образец',
     steps: ['Скопируйте G-code и напечатайте 7 квадратов: Flow Ratio раскладывается в случайном порядке по поверхности стола.', 'У каждого образца отметьте точки на верхнем крае стенки: по 3 на сторону, не ближе 6 мм к углам.', 'Измерьте толщину стенки в каждой точке. Для одного образца вводите от 3 значений через пробел.', 'Калькулятор строит прямую «толщина от Flow Ratio» и находит значение, при котором толщина равна заданной. Погрешность показывается рядом.', 'Если результат за границей плана, сдвиньте центр плана и повторите.', 'Верхнюю поверхность смотрите только как подтверждение результата.'],
@@ -1477,7 +1547,7 @@ function aiPrompt(id, P) {
   const pl = planOf(id, P), A2 = aLine(P, 0.2), z = (h) => h.toFixed(2);
   const mk = {
     fr: () => ({ model: 'Кубики с одной стенкой (spiral/vase выключен, 1 периметр, без верха и заполнения), 25×25 мм, 40 слоев по 0,2 мм, ширина линии ' + P.w + ', скорость 15 мм/с, 7 копий.', edits: ['В блоке каждого объекта умножь значение E на всех строках G1 с E > 0 на множитель Flow Ratio образца: ' + pl.fr.map((x, i) => (i + 1) + ' = ' + x).join('; ') + '.', 'Объекты определяй по комментариям начала печати объекта; если их нет, по координатам X/Y.', 'Первый слой не меняй.'] }),
-    temp: () => ({ model: 'Две башни R = 4 мм на расстоянии 50 мм плюс стенка 60×15 мм, 0,2 мм слой. Запиши на каждой стадии высоты 5 мм.', edits: ['Перед первой экструзией каждого диапазона высоты Z вставь M109 S{T}: ' + pl.T.map((T, i) => 'Z ' + i * 5 + '–' + (i + 1) * 5 + ' мм: ' + T + ' °C').join('; ') + '.', 'Обдув 100 % на всех стадиях, остальные команды не трогай.'] }),
+    temp: () => null,
     pa: () => ({ model: 'Квадрат 40×40 мм, одна стенка, острые углы, высота 39 мм, слой 0,2 мм; два экземпляра: ' + fmtN(pl.vLo, 0) + ' и ' + fmtN(pl.vHi, 0) + ' мм/с.', edits: ['После начала слоя на высоте Z вставь M900 K{K}: ' + pl.K.map((K, j) => 'Z ' + z(0.2 + j * 3) + ' – ' + z(0.2 + (j + 1) * 3) + ': K = ' + K).join('; ') + '.', 'Во всех строках внешних периметров задай скорости ' + fmtN(pl.vLo, 0) + ' и ' + fmtN(pl.vHi, 0) + ' мм/с соответственно для двух экземпляров и добавь M204 S' + pl.aT + '.', 'Выровняй время каждого слоя до 6 с добавлением G4 вне детали (отъезд на 25 мм и пауза).'] }),
     mvs: () => ({ model: 'Цилиндр R = 35 мм, одна стенка, слой 0,2 мм, ширина ' + P.w + ', 3 экземпляра.', edits: ['Для каждого экземпляра раздели слои на ' + pl.N + ' стадий. Число слоев стадии s = ceil(20 с / время слоя при скорости стадии), не меньше 3.', 'Измени только F на строках экструзии стадии: ' + pl.Q.map((q, i) => 'стадия ' + (i + 1) + ': Q = ' + fmtN(q, 1) + ' мм³/с, F = ' + Math.round(q / A2 * 60)).join('; ') + '. Значения E не меняй.', 'Температуры экземпляров: ' + pl.T.join(', ') + ' °C (M109 перед объектом).', 'Сдвигай шов каждой стадии на 360°/' + pl.N + ' по окружности.'] }),
     res: () => ({ model: 'Квадрат 40×40 мм, одна стенка, острые углы, высота 40 мм, слой 0,2 мм, скорость ' + pl.v + ' мм/с.', edits: ['Вставь M204 S{a} в начале каждой стадии по 8 мм высоты: ' + pl.a.map((a, j) => 'Z ' + z(j * 8) + '–' + z((j + 1) * 8) + ': ' + a).join('; ') + '.', 'Скорость на всех внешних периметрах: ' + pl.v + ' мм/с.'] }),
@@ -1486,6 +1556,7 @@ function aiPrompt(id, P) {
   }[id];
   if (!mk) return null;
   const spec = mk();
+  if (!spec) return null;
   return ['Задача: подготовь G-code для калибровочного теста «' + META[id].title + '» на Bambu Lab A1 (пластик ' + plName() + ').', KILO_MODEL, '',
     'Вход: файл test.gcode, экспортированный из Bambu Studio. Модель в слайсере: ' + spec.model, 'Нужно изменить:', ...spec.edits.map((e, i) => (i + 1) + '. ' + e), '',
     'Ограничения: не менять стартовый и конечный блоки, не менять температуру стола, сохранять относительную экструзию M83. Исходный файл не перезаписывать, результат сохранить как test_' + id + '_mod.gcode.',
@@ -1505,7 +1576,11 @@ function tblRows(series) {
 }
 function stageTable(id, P) {
   const pl = planOf(id, P), F = (a, d) => a.map(x => f(x, d));
-  if (id === 'temp') return tblRows([['T, °C', pl.T]]);
+  if (id === 'temp') {
+    const head = `<tr><th class="l">T, °C \\ Q</th>${pl.Q.map(q => `<th>${f(q, 1)}</th>`).join('')}</tr>`;
+    const body = pl.T.map(T => `<tr style="cursor:default"><td class="l">${T}</td>${pl.Q.map(Q => `<td class="num">${f(Q / (PI * Math.pow(P.nozzleD / 2, 2)), 0)} мм/с</td>`).join('')}</tr>`).join('');
+    return `<div class="tbl"><table><thead>${head}</thead><tbody>${body}</tbody></table></div><p class="note">В клетках — скорость головки v = Q / A сопла. Поток ${f(pl.Q[0], 1)}–${f(pl.Q[pl.Q.length - 1], 1)} мм³/с, нить ${f(pl.L, 0)} мм, сопло ${f(P.nozzleD, 1)} мм, обдув 0 %.</p>`;
+  }
   if (id === 'fr') return tblRows([['Flow Ratio', F(pl.fr, 3)], ['Положение на столе', pl.order.map(o => o + 1)]]);
   if (id === 'pa') return tblRows([['K', F(pl.K, 3)]]) + `<p class="note">Малый поток ${f(pl.qLo, 1)} мм³/с (${f(pl.vLo, 0)} мм/с), большой ${f(pl.qHi, 1)} мм³/с (${f(pl.vHi, 0)} мм/с). Башни по 13 ступеней: ступень = 3 мм высоты.</p>`;
   if (id === 'mvs') return tblRows([['Q, мм³/с', F(pl.Q, 1)], ['v, мм/с', F(pl.v, 0)], ['Шов, °', pl.Q.map((q, i) => Math.round(i * 360 / pl.N))]]) + `<p class="note">Температуры цилиндров: ${pl.T.join(', ')} °C.</p>`;
@@ -1523,6 +1598,17 @@ const statusHtml = id => RES[id] ? '<span class="pill ok">выполнен</span
 function progHtml() {
   const n = doneN(), tot = TEST_ORDER.length;
   return `<div class="prog"><div class="bar2"><i style="width:${n / tot * 100}%"></i></div><span class="note">Выполнено ${n} из ${tot}. Каждый тест, по которому есть замеры, уже влияет на расчеты и отмечен в параметрах меткой «тест N».</span></div>`;
+}
+/* поля матрицы замеров для теста экструдата: по клетке на каждую пару (T, Q) */
+const STRAND_DEF = [['none', 'нет'], ['rough', 'шероховатость'], ['break', 'разрыв'], ['bubble', 'пузыри'], ['color', 'потемнение']];
+function strandInputs(P) {
+  const pl = planOf('temp', P), t = TS.temp || {};
+  const head = `<tr><th class="l">T, °C \\ Q</th>${pl.Q.map(q => `<th>${f(q, 1)}</th>`).join('')}</tr>`;
+  const body = pl.T.map((T, i) => `<tr><td class="l">${T}</td>${pl.Q.map((Q, j) => {
+    const dk = 't-temp-d' + i + '_' + j, fk = 't-temp-f' + i + '_' + j, cur = t['f' + i + '_' + j] || 'none';
+    return `<td style="white-space:nowrap"><input type="text" inputmode="decimal" id="${dk}" value="${esc(t['d' + i + '_' + j] || '')}" placeholder="0.40 0.41 0.40" style="width:118px;margin-bottom:3px"><br><select id="${fk}" style="width:118px">${STRAND_DEF.map(([v, l]) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${l}</option>`).join('')}</select></td>`;
+  }).join('')}</tr>`).join('');
+  return `<div class="tbl"><table><thead>${head}</thead><tbody>${body}</tbody></table></div><p class="note">В клетке: три диаметра через пробел и дефект. Шероховатость и разрыв — недоплав; пузыри и потемнение — деградация.</p>`;
 }
 function inputHtml(id, it) {
   const v = (TS[id] || {})[it.k], idn = `t-${id}-${it.k}`;
@@ -1543,17 +1629,18 @@ function viewProto(R) {
       <div><b>Алгоритм</b><ol class="test" style="margin-top:6px">${m.steps.map(s => `<li>${s}</li>`).join('')}</ol></div>
       ${m.plan ? `<div><b>План теста</b><div class="tin">${m.plan.map(p => inputHtml(id, { k: p.k, l: p.l + (p.u ? '' : ''), t: 'num' })).join('')}</div><div id="tstage-${id}">${stageTable(id, P)}</div></div>` : ''}
       ${hasGen || hasAi ? `<div class="tools"><b>G-code и промпт</b><div class="line">${hasGen ? `<button class="btn sm" data-gen="${id}">Копировать G-code (тело теста)</button>${id === 'cool' ? `<button class="btn sm" data-gen="cool:val">G-code проверочного прогона</button>` : ''}` : ''}${hasAi ? `<button class="btn sm" data-ai="${id}">Копировать промпт для ИИ (Kilo)</button>` : ''}<span class="note cpm"></span></div></div>` : ''}
-      <div><b>Результаты замеров</b><div class="tin ${id === 'fr' ? 'tin7' : ''}">${m.in.map(it => inputHtml(id, it)).join('')}</div></div>
+      <div><b>Результаты замеров</b><div class="tin ${id === 'fr' ? 'tin7' : ''}" ${id === 'temp' ? 'id="tin-temp"' : ''}>${id === 'temp' ? strandInputs(P) : m.in.map(it => inputHtml(id, it)).join('')}</div></div>
       <div id="tres-${id}">${resultBlock(id)}</div>
       <div class="line"><button class="btn sm" data-reset="${id}">Очистить замеры теста</button></div>
     </div></details>`;
   }).join('');
   return `<section class="card"><h2>Протокол тестов</h2><p class="lead">Десять тестов в порядке выполнения. В протокол включены только величины, которые нельзя получить расчетом: их определяют изолированные тесты. Все остальное (скорости, температура печати, обдув, K, Flow Ratio, MVS для слайсера) выводится из введенных замеров во вкладке «Отчет».</p><div id="tprog">${progHtml()}</div>
-    <ul class="diag" style="margin-top:10px"><li style="--c:var(--c-kin)"><span>Температурное окно стоит перед остальными тестами: температура входит во все остальные условия.</span></li><li style="--c:var(--c-kin)"><span>Каждый тест меняет один фактор. Остальные фиксированы или выведены в режим, где их эффект мал.</span></li><li style="--c:var(--c-kin)"><span>G-code содержит только тело теста. Стартовый и конечный блоки возьмите из экспортированного файла Bambu Studio. Либо скопируйте промпт и отдайте ИИ правку экспортированного файла.</span></li></ul></section>${cards}`;
+    <ul class="diag" style="margin-top:10px"><li style="--c:var(--c-kin)"><span>Тест экструдата стоит первым среди замеров: он даёт окно температуры сопла, в котором идут остальные тесты.</span></li><li style="--c:var(--c-kin)"><span>Каждый тест меняет один фактор. Остальные фиксированы или выведены в режим, где их эффект мал.</span></li><li style="--c:var(--c-kin)"><span>G-code содержит только тело теста. Стартовый и конечный блоки возьмите из экспортированного файла Bambu Studio. Либо скопируйте промпт и отдайте ИИ правку экспортированного файла.</span></li></ul></section>${cards}`;
 }
 function softProto() {
   const R = solve(P, P.h); last = R; renderStrip(R);
   TEST_ORDER.forEach(id => { const a = $('#tres-' + id); if (a) a.innerHTML = resultBlock(id); const b = $('#tstage-' + id); if (b) b.innerHTML = stageTable(id, P); const s = $('#tst-' + id); if (s) s.innerHTML = statusHtml(id); });
+  const si = $('#tin-temp'); if (si) si.innerHTML = strandInputs(P);
   const pr = $('#tprog'); if (pr) pr.innerHTML = progHtml();
 }
 function copyFb(text, btn) {

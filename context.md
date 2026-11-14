@@ -20,7 +20,7 @@
 | Проверки модели | `tests/model.test.mjs` | 5 проверок, запуск `node --test` |
 | CI | `.github/workflows/ci.yml` | GitHub Actions, тот же прогон |
 | Обвязка репозитория | `README.md`, `LICENSE`, `.gitignore`, `.gitattributes`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` | создана |
-| git | `.git` | 7 коммитов на `main` |
+| git | `.git` | ветка `main`, рабочее дерево чистое |
 
 ## 3. Стек
 

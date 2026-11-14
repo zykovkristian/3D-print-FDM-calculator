@@ -1,0 +1,1626 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Предел печати</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&subset=cyrillic&display=swap">
+<style>
+/* Раскладка: узкая колонка параметров слева, справа вкладки с результатами; сверху липкая полоса с итогом. */
+:root {
+  --bg: #0e1216; --surf: #151b21; --surf2: #1b232a; --line: #26313a; --line2: #34414d;
+  --fg: #e8eef3; --fg2: #aab7c2; --fg3: #77858f;
+  --c-kin: #7ea4ff; --c-flow: #ff8f4f; --c-acc: #b891ff; --c-cool: #4fd2e3; --c-def: #9bd86b;
+  --c-th: #ff7aa2; --c-fo: #f1cf5a;
+  --good: #6fd08c; --warn: #f0c14b; --bad: #ff7070;
+  --f-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f3f5f7; --surf: #ffffff; --surf2: #eef1f4; --line: #dbe1e6; --line2: #c3ccd4;
+    --fg: #121c25; --fg2: #46535f; --fg3: #6c7983;
+    --c-kin: #2f5bd8; --c-flow: #cf5410; --c-acc: #7541d1; --c-cool: #087f93; --c-def: #3a8419;
+    --c-th: #c4285f; --c-fo: #9a7400;
+    --good: #1c8a46; --warn: #946b00; --bad: #c62828;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #f3f5f7; --surf: #ffffff; --surf2: #eef1f4; --line: #dbe1e6; --line2: #c3ccd4;
+  --fg: #121c25; --fg2: #46535f; --fg3: #6c7983;
+  --c-kin: #2f5bd8; --c-flow: #cf5410; --c-acc: #7541d1; --c-cool: #087f93; --c-def: #3a8419;
+  --c-th: #c4285f; --c-fo: #9a7400;
+  --good: #1c8a46; --warn: #946b00; --bad: #c62828;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 14px/1.5 var(--f-ui); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); background: var(--bg); z-index: 20; }
+h1, h2, h3 { font-family: var(--f-head); font-weight: 600; margin: 0; text-wrap: balance; letter-spacing: .01em; }
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.num, .mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+
+.shell { max-width: 1480px; margin: 0 auto; padding-block: 14px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding-bottom: 12px; }
+.top h1 { font-size: 28px; line-height: 1.1; }
+.top p { margin: 4px 0 0; color: var(--fg2); max-width: 70ch; }
+.btn { background: var(--surf2); border: 1px solid var(--line2); border-radius: 6px; padding: 6px 12px; }
+.btn:hover { border-color: var(--fg3); }
+.btn.solid { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.btn.sm { padding: 3px 9px; font-size: 12px; }
+
+.strip { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); padding: 8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); }
+.strip-in { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 22px; }
+.hchips { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.hchips .lab { color: var(--fg3); font-size: 12px; margin-right: 4px; }
+.hchip { border: 1px solid var(--line2); background: var(--surf); border-radius: 5px; padding: 2px 8px; font: 12px var(--f-mono); }
+.hchip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.kpis { display: flex; flex-wrap: wrap; gap: 6px 22px; align-items: baseline; }
+.kpi { display: flex; align-items: baseline; gap: 5px; }
+.kpi span { color: var(--fg3); font-size: 12px; }
+.kpi b { font: 600 20px var(--f-mono); font-variant-numeric: tabular-nums; }
+.kpi i { font-style: normal; color: var(--fg3); font-size: 12px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--c, var(--line2)); border-radius: 999px; padding: 1px 10px; font-size: 12px; white-space: nowrap; }
+.chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--fg3)); }
+
+.app { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-top: 16px; }
+@media (min-width: 1000px) { .app { grid-template-columns: 350px minmax(0, 1fr); gap: 24px; align-items: start; } }
+.panel { background: var(--surf); border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
+.panel > summary { list-style: none; padding: 10px 14px; font: 600 15px var(--f-head); cursor: pointer; display: flex; justify-content: space-between; }
+.panel > summary::after { content: "▾"; color: var(--fg3); }
+.panel:not([open]) > summary::after { content: "▸"; }
+.panel > summary::-webkit-details-marker { display: none; }
+@media (min-width: 1000px) { .panel { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 66px); max-height: calc(100vh - 84px); overflow: auto; } }
+.grp { border-top: 1px solid var(--line); }
+.grp > summary { list-style: none; padding: 9px 14px; font: 600 12px var(--f-ui); text-transform: uppercase; letter-spacing: .08em; color: var(--fg2); cursor: pointer; display: flex; justify-content: space-between; }
+.grp > summary::after { content: "+"; color: var(--fg3); }
+.grp[open] > summary::after { content: "–"; }
+.grp > summary::-webkit-details-marker { display: none; }
+.grp-body { padding: 2px 14px 12px; display: grid; gap: 10px; }
+.row label { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13px; color: var(--fg); }
+.ctl { display: flex; align-items: center; gap: 8px; margin-top: 3px; }
+.ctl input[type=range] { flex: 1; min-width: 0; accent-color: var(--fg2); }
+.ctl input[type=number], .ctl select, .tool input[type=text], .tool select { background: var(--surf2); border: 1px solid var(--line2); border-radius: 5px; padding: 3px 6px; min-width: 0; }
+.ctl input[type=number] { width: 84px; font-family: var(--f-mono); text-align: right; }
+.ctl select { flex: 1; }
+.ctl .u { color: var(--fg3); font-size: 12px; min-width: 38px; }
+.hint { display: none; margin: 4px 0 0; font-size: 12px; color: var(--fg2); }
+.row:focus-within .hint { display: block; }
+.bd { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; border: 1px solid var(--line2); color: var(--fg3); border-radius: 3px; padding: 0 5px; white-space: nowrap; }
+.bd.test { color: var(--warn); border-color: var(--warn); }
+.tool { padding: 10px 14px 12px; display: grid; gap: 8px; border-top: 1px solid var(--line); }
+.tool .line { display: flex; gap: 6px; flex-wrap: wrap; }
+.tool input[type=text] { flex: 1; min-width: 100px; }
+.tool .cap { font-size: 12px; color: var(--fg3); }
+
+.main { min-width: 0; }
+.tabs { display: flex; gap: 2px; overflow-x: auto; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+.tab { background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 12px; color: var(--fg2); white-space: nowrap; font-weight: 500; }
+.tab[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--fg); }
+.view { display: grid; gap: 14px; min-width: 0; }
+.card { background: var(--surf); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
+.card h2 { font-size: 18px; margin-bottom: 4px; }
+.card > p.lead { color: var(--fg2); margin: 0 0 10px; max-width: 80ch; }
+.cols2 { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1200px) { .cols2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.hero { display: grid; gap: 10px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.stat { background: var(--surf2); border-radius: 6px; padding: 8px 12px; }
+.stat span { color: var(--fg3); font-size: 12px; display: block; }
+.stat b { font: 600 24px var(--f-mono); font-variant-numeric: tabular-nums; }
+.stat i { font-style: normal; color: var(--fg3); font-size: 12px; margin-left: 4px; }
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { color: var(--fg3); font-weight: 500; font-size: 12px; }
+th:first-child, td:first-child, td.l, th.l { text-align: left; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--surf2); }
+tbody tr[aria-selected="true"] { background: var(--surf2); font-weight: 600; }
+td.num { font-family: var(--f-mono); }
+.dl.pos { color: var(--good); } .dl.neg { color: var(--bad); }
+ul.diag { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+ul.diag li { display: grid; grid-template-columns: 8px minmax(0, 1fr); gap: 10px; font-size: 13px; }
+ul.diag li::before { content: ""; width: 8px; border-radius: 2px; background: var(--c); }
+.chk { display: grid; gap: 6px; }
+.chk .r { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 12px; align-items: baseline; font-size: 13px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+.chk .r small { grid-column: 1 / -1; color: var(--fg3); }
+.pill { font: 600 11px var(--f-ui); border-radius: 999px; padding: 1px 8px; border: 1px solid currentColor; }
+.pill.ok { color: var(--good); } .pill.no { color: var(--bad); }
+
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { font: 11px var(--f-mono); fill: var(--fg3); }
+.chart .tl { fill: var(--fg2); font-size: 11px; }
+.chart .gl { stroke: var(--line); stroke-width: 1; }
+.chart .ax { stroke: var(--line2); stroke-width: 1; }
+.tip { position: absolute; pointer-events: none; background: var(--surf2); border: 1px solid var(--line2); border-radius: 6px; padding: 6px 9px; font-size: 12px; z-index: 5; min-width: 150px; display: none; }
+.tip b { font-family: var(--f-mono); font-weight: 500; }
+.tip .tr { display: flex; justify-content: space-between; gap: 12px; }
+.tip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; font-size: 12px; color: var(--fg2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend svg { width: 26px; height: 8px; }
+.note { font-size: 12px; color: var(--fg3); margin: 8px 0 0; max-width: 90ch; }
+
+.tor { display: grid; gap: 4px; }
+.tor .r { display: grid; grid-template-columns: minmax(110px, 190px) minmax(0, 1fr) 118px; gap: 10px; align-items: center; font-size: 13px; }
+.tor .bar { position: relative; height: 16px; background: var(--surf2); border-radius: 3px; }
+.tor .bar::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--fg3); }
+.tor .seg { position: absolute; top: 2px; bottom: 2px; background: var(--fg2); }
+.tor .seg.p { background: var(--c-flow); } .tor .seg.n { background: var(--c-kin); }
+.tor .v { font: 12px var(--f-mono); color: var(--fg2); text-align: right; }
+.seg2 { display: inline-flex; border: 1px solid var(--line2); border-radius: 6px; overflow: hidden; }
+.seg2 button { border: 0; background: var(--surf); padding: 4px 10px; font-size: 12px; }
+.seg2 button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+
+.mapwrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surf); }
+.mapwrap svg { display: block; min-width: 860px; width: 100%; height: auto; }
+.mapwrap text { font-family: var(--f-ui); fill: var(--fg); }
+.mapwrap .v { font: 11px var(--f-mono); fill: var(--fg2); }
+.mapwrap .colh { font: 600 11px var(--f-ui); fill: var(--fg3); text-transform: uppercase; letter-spacing: .08em; }
+.mapwrap .nd rect { fill: var(--surf2); stroke: var(--line2); stroke-width: 1; }
+.mapwrap .nd { cursor: default; transition: opacity .12s; }
+.mapwrap .nd.act rect { stroke: var(--c); stroke-width: 2; }
+.mapwrap .ed { fill: none; stroke: var(--line2); stroke-width: 1.2; transition: opacity .12s; }
+.mapwrap .ed.act { stroke: var(--c); stroke-width: 2.2; }
+.mapwrap.hv .dim { opacity: .18; }
+.mapwrap .ed.hl { stroke: var(--fg); stroke-width: 1.8; }
+
+details.step { border: 1px solid var(--line); border-radius: 8px; background: var(--surf); }
+details.step > summary { cursor: pointer; padding: 10px 14px; font: 600 15px var(--f-head); list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+details.step > summary::-webkit-details-marker { display: none; }
+details.step > summary span { font: 500 13px var(--f-mono); color: var(--fg2); }
+.stepb { padding: 2px 16px 14px; display: grid; gap: 8px; }
+.fm { font: 13px/1.6 var(--f-mono); background: var(--surf2); border-radius: 6px; padding: 8px 12px; overflow-x: auto; white-space: pre; }
+.fm .res { color: var(--fg); font-weight: 500; }
+.stepb p { margin: 0; color: var(--fg2); max-width: 85ch; }
+pre.code { font: 12px/1.5 var(--f-mono); background: var(--surf2); border-radius: 6px; padding: 10px 12px; overflow-x: auto; margin: 0; }
+.bb td.l small { display: block; color: var(--fg3); font-size: 11px; }
+ol.test { margin: 0; padding-left: 20px; display: grid; gap: 4px; color: var(--fg2); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+.chk .chip { white-space: normal; border-radius: 10px; }
+
+.bd.done { color: var(--good); border-color: var(--good); }
+.tin { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px 14px; margin: 6px 0 8px; }
+.tin .ctl input[type=text], .tin .ctl input[type=number], .tin .ctl select { flex: 1; width: 100%; text-align: left; font-family: var(--f-mono); background: var(--surf2); border: 1px solid var(--line2); border-radius: 5px; padding: 4px 8px; min-width: 0; }
+.tin .row label { font-size: 12px; color: var(--fg2); }
+.chk2 { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.meta p { margin: 0 0 3px; color: var(--fg2); font-size: 13px; max-width: 95ch; }
+.meta b { color: var(--fg); }
+.tools .line, .stepb .line { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+.tout { background: var(--surf2); border-radius: 6px; padding: 10px 12px; }
+.tset { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+.prog { display: grid; gap: 6px; margin-top: 8px; }
+.bar2 { height: 6px; background: var(--surf2); border-radius: 3px; overflow: hidden; }
+.bar2 i { display: block; height: 100%; background: var(--good); }
+textarea.fb { width: 100%; font: 12px/1.45 var(--f-mono); background: var(--surf2); color: var(--fg); border: 1px solid var(--line2); border-radius: 6px; padding: 8px; margin-top: 6px; }
+</style>
+<div class="shell">
+  <header class="top">
+    <div>
+      <h1>Предел печати</h1>
+      <p>Что ограничивает скорость и качество FDM-печати: пластик, принтер и g-code в одной модели. Стартовые значения: Bambu Lab A1 и PLA Lite.</p>
+    </div>
+    <button class="btn" id="theme" type="button">Тема</button>
+  </header>
+  <div class="strip" id="strip"></div>
+  <div class="app">
+    <details class="panel" id="panel" open>
+      <summary>Параметры</summary>
+      <div id="controls"></div>
+    </details>
+    <main class="main">
+      <nav class="tabs" id="tabs" role="tablist" aria-label="Разделы"></nav>
+      <section class="view" id="view"></section>
+    </main>
+  </div>
+</div>
+<script>
+'use strict';
+/* ============ МОДЕЛЬ РАСЧЕТА (чистые функции, без DOM) ============ */
+const PI = Math.PI, RG = 8.314;
+const STD_H = [0.08, 0.12, 0.16, 0.20, 0.24, 0.28, 0.32];
+
+const LIM = {
+  kin:  { n: 'Кинематика',  s: 'v_tool',    c: '--c-kin'  },
+  flow: { n: 'Поток',       s: 'Q_lim / A', c: '--c-flow' },
+  acc:  { n: 'Ускорение',   s: '√(a·L)',    c: '--c-acc'  },
+  cool: { n: 'Охлаждение',  s: 'L / t_min', c: '--c-cool' },
+  qual: { n: 'Качество',    s: 'v_defect',  c: '--c-def'  }
+};
+const FLOW_SUB = {
+  mvs:   'MVS пластика',
+  hot:   'Q hotend (паспорт)',
+  therm: 'Мощность нагрева',
+  force: 'Усилие подачи'
+};
+
+/* ---- значения по умолчанию ---- */
+const PRINTER_A1 = {
+  vTool: 500, aMax: 10000, qHot: 28, stepMm: 39, micro: 16, fullSteps: 200, zStep: 0.01,
+  fanRpm: 15000, fanCfm: 3, ductArea: 1.5, ductEff: 0.6, heaterW: 40, etaHeat: 0.35,
+  fGrip: 45, nozzleD: 0.4, fShaper: 50, shaperEff: 90, ringTol: 0.02, kCond: 1.5,
+  ldNozzle: 6, vMelt: 25, bMelt: 2.0, lFree: 30, eFeed: 3.5, kPA: 1.0
+};
+const PLASTICS = {
+  'PLA Lite (Bambu)':  { mvsRef: 20, tOpt: 215, tMin: 190, tMax: 230, rho: 1.24, cp: 1.8, tg: 58, tm: 170, dHf: 10, vDefect: 200, tMinCool: 6, mvsKT: 1.5, mvsWet: 6, eta0: 260, nPow: 0.55, ea: 60, frMat: 0.98, fanMin: 70, fanMax: 100 },
+  'PLA Basic (Bambu)': { mvsRef: 21, tOpt: 220, tMin: 190, tMax: 240, rho: 1.26, cp: 1.8, tg: 60, tm: 170, dHf: 10, vDefect: 220, tMinCool: 6, mvsKT: 1.5, mvsWet: 6, eta0: 300, nPow: 0.55, ea: 60, frMat: 0.98, fanMin: 70, fanMax: 100 },
+  'PETG Basic (Bambu)':{ mvsRef: 12, tOpt: 250, tMin: 230, tMax: 270, rho: 1.27, cp: 1.2, tg: 78, tm: 0,   dHf: 0,  vDefect: 150, tMinCool: 8, mvsKT: 1.5, mvsWet: 8, eta0: 500, nPow: 0.50, ea: 70, frMat: 0.95, fanMin: 30, fanMax: 70 },
+  'ABS (Bambu)':       { mvsRef: 16, tOpt: 260, tMin: 240, tMax: 280, rho: 1.05, cp: 1.4, tg: 105, tm: 0,  dHf: 0,  vDefect: 180, tMinCool: 8, mvsKT: 1.5, mvsWet: 6, eta0: 400, nPow: 0.50, ea: 70, frMat: 0.95, fanMin: 0,  fanMax: 30 }
+};
+const SPOOL0 = { filD: 1.75, filDAct: 1.75, filTol: 0.03, mvsSpread: 8, moisture: 0.0, tAmb: 25 };
+const TASK0 = { h: 0.20, w: 0.42, aLayer: 800, vModel: 40, lSeg: 20, vSet: 180, safety: 85, fOuter: 25, tCoolMode: 'emp' };
+
+function defaults() {
+  return Object.assign({ plastic: 'PLA Lite (Bambu)', printer: 'Bambu Lab A1' },
+    PRINTER_A1, PLASTICS['PLA Lite (Bambu)'], SPOOL0, TASK0);
+}
+
+/* ---- геометрия ---- */
+const aLine = (P, h) => h * Math.max(P.w - h, 0) + PI * h * h / 4;     // мм²
+const filA  = P => PI * P.filD * P.filD / 4;                           // мм²
+const qScale = P => Math.pow(P.filD / P.filDAct, 2);
+const stepsPerMm = P => P.fullSteps * P.micro / P.stepMm;
+
+/* ---- пределы потока ---- */
+function mvsT(P, T, s = 0) {
+  let m = P.mvsRef * (1 + P.mvsKT / 100 * (T - P.tOpt));
+  m *= Math.max(0.2, 1 - P.mvsWet / 100 * (P.moisture / 0.1));
+  m *= 1 + s * P.mvsSpread / 100;
+  return Math.max(0, m);
+}
+function qTherm(P, T) {
+  const rho = P.rho / 1000;                                            // г/мм³
+  const melt = T > P.tm ? P.dHf : 0;
+  const dH = P.cp * (T - P.tAmb) + melt + 22.6 * P.moisture;           // Дж/г
+  return P.etaHeat * P.heaterW / (rho * dH);                           // мм³/с
+}
+function viscosity(P, T, g) {
+  const a = Math.exp(P.ea * 1000 / RG * (1 / (T + 273.15) - 1 / (P.tOpt + 273.15)));
+  const wet = Math.max(0.5, 1 - P.moisture);
+  return P.eta0 * a * Math.pow(Math.max(g, 1) / 1000, P.nPow - 1) * wet;
+}
+function wallShear(P, Q) {                                             // с^-1, поправка Рабиновича
+  const gApp = 32 * Q / (PI * Math.pow(P.nozzleD, 3));
+  return gApp * (3 * P.nPow + 1) / (4 * P.nPow);
+}
+function dP(P, Q, T) {                                                 // Па
+  if (Q <= 0) return 0;
+  const g = wallShear(P, Q);
+  return 4 * viscosity(P, T, g) * g * P.ldNozzle;
+}
+function qForce(P, T) {
+  const dPmax = P.fGrip / filA(P) * 1e6;                               // Н/мм² -> Па
+  const dP1 = dP(P, 1, T);
+  return Math.pow(dPmax / dP1, 1 / P.nPow);
+}
+function qLimits(P, T, s = 0) {
+  const sc = qScale(P);
+  const v = { mvs: mvsT(P, T, s) * sc, hot: P.qHot * sc, therm: qTherm(P, T) * sc, force: qForce(P, T) * sc };
+  let which = 'mvs';
+  for (const k of ['hot', 'therm', 'force']) if (v[k] < v[which]) which = k;
+  return Object.assign(v, { lim: v[which], which });
+}
+
+/* ---- охлаждение ---- */
+function airSpeed(P, duty) { return P.fanCfm * 4.719e-4 * (duty / 100) * P.ductEff / (P.ductArea * 1e-4); }
+function hConv(P, duty) { return 8 + 6 * Math.pow(airSpeed(P, duty), 0.8); }
+function tauCool(P, h, duty) {
+  const delta = aLine(P, h) / (P.w + 2 * h) * 1e-3;                    // м
+  return (P.rho * 1000) * (P.cp * 1000) * delta / (hConv(P, duty) * P.kCond);
+}
+function tCool(P, h, duty, T) {
+  const num = T - P.tAmb, den = P.tg - P.tAmb;
+  if (den <= 0 || num <= den) return 0;
+  return tauCool(P, h, duty) * Math.log(num / den);
+}
+function tempAt(P, h, duty, T0, t) { return P.tAmb + (T0 - P.tAmb) * Math.exp(-t / tauCool(P, h, duty)); }
+function tMinCool(P, h, T) { return P.tCoolMode === 'calc' ? tCool(P, h, P.fanMax, T) : P.tMinCool; }
+function reqDuty(P, h, tLayer, T) {
+  for (let d = P.fanMin; d <= P.fanMax; d++) if (tCool(P, h, d, T) <= tLayer) return { duty: d, ok: true };
+  return { duty: P.fanMax, ok: false };
+}
+
+/* ---- кинематика ---- */
+function aRing(P) {
+  const w = 2 * PI * P.fShaper, res = Math.max(1 - P.shaperEff / 100, 0.01);
+  return P.ringTol * w * w / res;                                      // мм/с²
+}
+const aRec = P => Math.min(P.aMax, aRing(P));
+const ringAmp = (P, a) => (1 - P.shaperEff / 100) * a / Math.pow(2 * PI * P.fShaper, 2);
+
+/* ---- Pressure Advance ---- */
+function cV(P) { return P.vMelt / (P.bMelt * 1e9) + filA(P) * P.lFree / (P.eFeed * 1e9); }   // мм³/Па
+function Kpa(P, Q, T) { return Q > 0 ? P.kPA * cV(P) * dP(P, Q, T) / Q : 0; }                // с
+
+/* ---- скорость при фиксированной T ---- */
+function nonFlow(P, h) {
+  const A = aLine(P, h), Lp = P.aLayer * h / A;
+  const tmc = tMinCool(P, h, P.tOpt);
+  return {
+    A, Lp, tmc,
+    vKin: P.vTool,
+    vAcc: Math.sqrt(aRec(P) * P.lSeg),
+    vCool: tmc > 0 ? Lp / tmc : Infinity
+  };
+}
+function vAtT(P, h, T) {
+  const n = nonFlow(P, h), ql = qLimits(P, T);
+  const vFlow = P.safety / 100 * ql.lim / n.A;
+  const arr = [['flow', vFlow], ['cool', n.vCool], ['acc', n.vAcc], ['kin', n.vKin]];
+  let best = arr[0];
+  for (const x of arr) if (x[1] < best[1]) best = x;
+  return { v: best[1], lim: best[0], vFlow, ql, n };
+}
+
+/* ---- основная задача: оптимум для высоты слоя h ---- */
+function solve(P, h) {
+  const n = nonFlow(P, h), A = n.A;
+  const vNon = Math.min(n.vKin, n.vAcc, n.vCool);
+  const lo = Math.min(P.tOpt, P.tMax), hi = Math.max(P.tMax, lo);
+  let T = hi, found = false;
+  for (let t = lo; t <= hi; t++) {
+    if (P.safety / 100 * qLimits(P, t).lim >= A * vNon) { T = t; found = true; break; }
+  }
+  const ql = qLimits(P, T);
+  const qCap = P.safety / 100 * ql.lim;
+  const vFlow = qCap / A;
+  const vIn = Math.min(vNon, vFlow);
+  let lim = 'flow';
+  if (vNon <= vFlow) lim = n.vCool <= n.vAcc && n.vCool <= n.vKin ? 'cool' : (n.vAcc <= n.vKin ? 'acc' : 'kin');
+  const vOut = Math.min(vIn, P.vDefect);
+  const limOut = P.vDefect < vIn ? 'qual' : lim;
+  const Q = A * vIn;
+  const tLayer = n.Lp / vIn;
+  const duty = reqDuty(P, h, tLayer, T);
+  const fanRec = Math.min(P.fanMax, Math.max(P.fanMin, duty.duty));
+  const hq = Math.round(h / P.zStep) * P.zStep;
+  const FR = P.frMat * Math.pow(P.filD / P.filDAct, 2);
+  const tm = printTime(P, h, vIn, vOut, A);
+  return {
+    h, A, Lp: n.Lp, tmc: n.tmc, vKin: n.vKin, vAcc: n.vAcc, vCool: n.vCool, vFlow, vNon,
+    T, tFound: found, ql, qCap, qLim: ql.lim, vIn, vOut, lim, limOut, Q,
+    tLayer, duty, fanRec, hq, zErr: (hq - h) / h,
+    K: Kpa(P, Q, T), FR, time: tm.t, nLayers: tm.n, height: tm.H, mass: tm.mass, filLen: tm.len,
+    dPop: dP(P, Q, T), force: dP(P, Q, T) * filA(P) / 1e6,
+    shear: wallShear(P, Q), eta: viscosity(P, T, wallShear(P, Q))
+  };
+}
+
+function tseg(v, a, L) { return L >= v * v / a ? L / v + v / a : 2 * Math.sqrt(L / a); }
+function printTime(P, h, vIn, vOut, A) {
+  const Lp = P.vModel * 1000 / A;                                      // мм общего пути
+  const f = P.fOuter / 100, a = aRec(P);
+  const L = Math.max(P.lSeg, 1);
+  const t0 = Lp / L * (f * tseg(Math.max(vOut, 1), a, L) + (1 - f) * tseg(Math.max(vIn, 1), a, L));
+  const H = P.vModel * 1000 / P.aLayer, n = H / h;
+  const t = t0 + n * 3;
+  return { t, n, H, mass: P.vModel * P.rho, len: P.vModel * 1000 / filA(P) / 1000 };
+}
+
+/* ---- проверка заданной скорости ---- */
+function checkSet(P, R) {
+  const A = R.A, v = P.vSet, Q = A * v;
+  const tl = R.Lp / v;
+  const rows = [
+    { k: 'flow', name: 'Поток (' + FLOW_SUB[R.ql.which] + ')', lim: R.qCap / A, unit: 'мм/с', note: 'Q = ' + Q.toFixed(1).replace('.', ',') + ' мм³/с при рабочем пределе ' + R.qCap.toFixed(1).replace('.', ',') },
+    { k: 'cool', name: 'Охлаждение слоя', lim: R.vCool, unit: 'мм/с', note: 'время слоя ' + tl.toFixed(1).replace('.', ',') + ' с при минимуме ' + R.tmc.toFixed(1).replace('.', ',') },
+    { k: 'acc',  name: 'Ускорение на коротких участках', lim: R.vAcc, unit: 'мм/с', note: '' },
+    { k: 'kin',  name: 'Кинематика', lim: R.vKin, unit: 'мм/с', note: '' },
+    { k: 'qual', name: 'Качество внешней стенки', lim: P.vDefect, unit: 'мм/с', note: 'для видимых поверхностей' }
+  ];
+  rows.forEach(r => { r.margin = (r.lim - v) / r.lim; r.ok = v <= r.lim + 1e-9; });
+  return { v, Q, tl, rows };
+}
+
+/* ---- диагностика ---- */
+function diagnostics(P, R) {
+  const out = [], f = (x, d = 1) => x.toFixed(d).replace('.', ',');
+  if (P.moisture > 0.1) out.push(['bad', 'Катушка влажная (' + f(P.moisture, 2) + ' %): MVS падает на ' + f((1 - Math.max(0.2, 1 - P.mvsWet / 100 * P.moisture / 0.1)) * 100, 0) + ' %, вязкость снижается, в линии появляются пузыри пара. Высушите филамент перед калибровкой.']);
+  else if (P.moisture > 0.04) out.push(['warn', 'Остаточная влажность ' + f(P.moisture, 2) + ' %: влияет на MVS и PA. Калибровать лучше на сухой катушке.']);
+  const dev = Math.abs(P.filDAct - P.filD);
+  if (dev > P.filTol) out.push(['warn', 'Диаметр нити ' + f(P.filDAct, 3) + ' мм выходит за допуск ±' + f(P.filTol, 2) + ' мм. Поток отличается на ' + f((Math.pow(P.filDAct / P.filD, 2) - 1) * 100, 1) + ' %, Flow Ratio скорректирован.']);
+  if (!R.tFound) out.push(['warn', 'Даже при T = ' + R.T + ' °C поток ограничивает скорость (' + FLOW_SUB[R.ql.which] + '). Повышать температуру дальше нельзя, уменьшите высоту или ширину линии.']);
+  if (Math.abs(R.zErr) > 0.005) out.push(['warn', 'Высота ' + f(R.h, 3) + ' мм не кратна шагу Z ' + f(P.zStep, 2) + ' мм. Фактическая высота ' + f(R.hq, 2) + ' мм (' + f(R.zErr * 100, 1) + ' %).']);
+  if (aRing(P) < P.aMax) out.push(['warn', 'По резонансу ускорение ограничено до ' + f(aRing(P), 0) + ' мм/с² (допуск ряби ' + f(P.ringTol, 3) + ' мм).']);
+  if (R.h > 0.8 * P.nozzleD) out.push(['bad', 'Высота слоя больше 80 % диаметра сопла: линия не прижмется к предыдущему слою.']);
+  if (R.h < 0.2 * P.nozzleD) out.push(['warn', 'Высота слоя меньше 20 % диаметра сопла: высокое давление в сопле, риск пропусков.']);
+  if (P.w < 1.04 * P.nozzleD) out.push(['warn', 'Ширина линии меньше 104 % диаметра сопла: слабое сцепление между линиями.']);
+  if (!R.duty.ok) out.push(['warn', 'Расчетное остывание до T_g при обдуве ' + P.fanMax + ' % занимает дольше времени слоя (' + f(R.tLayer, 1) + ' с): слой не успеет остыть, слайсер снизит скорость.']);
+  if (R.force > P.fGrip * 0.8) out.push(['warn', 'Усилие на нить ' + f(R.force, 0) + ' Н близко к пределу прижима ' + f(P.fGrip, 0) + ' Н: возможно проскальзывание шестерни.']);
+  if (!out.length) out.push(['good', 'Предупреждений нет: параметры согласованы.']);
+  return out;
+}
+
+/* ---- чувствительность ---- */
+function metric(P, kind) {
+  const R = solve(P, P.h);
+  return kind === 'in' ? R.vIn : kind === 'out' ? R.vOut : R.time;
+}
+const SENS = [
+  ['mvsRef', 'MVS катушки'], ['qHot', 'Q hotend (паспорт)'], ['heaterW', 'Мощность нагревателя'], ['etaHeat', 'КПД передачи тепла'],
+  ['tMax', 'T макс. подбора'], ['fGrip', 'Усилие прижима'], ['eta0', 'Вязкость расплава'], ['nozzleD', 'Диаметр сопла'],
+  ['h', 'Высота слоя h'], ['w', 'Ширина линии w'], ['aLayer', 'Площадь слоя A_layer'], ['tMinCool', 't_min_cool'],
+  ['fanCfm', 'Расход обдува'], ['aMax', 'a_max'], ['fShaper', 'Частота резонанса'], ['lSeg', 'Длина участка L_seg'],
+  ['vDefect', 'v_defect'], ['vTool', 'v_tool_max'], ['safety', 'Рабочий запас по потоку'], ['moisture', 'Влажность (±0,1 %)']
+];
+function sensitivity(P, kind) {
+  const base = metric(P, kind);
+  const rows = SENS.map(([k, name]) => {
+    const lo = Object.assign({}, P), hi = Object.assign({}, P);
+    if (k === 'moisture') { lo[k] = Math.max(0, P[k] - 0.1); hi[k] = P[k] + 0.1; }
+    else { lo[k] = P[k] * 0.9; hi[k] = P[k] * 1.1; }
+    if (k === 'safety') { hi[k] = Math.min(100, hi[k]); }
+    const a = metric(lo, kind), b = metric(hi, kind);
+    return { k, name, lo: (a / base - 1) * 100, hi: (b / base - 1) * 100 };
+  });
+  rows.sort((x, y) => Math.max(Math.abs(y.lo), Math.abs(y.hi)) - Math.max(Math.abs(x.lo), Math.abs(x.hi)));
+  return { base, rows };
+}
+
+if (typeof module !== 'undefined') module.exports = { defaults, solve, qLimits, dP, Kpa, tCool, aRing, vAtT, sensitivity, diagnostics, checkSet, PLASTICS, aLine, mvsT, qTherm, qForce, wallShear, viscosity };
+/* ============ ИНТЕРФЕЙС ============ */
+const $ = (s, r = document) => r.querySelector(s);
+const f = (x, d = 1) => Number.isFinite(x) ? x.toFixed(d).replace('.', ',') : '∞';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { } };
+
+/* ---- схема параметров ---- */
+const BD = { pas: ['паспорт', ''], test: ['тест', 'test'], est: ['оценка', ''], emp: ['эмпирика', ''], lit: ['литература', ''], mod: ['модель', ''] };
+const SCHEMA = [
+  { id: 'pl', title: 'Пластик', open: true, items: [
+    { sel: 'plastic', l: 'Пресет пластика', opts: () => Object.keys(PLASTICS).concat(['Свое']) },
+    { k: 'mvsRef', l: 'MVS при T_opt', u: 'мм³/с', min: 4, max: 40, step: 0.5, sl: 1, b: 'test', hint: 'Bambu Studio → Калибровка → Максимальная объемная скорость. У каждой катушки значение свое, измеряйте на сухой нити.' },
+    { k: 'mvsKT', l: 'Рост MVS с температурой', u: '%/°C', min: 0, max: 4, step: 0.1, b: 'emp', hint: 'Сколько процентов MVS добавляет каждый градус. Определяется двумя тестами MVS при разной T.' },
+    { k: 'tOpt', l: 'T_opt', u: '°C', min: 170, max: 300, step: 1, sl: 1, b: 'pas', hint: 'Рабочая температура сопла из паспорта катушки.' },
+    { k: 'tMin', l: 'T мин.', u: '°C', min: 150, max: 300, step: 1, b: 'pas' },
+    { k: 'tMax', l: 'T макс.', u: '°C', min: 170, max: 300, step: 1, sl: 1, b: 'pas', hint: 'Верхняя граница, до которой калькулятор поднимает температуру ради потока.' },
+    { k: 'rho', l: 'Плотность ρ', u: 'г/см³', min: 0.9, max: 1.6, step: 0.01, b: 'pas' },
+    { k: 'cp', l: 'Теплоемкость C_p', u: 'Дж/(г·К)', min: 1, max: 2.5, step: 0.05, b: 'lit' },
+    { k: 'tg', l: 'T_g (стеклование)', u: '°C', min: 30, max: 130, step: 1, b: 'lit', hint: 'Ниже этой температуры линия держит форму и следующий слой ее не продавливает.' },
+    { k: 'tm', l: 'T плавления', u: '°C', min: 0, max: 260, step: 1, b: 'lit', hint: 'Для аморфных пластиков (PETG, ABS) укажите 0: скрытая теплота плавления не учитывается.' },
+    { k: 'dHf', l: 'Скрытая теплота ΔH', u: 'Дж/г', min: 0, max: 60, step: 1, b: 'lit' },
+    { k: 'vDefect', l: 'v_defect (внешняя стенка)', u: 'мм/с', min: 50, max: 500, step: 5, sl: 1, b: 'emp', hint: 'Скорость, выше которой на видимой стенке появляются рябь, пропуски, шероховатость. Определяется печатью тест-модели.' },
+    { k: 'tMinCool', l: 't_min_cool', u: 'с', min: 1, max: 30, step: 0.5, b: 'emp', hint: 'Минимальное время слоя до деформации. Используется при режиме «из таблицы».' },
+    { k: 'frMat', l: 'Flow Ratio материала', u: '', min: 0.85, max: 1.1, step: 0.005, b: 'test', hint: 'Результат теста Flow Ratio для вашей нити, с номинальным диаметром.' },
+    { k: 'fanMin', l: 'Обдув мин.', u: '%', min: 0, max: 100, step: 5, b: 'emp' },
+    { k: 'fanMax', l: 'Обдув макс.', u: '%', min: 0, max: 100, step: 5, b: 'emp' },
+    { k: 'eta0', l: 'Вязкость η (1000 с⁻¹, T_opt)', u: 'Па·с', min: 40, max: 1200, step: 10, b: 'est', hint: 'Реология расплава: оценка, меняется между партиями. Влияет на давление в сопле и PA.' },
+    { k: 'nPow', l: 'Индекс n (степенной закон)', u: '', min: 0.2, max: 1, step: 0.01, b: 'est' },
+    { k: 'ea', l: 'Энергия активации Ea', u: 'кДж/моль', min: 20, max: 120, step: 1, b: 'est' },
+    { k: 'mvsWet', l: 'Потеря MVS на 0,1 % влаги', u: '%', min: 0, max: 25, step: 0.5, b: 'emp' }
+  ] },
+  { id: 'sp', title: 'Катушка и среда', open: true, items: [
+    { k: 'filDAct', l: 'Диаметр нити (измерен)', u: 'мм', min: 1.6, max: 1.9, step: 0.005, sl: 1, b: 'test', hint: 'Микрометр или штангенциркуль, 10 точек вдоль нити, среднее. Определяет поправку Flow Ratio.' },
+    { k: 'filD', l: 'Диаметр нити (номинал)', u: 'мм', min: 1.7, max: 3, step: 0.05, b: 'pas' },
+    { k: 'filTol', l: 'Допуск диаметра ±', u: 'мм', min: 0, max: 0.1, step: 0.005, b: 'pas' },
+    { k: 'mvsSpread', l: 'Разброс MVS между катушками ±', u: '%', min: 0, max: 30, step: 1, b: 'emp', hint: 'Ширина серой полосы на графике потока: насколько MVS у другой катушки может отличаться.' },
+    { k: 'moisture', l: 'Влажность нити', u: '% масс.', min: 0, max: 0.6, step: 0.01, sl: 1, b: 'test', hint: 'Прямо не измеряется. Оценка по весу до и после сушки или по пузырям на линии. Влага снижает MVS и вязкость.' },
+    { k: 'tAmb', l: 'Температура среды', u: '°C', min: 5, max: 50, step: 1, b: 'pas' }
+  ] },
+  { id: 'pr', title: 'Принтер', open: true, items: [
+    { sel: 'printer', l: 'Пресет принтера', opts: () => ['Bambu Lab A1', 'Свое'] },
+    { k: 'vTool', l: 'v_tool_max', u: 'мм/с', min: 100, max: 1000, step: 10, b: 'pas' },
+    { k: 'aMax', l: 'a_max', u: 'мм/с²', min: 1000, max: 30000, step: 500, sl: 1, b: 'pas' },
+    { k: 'qHot', l: 'Q hotend (паспорт)', u: 'мм³/с', min: 5, max: 60, step: 0.5, b: 'pas' },
+    { k: 'nozzleD', l: 'Диаметр сопла', u: 'мм', opts: [0.2, 0.4, 0.6, 0.8], b: 'pas' },
+    { k: 'heaterW', l: 'Мощность нагревателя', u: 'Вт', min: 20, max: 100, step: 1, b: 'est', hint: 'Проверьте по документации вашего хотэнда.' },
+    { k: 'etaHeat', l: 'Доля тепла в расплав', u: '', min: 0.1, max: 1, step: 0.01, b: 'est', hint: 'Потери блока в воздух и обдув. Подгоняется так, чтобы тепловой предел совпал с тестом MVS при высокой T.' },
+    { k: 'fGrip', l: 'Усилие прижима нити', u: 'Н', min: 10, max: 150, step: 1, b: 'est' },
+    { k: 'stepMm', l: 'Шаг X/Y на оборот', u: 'мм', min: 20, max: 60, step: 1, b: 'pas' },
+    { k: 'micro', l: 'Микрошаг (1/N)', u: 'N', opts: [8, 16, 32, 64], b: 'pas' },
+    { k: 'zStep', l: 'Минимальный шаг Z', u: 'мм', min: 0.0025, max: 0.04, step: 0.0025, b: 'pas' },
+    { k: 'fanRpm', l: 'Обдув детали', u: 'об/мин', min: 3000, max: 30000, step: 500, b: 'pas' },
+    { k: 'fanCfm', l: 'Расход обдува', u: 'CFM', min: 0.5, max: 8, step: 0.1, b: 'pas' },
+    { k: 'fShaper', l: 'Резонанс по X/Y', u: 'Гц', min: 15, max: 120, step: 1, b: 'test', hint: 'Тест Input Shaper (калибровка в Bambu Studio / замер акселерометром).' },
+    { k: 'shaperEff', l: 'Подавление резонанса', u: '%', min: 0, max: 99, step: 1, b: 'est' },
+    { k: 'ringTol', l: 'Допуск ряби (ringing)', u: 'мм', min: 0.005, max: 0.1, step: 0.005, b: 'emp' }
+  ] },
+  { id: 'pm', title: 'Принтер: модель (калибровка)', open: false, items: [
+    { k: 'ductArea', l: 'Площадь сопла обдува', u: 'см²', min: 0.3, max: 6, step: 0.1, b: 'est' },
+    { k: 'ductEff', l: 'КПД воздуховода', u: '', min: 0.2, max: 1, step: 0.05, b: 'est' },
+    { k: 'kCond', l: 'Отвод тепла в нижний слой', u: '×', min: 1, max: 3, step: 0.1, b: 'est' },
+    { k: 'ldNozzle', l: 'Длина канала сопла L/D', u: '', min: 2, max: 14, step: 0.5, b: 'est' },
+    { k: 'vMelt', l: 'Объем расплава в блоке', u: 'мм³', min: 5, max: 80, step: 1, b: 'est' },
+    { k: 'bMelt', l: 'Модуль сжатия расплава', u: 'ГПа', min: 0.5, max: 5, step: 0.1, b: 'est' },
+    { k: 'lFree', l: 'Свободная длина нити', u: 'мм', min: 5, max: 80, step: 1, b: 'est' },
+    { k: 'eFeed', l: 'Жесткость нити на сжатие', u: 'ГПа', min: 0.5, max: 6, step: 0.1, b: 'est' },
+    { k: 'kPA', l: 'Поправка K (калибровка PA)', u: '×', min: 0.3, max: 3, step: 0.05, b: 'test', hint: 'Подберите так, чтобы расчетный K совпал с результатом теста Pressure Advance на вашем принтере.' }
+  ] },
+  { id: 'gc', title: 'G-code и задача', open: true, items: [
+    { k: 'h', l: 'Высота слоя h', u: 'мм', min: 0.04, max: 0.32, step: 0.01, sl: 1, b: 'pas' },
+    { k: 'w', l: 'Ширина линии w', u: 'мм', min: 0.3, max: 0.8, step: 0.01, sl: 1, b: 'pas' },
+    { k: 'vSet', l: 'Заданная скорость v_set', u: 'мм/с', min: 20, max: 500, step: 5, sl: 1, b: 'pas', hint: 'Ваша скорость из слайсера: калькулятор проверит ее по всем пределам.' },
+    { k: 'aLayer', l: 'Площадь слоя A_layer', u: 'мм²', min: 20, max: 20000, step: 10, b: 'pas', hint: 'Площадь, занятая материалом в слое. Малая площадь означает короткий слой и перегрев.' },
+    { k: 'vModel', l: 'Объем модели V_model', u: 'см³', min: 1, max: 1000, step: 1, b: 'pas' },
+    { k: 'lSeg', l: 'Длина участка L_seg', u: 'мм', min: 2, max: 200, step: 1, b: 'pas', hint: 'Типичная длина прямого участка периметра: определяет, успевает ли головка разогнаться.' },
+    { k: 'safety', l: 'Рабочий запас по потоку', u: '%', min: 50, max: 100, step: 1, b: 'pas', hint: '85 % значит, что печать идет на 85 % от предела потока.' },
+    { k: 'fOuter', l: 'Доля пути на видимых стенках', u: '%', min: 0, max: 100, step: 1, b: 'pas' },
+    { sel: 'tCoolMode', l: 't_min_cool', opts: [['emp', 'из таблицы пластика'], ['calc', 'расчет по обдуву']] }
+  ] }
+];
+const PL_KEYS = ['mvsRef', 'tOpt', 'tMin', 'tMax', 'rho', 'cp', 'tg', 'tm', 'dHf', 'vDefect', 'tMinCool', 'mvsKT', 'mvsWet', 'eta0', 'nPow', 'ea', 'frMat', 'fanMin', 'fanMax'];
+const SP_KEYS = ['filD', 'filDAct', 'filTol', 'mvsSpread', 'moisture'];
+const PR_KEYS = Object.keys(PRINTER_A1);
+
+/* ---- состояние ---- */
+let P = defaults(), REF = null, PROFILES = [], tab = 'result', sensKind = 'in';
+(function init() {
+  const s = (() => { try { return JSON.parse(lsGet('plc.v1')); } catch (e) { return null; } })();
+  if (s && s.P) { P = Object.assign(defaults(), s.P); REF = s.REF || null; PROFILES = s.PROFILES || []; }
+})();
+let saveT = 0;
+function persist() { clearTimeout(saveT); saveT = setTimeout(() => lsSet('plc.v1', JSON.stringify({ P, REF, PROFILES, TS, MAN })), 300); }
+const heights = () => STD_H.filter(h => h <= 0.8 * P.nozzleD + 1e-9);
+const limName = (k, R) => k === 'flow' ? 'Поток · ' + FLOW_SUB[R.ql.which] : LIM[k].n;
+
+/* ---- панель параметров ---- */
+function buildControls() {
+  const host = $('#controls');
+  let html = `<div class="tool">
+    <div class="cap">Профили катушек (сохраняются в браузере)</div>
+    <div class="line"><input type="text" id="pf-name" placeholder="Например: PLA Lite белая, лот 2" aria-label="Название профиля"><button class="btn sm" id="pf-save">Сохранить</button></div>
+    <div class="line"><select id="pf-list" aria-label="Сохраненные профили"></select><button class="btn sm" id="pf-load">Загрузить</button><button class="btn sm" id="pf-del">Удалить</button></div>
+    <div class="line"><button class="btn sm" id="ref-set">Зафиксировать эталон</button><button class="btn sm" id="ref-clr">Сбросить эталон</button><button class="btn sm" id="all-reset">Сбросить все</button></div>
+    <div class="cap" id="ref-cap"></div></div>`;
+  for (const g of SCHEMA) {
+    html += `<details class="grp" ${g.open ? 'open' : ''}><summary>${g.title}</summary><div class="grp-body">`;
+    for (const it of g.items) {
+      if (it.sel) {
+        const opts = typeof it.opts === 'function' ? it.opts() : it.opts;
+        html += `<div class="row"><label for="p-${it.sel}">${it.l}</label><div class="ctl"><select id="p-${it.sel}">${opts.map(o => Array.isArray(o) ? `<option value="${o[0]}">${o[1]}</option>` : `<option>${o}</option>`).join('')}</select></div></div>`;
+        continue;
+      }
+      const b = BD[it.b || 'pas'];
+      html += `<div class="row" data-k="${it.k}"><label for="p-${it.k}"><span>${it.l}</span><span class="bd ${b[1]}" data-o="${b[0]}">${b[0]}</span></label><div class="ctl">`;
+      if (it.opts) html += `<select id="p-${it.k}">${it.opts.map(o => `<option value="${o}">${String(o).replace('.', ',')}</option>`).join('')}</select><span class="u">${it.u}</span>`;
+      else {
+        if (it.sl) html += `<input type="range" id="r-${it.k}" min="${it.min}" max="${it.max}" step="${it.step}" aria-label="${it.l}">`;
+        html += `<input type="number" id="p-${it.k}" min="${it.min}" max="${it.max}" step="${it.step}"><span class="u">${it.u}</span>`;
+      }
+      html += `</div>${it.hint ? `<p class="hint">${it.hint}</p>` : ''}</div>`;
+    }
+    html += `</div></details>`;
+  }
+  host.innerHTML = html;
+  host.addEventListener('input', onCtl);
+  host.addEventListener('change', onCtl);
+  $('#pf-save').onclick = saveProfile; $('#pf-load').onclick = loadProfile; $('#pf-del').onclick = delProfile;
+  $('#ref-set').onclick = () => { REF = JSON.parse(JSON.stringify(P)); persist(); syncControls(); schedule(); };
+  $('#ref-clr').onclick = () => { REF = null; persist(); syncControls(); schedule(); };
+  $('#all-reset').onclick = () => { P = defaults(); TS = {}; MAN = {}; SRC = {}; RES = {}; ensurePlan(P); persist(); syncControls(); schedule(); };
+  syncControls();
+}
+function syncControls() {
+  for (const g of SCHEMA) for (const it of g.items) {
+    const k = it.sel || it.k, n = $('#p-' + k); if (!n) continue;
+    if (n.tagName === 'SELECT') n.value = String(P[k]); else if (document.activeElement !== n) n.value = P[k];
+    const r = $('#r-' + k); if (r) r.value = P[k];
+    const bd = $('.row[data-k="' + k + '"] .bd'); if (bd) { const s = SRC[k]; bd.textContent = s ? 'тест ' + META[TEST_ORDER[s.n]].n : bd.dataset.o; bd.classList.toggle('done', !!s); }
+  }
+  $('#pf-list').innerHTML = PROFILES.length ? PROFILES.map((p, i) => `<option value="${i}">${esc(p.name)}</option>`).join('') : '<option value="">нет профилей</option>';
+  $('#ref-cap').textContent = REF ? 'Эталон зафиксирован: пунктир на графиках и столбец Δ в таблице.' : 'Эталон не задан: зафиксируйте текущую катушку, чтобы сравнить с другой.';
+}
+function onCtl(e) {
+  const t = e.target, id = t.id || ''; if (!id) return;
+  const k = id.slice(2);
+  if (id.startsWith('pf-')) return;
+  if (k === 'plastic') { P.plastic = t.value; if (PLASTICS[t.value]) { Object.assign(P, PLASTICS[t.value]); P.pBase = t.value; } }
+  else if (k === 'printer') { P.printer = t.value; if (t.value === 'Bambu Lab A1') { Object.assign(P, PRINTER_A1); P.prBase = t.value; } }
+  else if (k === 'tCoolMode') P.tCoolMode = t.value;
+  else {
+    const v = parseFloat(t.value); if (!Number.isFinite(v)) return;
+    P[k] = v;
+    if (id.startsWith('r-')) { const n = $('#p-' + k); if (n) n.value = v; } else { const r = $('#r-' + k); if (r) r.value = v; }
+    MAN[k] = 1; delete SRC[k];
+    if (PL_KEYS.includes(k) && P.plastic !== 'Свое') { P.plastic = 'Свое'; $('#p-plastic').value = 'Свое'; }
+    if (PR_KEYS.includes(k) && P.printer !== 'Свое') { P.printer = 'Свое'; $('#p-printer').value = 'Свое'; }
+  }
+  syncControls();
+  persist(); schedule();
+}
+function saveProfile() {
+  const name = ($('#pf-name').value || '').trim() || ('Катушка ' + (PROFILES.length + 1));
+  const vals = {}; PL_KEYS.concat(SP_KEYS).forEach(k => vals[k] = P[k]); const tests = JSON.parse(JSON.stringify(TS));
+  const i = PROFILES.findIndex(p => p.name === name);
+  if (i >= 0) PROFILES[i] = { name, vals, tests }; else PROFILES.push({ name, vals, tests });
+  persist(); syncControls(); $('#pf-list').value = String(i >= 0 ? i : PROFILES.length - 1);
+}
+function loadProfile() { const p = PROFILES[+$('#pf-list').value]; if (!p) return; Object.assign(P, p.vals); P.plastic = 'Свое'; if (p.tests) { TS = JSON.parse(JSON.stringify(p.tests)); MAN = {}; ensurePlan(P); runProtocol(); } persist(); syncControls(); schedule(); }
+function delProfile() { const i = +$('#pf-list').value; if (!PROFILES[i]) return; PROFILES.splice(i, 1); persist(); syncControls(); }
+
+/* ---- полоса итога ---- */
+function renderStrip(R) {
+  const hs = heights(); if (!hs.some(h => Math.abs(h - P.h) < 1e-9)) hs.push(P.h);
+  const l = R.lim, c = LIM[l].c;
+  $('#strip').innerHTML = `<div class="strip-in">
+    <div class="hchips"><span class="lab">Слой, мм</span>${hs.map(h => `<button class="hchip" data-h="${h}" aria-pressed="${Math.abs(h - P.h) < 1e-9}">${f(h, 2)}</button>`).join('')}</div>
+    <div class="kpis">
+      <div class="kpi"><span>v_max</span><b>${f(R.vIn, 0)}</b><i>мм/с</i></div>
+      <div class="kpi"><span>Q_max</span><b>${f(R.Q, 1)}</b><i>мм³/с</i></div>
+      <div class="kpi"><span>T_print</span><b>${R.T}</b><i>°C</i></div>
+      <span class="chip" style="--c:var(${c})">Ограничитель: ${esc(limName(l, R))}</span>
+    </div></div>`;
+  $('#strip').querySelectorAll('.hchip').forEach(b => b.onclick = () => setH(parseFloat(b.dataset.h)));
+}
+function setH(h) { P.h = Math.round(h * 1000) / 1000; const n = $('#p-h'); if (n) n.value = P.h; const r = $('#r-h'); if (r) r.value = P.h; persist(); schedule(); }
+
+/* ---- универсальный график ---- */
+const CH = new Map();
+const niceStep = r => { const p = Math.pow(10, Math.floor(Math.log10(r))), m = r / p; return (m < 1.5 ? 1 : m < 3 ? 2 : m < 7 ? 5 : 10) * p; };
+function ticks(a, b, n) { const s = niceStep((b - a) / n), out = []; for (let v = Math.ceil(a / s - 1e-9) * s; v <= b + 1e-9; v += s) out.push(Math.round(v / s) * s); return out; }
+const swatch = (c, d, w) => `<svg viewBox="0 0 26 8"><line x1="0" y1="4" x2="26" y2="4" style="stroke:${c};stroke-width:${w || 2};stroke-dasharray:${d || 'none'}"/></svg>`;
+function chartBox(id, cfg) { CH.set(id, cfg); return `<div class="chart" id="${id}"></div><div class="legend" id="${id}-lg"></div>`; }
+function drawChart(id) {
+  const el = document.getElementById(id), c = CH.get(id); if (!el || !c) return;
+  const W = Math.max(260, el.clientWidth), H = Math.round(Math.min(340, Math.max(230, W * 0.5)));
+  const ml = 48, mr = 14, mt = 12, mb = 36, iw = W - ml - mr, ih = H - mt - mb;
+  const [x0, x1] = c.xr, N = c.n || Math.round(iw / 4);
+  const xs = Array.from({ length: N + 1 }, (_, i) => x0 + (x1 - x0) * i / N);
+  const data = c.series.map(s => xs.map(x => s.fn(x)));
+  let y0 = c.yr ? c.yr[0] : 0, y1;
+  if (c.yr) y1 = c.yr[1]; else { let m = 0; data.forEach(d => d.forEach(v => { if (Number.isFinite(v)) m = Math.max(m, v); })); y1 = m * 1.1 || 1; }
+  const X = x => ml + (x - x0) / (x1 - x0) * iw, Y = y => mt + ih - (Math.min(Math.max(y, y0), y1) - y0) / (y1 - y0) * ih;
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(c.title || '')}">`;
+  ticks(y0, y1, 5).forEach(v => { s += `<line class="gl" x1="${ml}" x2="${W - mr}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${ml - 6}" y="${Y(v) + 4}" text-anchor="end">${(c.fmtY || (q => f(q, q % 1 ? 1 : 0)))(v)}</text>`; });
+  ticks(x0, x1, Math.max(3, Math.round(iw / 80))).forEach(v => { s += `<line class="gl" x1="${X(v)}" x2="${X(v)}" y1="${mt}" y2="${mt + ih}" style="opacity:.5"/><text x="${X(v)}" y="${H - mb + 15}" text-anchor="middle">${(c.fmtX || (q => f(q, 2)))(v)}</text>`; });
+  s += `<line class="ax" x1="${ml}" x2="${W - mr}" y1="${mt + ih}" y2="${mt + ih}"/><line class="ax" x1="${ml}" x2="${ml}" y1="${mt}" y2="${mt + ih}"/>`;
+  s += `<text class="tl" x="${ml + iw / 2}" y="${H - 4}" text-anchor="middle">${c.xl || ''}</text><text class="tl" transform="translate(12 ${mt + ih / 2}) rotate(-90)" text-anchor="middle">${c.yl || ''}</text>`;
+  (c.bands || []).forEach(b => {
+    const hi = xs.map(x => `${X(x)},${Y(b.hi(x))}`), lo = xs.slice().reverse().map(x => `${X(x)},${Y(b.lo(x))}`);
+    s += `<polygon points="${hi.concat(lo).join(' ')}" style="fill:${b.color};opacity:${b.op || .16}"/>`;
+  });
+  c.series.forEach((sr, i) => {
+    if (sr.fill) s += `<path d="M${X(xs[0])},${Y(y0)} ${xs.map((x, j) => `L${X(x)},${Y(data[i][j])}`).join(' ')} L${X(xs[N])},${Y(y0)}Z" style="fill:${sr.color};opacity:.08"/>`;
+    let d = '', pen = false;
+    xs.forEach((x, j) => { const v = data[i][j]; if (Number.isNaN(v)) { pen = false; return; } d += (pen ? 'L' : 'M') + X(x).toFixed(1) + ',' + Y(v).toFixed(1); pen = true; });
+    s += `<path d="${d}" style="fill:none;stroke:${sr.color};stroke-width:${sr.w || 2};stroke-dasharray:${sr.dash || 'none'};stroke-linejoin:round"/>`;
+  });
+  (c.vlines || []).forEach(v => { s += `<line x1="${X(v.x)}" x2="${X(v.x)}" y1="${mt}" y2="${mt + ih}" style="stroke:${v.color};stroke-width:1.4;stroke-dasharray:${v.dash || '4 3'}"/>` + (v.label ? `<text x="${Math.min(X(v.x) + 4, W - mr - 60)}" y="${mt + 11 + (v.dy || 0)}" style="fill:${v.color}">${v.label}</text>` : ''); });
+  (c.hlines || []).forEach(v => { s += `<line x1="${ml}" x2="${W - mr}" y1="${Y(v.y)}" y2="${Y(v.y)}" style="stroke:${v.color};stroke-width:1.4;stroke-dasharray:${v.dash || '4 3'}"/>` + (v.label ? `<text x="${W - mr - 4}" y="${Y(v.y) - 4}" text-anchor="end" style="fill:${v.color}">${v.label}</text>` : ''); });
+  (c.strip || []).forEach(g => { s += `<rect x="${X(g.x0)}" y="${mt + ih - 7}" width="${Math.max(1, X(g.x1) - X(g.x0))}" height="7" style="fill:${g.color}"/>`; });
+  (c.points || []).forEach(p => { s += `<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="4.5" style="fill:var(--bg);stroke:${p.color};stroke-width:2"/>`; });
+  s += `<line id="${id}-cx" x1="0" x2="0" y1="${mt}" y2="${mt + ih}" style="stroke:var(--fg3);stroke-width:1;display:none"/><rect id="${id}-ov" x="${ml}" y="${mt}" width="${iw}" height="${ih}" style="fill:transparent;cursor:${c.onClick ? 'pointer' : 'crosshair'}"/></svg><div class="tip" id="${id}-tip"></div>`;
+  el.innerHTML = s;
+  const lg = [];
+  c.series.forEach(sr => { if (sr.name) lg.push(`<span>${swatch(sr.color, sr.dash, sr.w)}${sr.name}</span>`); });
+  (c.bands || []).forEach(b => { if (b.name) lg.push(`<span><svg viewBox="0 0 26 8"><rect width="26" height="8" style="fill:${b.color};opacity:.35"/></svg>${b.name}</span>`); });
+  (c.vlines || []).concat(c.hlines || []).forEach(v => { if (v.name) lg.push(`<span>${swatch(v.color, v.dash || '4 3', 1.5)}${v.name}</span>`); });
+  (c.strip && c.stripLegend || []).forEach(g => lg.push(`<span><svg viewBox="0 0 26 8"><rect width="26" height="8" style="fill:${g.color}"/></svg>${g.name}</span>`));
+  document.getElementById(id + '-lg').innerHTML = lg.join('');
+  const ov = document.getElementById(id + '-ov'), cx = document.getElementById(id + '-cx'), tip = document.getElementById(id + '-tip');
+  const xAt = ev => { const r = ov.getBoundingClientRect(); const k = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width)); return x0 + k * (x1 - x0); };
+  ov.addEventListener('pointermove', ev => {
+    const x = xAt(ev); cx.setAttribute('x1', X(x)); cx.setAttribute('x2', X(x)); cx.style.display = '';
+    let h = `<div class="tr"><span>${c.xl ? c.xl.split(',')[0] : 'x'}</span><b>${(c.fmtX || (q => f(q, 3)))(x)}</b></div>`;
+    c.series.forEach(sr => { if (!sr.name || sr.notip) return; const v = sr.fn(x); h += `<div class="tr"><span><i style="background:${sr.color}"></i>${sr.name}</span><b>${(c.fmtT || (q => f(q, 1)))(v)}</b></div>`; });
+    if (c.tipExtra) h += c.tipExtra(x);
+    tip.innerHTML = h; tip.style.display = 'block';
+    const tw = tip.offsetWidth, px = X(x);
+    tip.style.left = Math.max(0, Math.min(px + 14, W - tw - 2)) + 'px'; tip.style.top = (mt + 6) + 'px';
+  });
+  ov.addEventListener('pointerleave', () => { cx.style.display = 'none'; tip.style.display = 'none'; });
+  if (c.onClick) ov.addEventListener('click', ev => c.onClick(xAt(ev)));
+}
+
+/* ---- тепловая карта h × T ---- */
+function heatBox(id) { CH.set(id, { heat: true }); return `<div class="chart" id="${id}"></div><div class="legend" id="${id}-lg"></div>`; }
+function drawHeat(id, R) {
+  const el = document.getElementById(id); if (!el) return;
+  const hs = []; for (let h = 0.06; h <= 0.8 * P.nozzleD + 1e-9; h += 0.02) hs.push(Math.round(h * 100) / 100);
+  const lo = Math.min(P.tMin, P.tOpt), hi = Math.max(P.tMax, P.tOpt), Ts = []; for (let t = lo; t <= hi + 1e-9; t += 5) Ts.push(t);
+  const W = Math.max(280, el.clientWidth), ml = 44, mr = 6, mt = 8, mb = 34;
+  const cw = (W - ml - mr) / hs.length, ch = Math.max(20, Math.min(30, 300 / Ts.length)), H = mt + mb + ch * Ts.length;
+  const grid = Ts.map(T => hs.map(h => vAtT(P, h, T)));
+  let vmax = 1; grid.forEach(r => r.forEach(c => vmax = Math.max(vmax, c.v)));
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Карта v_max по высоте слоя и температуре">`;
+  Ts.forEach((T, i) => {
+    const y = mt + (Ts.length - 1 - i) * ch;
+    s += `<text x="${ml - 6}" y="${y + ch / 2 + 4}" text-anchor="end">${T}</text>`;
+    hs.forEach((h, j) => {
+      const c = grid[i][j];
+      s += `<rect x="${ml + j * cw + .5}" y="${y + .5}" width="${cw - 1}" height="${ch - 1}" rx="2" data-t="${T}" data-h="${h}" data-v="${c.v}" data-l="${c.lim}" style="fill:var(${LIM[c.lim].c});fill-opacity:${(0.12 + 0.88 * c.v / vmax).toFixed(2)}"/>`;
+      if (cw > 30) s += `<text x="${ml + j * cw + cw / 2}" y="${y + ch / 2 + 4}" text-anchor="middle" style="fill:var(--fg);font-size:10px;pointer-events:none">${Math.round(c.v)}</text>`;
+    });
+  });
+  hs.forEach((h, j) => { if (hs.length < 10 || j % 2 === 0) s += `<text x="${ml + j * cw + cw / 2}" y="${H - mb + 14}" text-anchor="middle">${f(h, 2)}</text>`; });
+  s += `<text class="tl" x="${ml + (W - ml - mr) / 2}" y="${H - 3}" text-anchor="middle">h, мм</text>`;
+  const jj = hs.reduce((b, h, j) => Math.abs(h - P.h) < Math.abs(hs[b] - P.h) ? j : b, 0), ii = Math.round((R.T - lo) / 5);
+  if (ii >= 0 && ii < Ts.length) s += `<rect x="${ml + jj * cw}" y="${mt + (Ts.length - 1 - ii) * ch}" width="${cw}" height="${ch}" rx="3" style="fill:none;stroke:var(--fg);stroke-width:2;pointer-events:none"/>`;
+  s += `</svg><div class="tip" id="${id}-tip"></div>`;
+  el.innerHTML = s;
+  document.getElementById(id + '-lg').innerHTML = Object.keys(LIM).map(k => `<span><svg viewBox="0 0 26 8"><rect width="26" height="8" style="fill:var(${LIM[k].c})"/></svg>${LIM[k].n}</span>`).join('') + '<span>насыщенность цвета = скорость, рамка = выбранный режим</span>';
+  const tip = document.getElementById(id + '-tip');
+  el.querySelector('svg').addEventListener('pointermove', ev => {
+    const r = ev.target; if (!r.dataset || r.dataset.v === undefined) { tip.style.display = 'none'; return; }
+    const v = +r.dataset.v, h = +r.dataset.h, A = aLine(P, h);
+    tip.innerHTML = `<div class="tr"><span>h</span><b>${f(h, 2)} мм</b></div><div class="tr"><span>T</span><b>${r.dataset.t} °C</b></div><div class="tr"><span>v_max</span><b>${f(v, 0)} мм/с</b></div><div class="tr"><span>Q</span><b>${f(v * A, 1)} мм³/с</b></div><div class="tr"><span>Ограничитель</span><b>${LIM[r.dataset.l].n}</b></div>`;
+    tip.style.display = 'block'; const b = el.getBoundingClientRect();
+    tip.style.left = Math.max(0, Math.min(ev.clientX - b.left + 12, W - tip.offsetWidth - 2)) + 'px'; tip.style.top = Math.max(0, ev.clientY - b.top - tip.offsetHeight - 8) + 'px';
+  });
+  el.querySelector('svg').addEventListener('pointerleave', () => tip.style.display = 'none');
+  el.querySelector('svg').addEventListener('click', ev => { const r = ev.target; if (r.dataset && r.dataset.h) setH(+r.dataset.h); });
+}
+
+/* ---- вкладка «Результат» ---- */
+function viewResult(R, rows) {
+  const chk = checkSet(P, R), dg = diagnostics(P, R);
+  const refRows = REF ? rows.map(r => solve(REF, r.h)) : null;
+  let t = `<div class="tbl"><table><thead><tr><th>h, мм</th><th>A_line, мм²</th><th>v_max, мм/с</th><th>Q_max, мм³/с</th><th>T_print, °C</th><th class="l">Ограничитель</th><th>v внешн., мм/с</th><th>Обдув, %</th><th>K (PA)</th><th>Время</th>${REF ? '<th>Δ v_max</th>' : ''}</tr></thead><tbody>`;
+  rows.forEach((r, i) => {
+    const sel = Math.abs(r.h - P.h) < 1e-9;
+    t += `<tr data-h="${r.h}" aria-selected="${sel}" tabindex="0"><td class="num">${f(r.h, 2)}</td><td class="num">${f(r.A, 4)}</td><td class="num">${f(r.vIn, 0)}</td><td class="num">${f(r.Q, 1)}</td><td class="num">${r.T}</td><td class="l"><span class="chip" style="--c:var(${LIM[r.lim].c})">${esc(limName(r.lim, r))}</span></td><td class="num">${f(r.vOut, 0)}</td><td class="num">${r.fanRec}</td><td class="num">${f(r.K, 3)}</td><td class="num">${f(r.time / 60, 0)} мин</td>`;
+    if (REF) { const d = (r.vIn / refRows[i].vIn - 1) * 100; t += `<td class="num dl ${d > .5 ? 'pos' : d < -.5 ? 'neg' : ''}">${d > 0 ? '+' : ''}${f(d, 1)} %</td>`; }
+    t += `</tr>`;
+  });
+  t += `</tbody></table></div>`;
+  return `<section class="card hero"><div><h2>Оптимум для слоя ${f(R.h, 2)} мм, линия ${f(P.w, 2)} мм</h2>
+    <p class="lead" style="margin:2px 0 0">Ограничитель: <b>${esc(limName(R.lim, R))}</b>. ${R.lim === 'flow' ? `Поток упирается в «${FLOW_SUB[R.ql.which]}», температура поднята до ${R.T} °C.` : R.lim === 'cool' ? 'Слой слишком короткий: не успевает остыть при заданной площади.' : R.lim === 'acc' ? 'Участки слишком короткие, головка не успевает разогнаться.' : 'Достигнут предел кинематики.'}</p></div>
+    <div class="stats">
+      <div class="stat"><span>v_max, внутренние линии</span><b>${f(R.vIn, 0)}</b><i>мм/с</i></div>
+      <div class="stat"><span>v_max, внешняя стенка</span><b>${f(R.vOut, 0)}</b><i>мм/с</i></div>
+      <div class="stat"><span>Q_max</span><b>${f(R.Q, 1)}</b><i>мм³/с</i></div>
+      <div class="stat"><span>T_print</span><b>${R.T}</b><i>°C</i></div>
+      <div class="stat"><span>Время печати модели</span><b>${f(R.time / 60, 0)}</b><i>мин</i></div>
+    </div></section>
+    <section class="card"><h2>Оптимум для каждой высоты слоя</h2><p class="lead">Нажмите строку, чтобы выбрать высоту. Скорость ограничивает наименьший из пределов, температура поднимается ровно настолько, насколько это нужно потоку.</p>${t}</section>
+    <section class="card"><h2>Пределы скорости по высоте слоя</h2><p class="lead">Жирная линия задает допустимую скорость. Цветная полоса снизу показывает, какой предел действует. Нажмите на график, чтобы выбрать высоту.</p>${chartBox('c1', c1cfg(R))}</section>
+    <div class="cols2">
+      <section class="card"><h2>Проверка вашей скорости ${f(P.vSet, 0)} мм/с</h2><p class="lead">Q = ${f(chk.Q, 1)} мм³/с при слое ${f(P.h, 2)} мм.</p><div class="chk">${chk.rows.map(r => `<div class="r"><span><span class="chip" style="--c:var(${LIM[r.k].c})">${esc(r.name)}</span></span><b class="num">${f(r.lim, 0)} ${r.unit}</b><span class="pill ${r.ok ? 'ok' : 'no'}">${r.ok ? 'в пределах' : 'превышение ' + f(-r.margin * 100, 0) + ' %'}</span>${r.note ? `<small>${r.note}</small>` : ''}</div>`).join('')}</div></section>
+      <section class="card"><h2>Диагностика</h2><p class="lead">Что в текущих параметрах требует внимания.</p><ul class="diag">${dg.map(d => `<li style="--c:var(${d[0] === 'bad' ? '--bad' : d[0] === 'warn' ? '--warn' : '--good'})"><span>${d[1]}</span></li>`).join('')}</ul></section>
+    </div>`;
+}
+function c1cfg(R) {
+  const xr = [0.04, Math.min(0.8 * P.nozzleD, 0.4)];
+  const segs = []; let cur = null;
+  for (let h = xr[0]; h <= xr[1] + 1e-9; h += 0.005) { const r = solve(P, h); if (!cur || cur.l !== r.lim) { cur = { x0: h, x1: h + 0.005, l: r.lim }; segs.push(cur); } else cur.x1 = h + 0.005; }
+  const cfg = {
+    title: 'Пределы скорости по высоте слоя', xr, yr: [0, Math.ceil(Math.max(600, P.vTool * 1.2) / 100) * 100], n: Math.round((xr[1] - xr[0]) / 0.005),
+    xl: 'h, мм', yl: 'v, мм/с', fmtY: v => f(v, 0), fmtT: v => f(v, 0) + ' мм/с',
+    series: [
+      { name: 'Кинематика v_tool', color: 'var(--c-kin)', dash: '7 4', fn: () => P.vTool },
+      { name: 'Ускорение √(a·L)', color: 'var(--c-acc)', dash: '2 3', w: 2.2, fn: () => nonFlow(P, 0.2).vAcc },
+      { name: 'Поток при T_opt', color: 'var(--c-flow)', fn: h => vAtT(P, h, P.tOpt).vFlow },
+      { name: 'Поток при T макс.', color: 'var(--c-flow)', dash: '6 3', w: 1.4, fn: h => vAtT(P, h, P.tMax).vFlow },
+      { name: 'Охлаждение L/t_min', color: 'var(--c-cool)', fn: h => nonFlow(P, h).vCool },
+      { name: 'Качество v_defect', color: 'var(--c-def)', dash: '5 3', fn: () => P.vDefect },
+      { name: 'v_max (внутр.)', color: 'var(--fg)', w: 3.4, fn: h => solve(P, h).vIn, fill: true }
+    ],
+    vlines: [{ x: P.h, color: 'var(--fg2)', dash: '2 3', label: f(P.h, 2) }],
+    hlines: [{ y: P.vSet, color: 'var(--fg2)', dash: '1 4', name: 'Заданная v_set' }],
+    points: [{ x: P.h, y: R.vIn, color: 'var(--fg)' }],
+    strip: segs.map(g => ({ x0: g.x0, x1: g.x1, color: `var(${LIM[g.l].c})` })),
+    stripLegend: Object.keys(LIM).filter(k => k !== 'qual').map(k => ({ name: 'действует: ' + LIM[k].n, color: `var(${LIM[k].c})` })),
+    tipExtra: h => { const r = solve(P, h); return `<div class="tr"><span>Ограничитель</span><b>${esc(limName(r.lim, r))}</b></div><div class="tr"><span>T_print</span><b>${r.T} °C</b></div>`; },
+    onClick: h => setH(Math.round(h * 100) / 100)
+  };
+  if (REF) cfg.series.push({ name: 'Эталон v_max', color: 'var(--fg3)', dash: '3 4', w: 2, fn: h => solve(REF, h).vIn });
+  return cfg;
+}
+
+/* ---- вкладка «Графики» ---- */
+function viewCharts(R) {
+  const sc = qScale(P), A = R.A, T = R.T;
+  const tr = [Math.min(P.tMin, P.tOpt) - 10, Math.max(P.tMax, P.tOpt) + 10];
+  const q2 = {
+    title: 'Предел потока по температуре', xr: tr, yr: [0, Math.max(40, P.qHot * sc * 1.5)], xl: 'T, °C', yl: 'Q, мм³/с', fmtX: v => f(v, 0), fmtY: v => f(v, 0), fmtT: v => f(v, 1) + ' мм³/с',
+    series: [
+      { name: 'MVS катушки', color: 'var(--c-flow)', fn: x => mvsT(P, x) * sc },
+      { name: 'Hotend (паспорт)', color: 'var(--fg2)', dash: '7 4', fn: () => P.qHot * sc },
+      { name: 'Мощность нагрева', color: 'var(--c-th)', fn: x => qTherm(P, x) * sc },
+      { name: 'Усилие подачи', color: 'var(--c-fo)', fn: x => qForce(P, x) * sc },
+      { name: 'Рабочий предел', color: 'var(--fg)', w: 3.4, fn: x => P.safety / 100 * qLimits(P, x).lim }
+    ],
+    bands: [{ name: 'Разброс MVS между катушками', color: 'var(--c-flow)', lo: x => mvsT(P, x, -1) * sc, hi: x => mvsT(P, x, 1) * sc }],
+    hlines: [{ y: A * P.vSet, color: 'var(--fg2)', dash: '1 4', name: 'Заданный поток', label: f(A * P.vSet, 1) }],
+    vlines: [{ x: T, color: 'var(--fg)', dash: '2 3', label: T + ' °C', name: 'T_print' }, { x: P.tOpt, color: 'var(--fg3)', dash: '2 3', name: 'T_opt', dy: 12 }],
+    points: [{ x: T, y: R.qCap, color: 'var(--fg)' }]
+  };
+  if (REF) q2.series.push({ name: 'Эталон', color: 'var(--fg3)', dash: '3 4', fn: x => REF.safety / 100 * qLimits(REF, x).lim });
+  const duty = R.fanRec, tl = R.Lp / P.vSet;
+  const q3 = {
+    title: 'Остывание линии', xr: [0, 20], yr: [Math.floor(P.tAmb / 10) * 10, Math.ceil((T + 10) / 10) * 10], xl: 't, с', yl: 'T, °C', fmtX: v => f(v, 0), fmtY: v => f(v, 0), fmtT: v => f(v, 0) + ' °C',
+    series: [
+      { name: 'Обдув 0 %', color: 'var(--fg3)', dash: '5 3', fn: t => tempAt(P, R.h, 0, T, t) },
+      { name: 'Обдув 50 %', color: 'var(--c-cool)', dash: '6 3', w: 1.6, fn: t => tempAt(P, R.h, 50, T, t) },
+      { name: 'Обдув 100 %', color: 'var(--c-cool)', fn: t => tempAt(P, R.h, 100, T, t) },
+      { name: 'Рекомендация ' + duty + ' %', color: 'var(--fg)', w: 3, fn: t => tempAt(P, R.h, duty, T, t) }
+    ],
+    hlines: [{ y: P.tg, color: 'var(--c-def)', name: 'T_g', label: 'T_g ' + P.tg }],
+    vlines: [{ x: R.tmc, color: 'var(--c-cool)', name: 't_min_cool', label: 'мин. ' + f(R.tmc, 1) + ' с' }, { x: Math.min(tl, 20), color: 'var(--fg2)', dash: '1 4', name: 'Время слоя при v_set', label: f(tl, 1) + ' с', dy: 12 }]
+  };
+  const qr = [0, Math.max(30, R.qCap * 1.6)], dpm = f2 => (P.fGrip / filA(P));
+  const q4 = {
+    title: 'Давление в сопле', xr: qr, xl: 'Q, мм³/с', yl: 'ΔP, МПа', fmtX: v => f(v, 0), fmtY: v => f(v, 0), fmtT: v => f(v, 1) + ' МПа', yr: [0, Math.max(P.fGrip / filA(P) * 1.3, 10)],
+    series: [
+      { name: 'T − 20 °C', color: 'var(--c-flow)', dash: '6 3', w: 1.6, fn: q => dP(P, q, T - 20) / 1e6 },
+      { name: 'T_print', color: 'var(--c-flow)', w: 3, fn: q => dP(P, q, T) / 1e6 },
+      { name: 'T + 20 °C', color: 'var(--c-flow)', dash: '2 3', w: 1.6, fn: q => dP(P, q, T + 20) / 1e6 }
+    ],
+    hlines: [{ y: P.fGrip / filA(P), color: 'var(--bad)', name: 'Предел прижима нити', label: 'прижим ' + f(P.fGrip, 0) + ' Н' }],
+    vlines: [{ x: R.Q, color: 'var(--fg)', dash: '2 3', name: 'Q_max', label: f(R.Q, 1) }],
+    points: [{ x: R.Q, y: R.dPop / 1e6, color: 'var(--fg)' }]
+  };
+  const q5 = {
+    title: 'Pressure Advance от потока', xr: [1, qr[1]], xl: 'Q, мм³/с', yl: 'K, с', fmtX: v => f(v, 0), fmtY: v => f(v, 3), fmtT: v => f(v, 4) + ' с',
+    series: [
+      { name: 'T − 20 °C', color: 'var(--c-acc)', dash: '6 3', w: 1.6, fn: q => Kpa(P, q, T - 20) },
+      { name: 'T_print', color: 'var(--c-acc)', w: 3, fn: q => Kpa(P, q, T) },
+      { name: 'T + 20 °C', color: 'var(--c-acc)', dash: '2 3', w: 1.6, fn: q => Kpa(P, q, T + 20) }
+    ],
+    vlines: [{ x: R.Q, color: 'var(--fg)', dash: '2 3', name: 'Q_max', label: 'K = ' + f(R.K, 3) }],
+    points: [{ x: R.Q, y: R.K, color: 'var(--fg)' }]
+  };
+  const q6 = {
+    title: 'Время печати модели', xr: [0.08, Math.min(0.8 * P.nozzleD, 0.4)], xl: 'h, мм', yl: 't, мин', n: 30, fmtY: v => f(v, 0), fmtT: v => f(v, 0) + ' мин',
+    series: [
+      { name: 'Оптимум модели', color: 'var(--fg)', w: 3, fn: h => solve(P, h).time / 60 },
+      { name: 'При заданной v_set', color: 'var(--c-kin)', dash: '6 3', fn: h => { const r = solve(P, h); return printTime(P, h, Math.min(P.vSet, r.vIn), Math.min(P.vSet, r.vOut), r.A).t / 60; } }
+    ],
+    vlines: [{ x: P.h, color: 'var(--fg2)', dash: '2 3', label: f(P.h, 2) }]
+  };
+  return `<section class="card"><h2>Температура и предел потока</h2><p class="lead">Пределы потока в зависимости от температуры сопла. Серая полоса показывает разброс MVS между катушками, а точка отмечает выбранный режим.</p>${chartBox('c2', q2)}</section>
+    <div class="cols2">
+    <section class="card"><h2>Остывание слоя</h2><p class="lead">Линия остывает от T_print до T_g за время, которое задает обдув и толщина линии.</p>${chartBox('c3', q3)}</section>
+    <section class="card"><h2>Давление в сопле</h2><p class="lead">Давление растет с потоком и падает с температурой. Красная линия показывает, с какого давления шестерня начинает проскальзывать.</p>${chartBox('c4', q4)}</section>
+    <section class="card"><h2>Pressure Advance</h2><p class="lead">K равен произведению гидравлического сопротивления сопла на податливость тракта подачи. Он зависит от потока и температуры.</p>${chartBox('c5', q5)}</section>
+    <section class="card"><h2>Время печати</h2><p class="lead">Модель ${f(P.vModel, 0)} см³: ${f(R.mass, 0)} г нити, ${f(R.filLen, 1)} м, высота ${f(R.height, 0)} мм.</p>${chartBox('c6', q6)}</section></div>
+    <section class="card"><h2>Карта v_max: высота слоя и температура</h2><p class="lead">Каждая ячейка показывает скорость при заданных h и T. Цвет задает ограничитель. Нажмите ячейку, чтобы выбрать высоту.</p>${heatBox('c7')}</section>`;
+}
+
+/* ---- вкладка «Чувствительность» ---- */
+function viewSens() {
+  const S = sensitivity(P, sensKind), mx = Math.max(5, ...S.rows.map(r => Math.max(Math.abs(r.lo), Math.abs(r.hi))));
+  const unit = sensKind === 'time' ? 'мин' : 'мм/с';
+  const base = sensKind === 'time' ? f(S.base / 60, 0) : f(S.base, 0);
+  const seg = (v) => { const w = Math.abs(v) / mx * 50; return `<div class="seg ${v >= 0 ? 'p' : 'n'}" style="${v >= 0 ? `left:50%;width:${w}%` : `left:${50 - w}%;width:${w}%`}"></div>`; };
+  return `<section class="card"><h2>Что сильнее всего влияет</h2><p class="lead">Каждый параметр меняется на ±10 % (влажность на ±0,1 %), остальные остаются прежними. Столбец показывает, как изменится результат. Ноль значит, что параметр сейчас не ограничивает, потому что действует другой предел.</p>
+    <div class="seg2" role="group" aria-label="Метрика"><button data-k="in" aria-pressed="${sensKind === 'in'}">v_max внутр.</button><button data-k="out" aria-pressed="${sensKind === 'out'}">v_max внешн.</button><button data-k="time" aria-pressed="${sensKind === 'time'}">Время печати</button></div>
+    <p class="note">База: ${base} ${unit} при h = ${f(P.h, 2)} мм. Влево от центра: параметр уменьшен, вправо: увеличен.</p>
+    <div class="tor" style="margin-top:10px">${S.rows.map(r => `<div class="r"><span>${r.name}</span><div class="bar">${seg(r.lo)}${seg(r.hi)}</div><span class="v">${r.lo > 0 ? '+' : ''}${f(r.lo, 1)} / ${r.hi > 0 ? '+' : ''}${f(r.hi, 1)} %</span></div>`).join('')}</div>
+    <p class="note">Оранжевый столбец: значение выросло. Синий: значение упало. Пары чисел справа: результат при −10 % и при +10 %.</p></section>`;
+}
+
+/* ---- карта связей ---- */
+const NODES = [
+  ['pl_mvs', 0, 0, 'MVS катушки', R => f(mvsT(P, R.T), 1) + ' мм³/с', 'Пластик'],
+  ['pl_heat', 0, 1, 'ρ, C_p, ΔH', R => f(P.cp * (R.T - P.tAmb) + (R.T > P.tm ? P.dHf : 0), 0) + ' Дж/г', 'Пластик'],
+  ['pl_rheo', 0, 2, 'Вязкость η(T, γ̇)', R => f(R.eta, 0) + ' Па·с', 'Пластик'],
+  ['pl_cool', 0, 3, 'T_g, t_min_cool', R => 'T_g ' + P.tg + ' °C', 'Пластик'],
+  ['pl_wet', 0, 4, 'Влага и диаметр нити', R => f(P.moisture, 2) + ' %, ' + f(P.filDAct, 2) + ' мм', 'Пластик'],
+  ['pl_def', 0, 5, 'v_defect', R => P.vDefect + ' мм/с', 'Пластик'],
+  ['pr_kin', 0, 6, 'v_tool, a_max', R => P.vTool + ' / ' + P.aMax, 'Принтер'],
+  ['pr_heat', 0, 7, 'Нагреватель, Q hotend', R => P.heaterW + ' Вт, ' + P.qHot, 'Принтер'],
+  ['pr_feed', 0, 8, 'Подача: прижим, сопло', R => P.fGrip + ' Н, ⌀' + f(P.nozzleD, 1), 'Принтер'],
+  ['pr_fan', 0, 9, 'Обдув детали', R => P.fanCfm + ' CFM', 'Принтер'],
+  ['pr_res', 0, 10, 'Резонанс, shaper', R => P.fShaper + ' Гц, ' + P.shaperEff + ' %', 'Принтер'],
+  ['gc_geo', 0, 11, 'Высота h, ширина w', R => f(P.h, 2) + ' × ' + f(P.w, 2), 'G-code'],
+  ['gc_path', 0, 12, 'A_layer, L_seg', R => P.aLayer + ' мм², ' + P.lSeg + ' мм', 'G-code'],
+  ['d_A', 1, 0, 'A_line = h(w − h) + πh²/4', R => f(R.A, 4) + ' мм²'],
+  ['d_Qm', 1, 1, 'Q по MVS(T)', R => f(R.ql.mvs, 1)],
+  ['d_Qt', 1, 2, 'Q по нагреву', R => f(R.ql.therm, 1)],
+  ['d_Qf', 1, 3, 'Q по усилию', R => f(R.ql.force, 1)],
+  ['d_Qh', 1, 4, 'Q hotend', R => f(R.ql.hot, 1)],
+  ['d_dp', 1, 5, 'ΔP в сопле', R => f(R.dPop / 1e6, 1) + ' МПа'],
+  ['d_L', 1, 6, 'L_path = A_layer·h / A_line', R => f(R.Lp, 0) + ' мм'],
+  ['d_tc', 1, 7, 't_cool (Ньютон)', R => f(tCool(P, R.h, R.fanRec, R.T), 1) + ' с'],
+  ['d_ar', 1, 8, 'a_ring, a_rec', R => f(aRec(P), 0)],
+  ['l_flow', 2, 1, 'v по потоку', R => f(R.vFlow, 0) + ' мм/с'],
+  ['l_cool', 2, 4, 'v по охлаждению', R => f(R.vCool, 0) + ' мм/с'],
+  ['l_acc', 2, 6, 'v по ускорению', R => f(R.vAcc, 0) + ' мм/с'],
+  ['l_kin', 2, 8, 'v_tool', R => f(R.vKin, 0) + ' мм/с'],
+  ['l_qual', 2, 10, 'v_defect', R => P.vDefect + ' мм/с'],
+  ['r_v', 3, 3, 'v_max (внутренние)', R => f(R.vIn, 0) + ' мм/с'],
+  ['r_vo', 3, 8, 'v_max (внешняя стенка)', R => f(R.vOut, 0) + ' мм/с'],
+  ['o_T', 4, 1, 'T_print', R => R.T + ' °C'],
+  ['o_Q', 4, 3, 'Q_max', R => f(R.Q, 1) + ' мм³/с'],
+  ['o_K', 4, 5, 'Pressure Advance K', R => f(R.K, 3)],
+  ['o_FR', 4, 7, 'Flow Ratio', R => f(R.FR, 3)],
+  ['o_fan', 4, 9, 'Обдув', R => R.fanRec + ' %']
+];
+const EDGES = [
+  ['pl_mvs', 'd_Qm'], ['pl_wet', 'd_Qm'], ['pl_heat', 'd_Qt'], ['pr_heat', 'd_Qt'], ['pr_heat', 'd_Qh'], ['pl_wet', 'd_Qh'],
+  ['pl_rheo', 'd_dp'], ['pr_feed', 'd_dp'], ['pl_wet', 'd_dp'], ['d_dp', 'd_Qf'], ['pr_feed', 'd_Qf'],
+  ['pl_cool', 'd_tc'], ['pr_fan', 'd_tc'], ['gc_geo', 'd_tc'], ['gc_geo', 'd_A'], ['gc_geo', 'd_L'], ['gc_path', 'd_L'], ['d_A', 'd_L'],
+  ['pr_res', 'd_ar'], ['pr_kin', 'd_ar'], ['d_ar', 'l_acc'], ['gc_path', 'l_acc'],
+  ['d_Qm', 'l_flow'], ['d_Qt', 'l_flow'], ['d_Qf', 'l_flow'], ['d_Qh', 'l_flow'], ['d_A', 'l_flow'],
+  ['d_L', 'l_cool'], ['d_tc', 'l_cool'], ['pl_cool', 'l_cool'], ['pr_kin', 'l_kin'], ['pl_def', 'l_qual'],
+  ['l_flow', 'r_v'], ['l_cool', 'r_v'], ['l_acc', 'r_v'], ['l_kin', 'r_v'], ['r_v', 'r_vo'], ['l_qual', 'r_vo'],
+  ['l_flow', 'o_T'], ['r_v', 'o_Q'], ['d_A', 'o_Q'], ['d_dp', 'o_K'], ['r_v', 'o_K'], ['pl_wet', 'o_FR'], ['d_tc', 'o_fan'], ['r_v', 'o_fan']
+];
+function activeChain(R) {
+  const n = new Set(['r_v', 'o_Q']); const l = R.lim;
+  if (l === 'flow') { n.add('l_flow'); n.add('d_A'); n.add('d_Q' + { mvs: 'm', hot: 'h', therm: 't', force: 'f' }[R.ql.which]); if (R.ql.which === 'force') n.add('d_dp'); }
+  if (l === 'cool') { n.add('l_cool'); n.add('d_L'); n.add('d_tc'); }
+  if (l === 'acc') { n.add('l_acc'); n.add('d_ar'); }
+  if (l === 'kin') { n.add('l_kin'); }
+  return n;
+}
+function viewMap(R) {
+  const CX = [4, 188, 396, 570, 742], NW = [160, 186, 150, 150, 152], RH = 50, NH = 38, top = 30;
+  const pos = {}; NODES.forEach(n => pos[n[0]] = { x: CX[n[1]], y: top + n[2] * RH, w: NW[n[1]] });
+  const act = activeChain(R), lc = `var(${LIM[R.lim].c})`;
+  const H = top + 13 * RH + 10;
+  let s = `<svg viewBox="0 0 900 ${H}" role="img" aria-label="Карта связей параметров и пределов">`;
+  ['Входные данные', 'Промежуточные величины', 'Пределы скорости', 'Итог', 'Рекомендация'].forEach((t, i) => s += `<text class="colh" x="${CX[i]}" y="16">${t}</text>`);
+  EDGES.forEach(([a, b]) => {
+    const A = pos[a], B = pos[b], x1 = A.x + A.w, y1 = A.y + NH / 2, x2 = B.x, y2 = B.y + NH / 2, dx = (x2 - x1) * 0.5;
+    const on = act.has(a) && act.has(b) || (act.has(b) && ['pl_mvs', 'pl_wet', 'pl_heat', 'pr_heat', 'pr_feed', 'pl_rheo', 'pl_cool', 'pr_fan', 'gc_geo', 'gc_path', 'pr_res', 'pr_kin'].includes(a) && act.has(b) && b !== 'o_Q');
+    s += `<path class="ed ${on ? 'act' : ''}" data-a="${a}" data-b="${b}" style="${on ? '--c:' + lc : ''}" d="M${x1},${y1} C${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}"/>`;
+  });
+  NODES.forEach(n => {
+    const p = pos[n[0]], on = act.has(n[0]);
+    s += `<g class="nd ${on ? 'act' : ''}" data-id="${n[0]}" style="${on ? '--c:' + lc : ''}"><rect x="${p.x}" y="${p.y}" width="${p.w}" height="${NH}" rx="5"/><text x="${p.x + 8}" y="${p.y + 16}" font-size="11.5">${esc(n[3])}</text><text class="v" x="${p.x + 8}" y="${p.y + 30}">${esc(n[4](R))}</text></g>`;
+  });
+  s += `</svg>`;
+  return `<section class="card"><h2>Карта связей</h2><p class="lead">Слева параметры пластика, принтера и g-code. Справа величины, которые из них следуют. Наведите курсор на узел, чтобы подсветить все, что на него влияет и на что влияет он. Цветом отмечена цепочка текущего ограничителя: <span class="chip" style="--c:${lc}">${esc(limName(R.lim, R))}</span></p><div class="mapwrap" id="mapw">${s}</div><p class="note">Значения в узлах пересчитываются при каждом изменении параметров. Пока не затронут ограничитель, изменение остальных параметров не меняет v_max.</p></section>`;
+}
+function bindMap() {
+  const w = $('#mapw'); if (!w) return;
+  const up = {}, down = {}; EDGES.forEach(([a, b]) => { (up[b] = up[b] || []).push(a); (down[a] = down[a] || []).push(b); });
+  const walk = (id, m, set) => { (m[id] || []).forEach(x => { if (!set.has(x)) { set.add(x); walk(x, m, set); } }); };
+  w.querySelectorAll('.nd').forEach(g => {
+    g.addEventListener('pointerenter', () => {
+      const id = g.dataset.id, s = new Set([id]); walk(id, up, s); walk(id, down, s);
+      w.classList.add('hv');
+      w.querySelectorAll('.nd').forEach(n => n.classList.toggle('dim', !s.has(n.dataset.id)));
+      w.querySelectorAll('.ed').forEach(e => { const on = s.has(e.dataset.a) && s.has(e.dataset.b); e.classList.toggle('dim', !on); e.classList.toggle('hl', on); });
+    });
+    g.addEventListener('pointerleave', () => { w.classList.remove('hv'); w.querySelectorAll('.dim').forEach(n => n.classList.remove('dim')); w.querySelectorAll('.hl').forEach(n => n.classList.remove('hl')); });
+  });
+}
+
+/* ---- расчет по шагам ---- */
+function viewSteps(R) {
+  const h = R.h, A = R.A, T = R.T, sc = qScale(P), ql = R.ql, tl = R.tLayer;
+  const steps = [
+    ['Поправки на катушку и среду', 'k_влага, k_d', [
+      `k_влага = 1 − (ΔMVS / 100)·(m / 0,1) = 1 − (${P.mvsWet} / 100)·(${f(P.moisture, 2)} / 0,1) = ${f(1 - P.mvsWet / 100 * P.moisture / 0.1, 3)}`,
+      `k_d = (d_ном / d_изм)² = (${f(P.filD, 3)} / ${f(P.filDAct, 3)})² = ${f(sc, 4)}`,
+      `MVS(T) = MVS_ref·[1 + k_T·(T − T_opt)]·k_влага = ${P.mvsRef}·[1 + ${f(P.mvsKT / 100, 3)}·(${T} − ${P.tOpt})]·${f(1 - P.mvsWet / 100 * P.moisture / 0.1, 3)} = ${f(mvsT(P, T), 2)} мм³/с`],
+      'Катушки одной марки отличаются MVS, диаметром нити и влажностью. Эти три значения меняются в профиле катушки, остальная часть модели остается прежней. Поэтому профили катушек можно сохранять и сравнивать с эталоном.'],
+    ['Геометрия линии', 'Q = A·v', [
+      `A_line = h·(w − h) + π·h²/4 = ${f(h, 2)}·(${f(P.w, 2)} − ${f(h, 2)}) + π·${f(h, 2)}²/4 = ${f(A, 4)} мм²`,
+      `Q = A_line · v   →   v = Q / A_line`],
+      'Линия имеет скругленные края, поэтому ее сечение меньше прямоугольника h·w. Все пределы потока переводятся в скорость через это сечение.'],
+    ['Кинематика', 'v_acc, a_rec', [
+      `a_ring = Δ_доп·(2π·f)² / (1 − η_shaper) = ${P.ringTol}·(2π·${P.fShaper})² / ${f(1 - P.shaperEff / 100, 2)} = ${f(aRing(P), 0)} мм/с²`,
+      `a_rec = min(a_max; a_ring) = min(${P.aMax}; ${f(aRing(P), 0)}) = ${f(aRec(P), 0)} мм/с²`,
+      `v_acc = √(a_rec · L_seg) = √(${f(aRec(P), 0)}·${P.lSeg}) = ${f(R.vAcc, 0)} мм/с`,
+      `разрешение X/Y = ${P.stepMm} / (${P.fullSteps}·${P.micro}) = ${f(P.stepMm / (P.fullSteps * P.micro), 4)} мм (${f(stepsPerMm(P), 1)} шаг/мм), частота шагов при v_tool: ${f(P.vTool * stepsPerMm(P) / 1000, 1)} кГц`],
+      'Ускорение ограничено остаточной рябью после input shaper. На коротком участке длины L_seg головка успевает разогнаться только до √(a·L).'],
+    ['Пределы потока', 'Q_lim', [
+      `Q_MVS = ${f(ql.mvs, 2)} мм³/с   (MVS(T) с поправкой k_d)`,
+      `Q_hotend = ${f(ql.hot, 2)} мм³/с   (паспорт)`,
+      `Q_нагрев = η·P / [ρ·(C_p·(T − T_среды) + ΔH)] = ${P.etaHeat}·${P.heaterW} / [${f(P.rho / 1000, 5)}·(${P.cp}·(${T} − ${P.tAmb}) + ${P.dHf})] = ${f(ql.therm, 2)} мм³/с`,
+      `Q_усилие: ΔP(Q) = F_прижим / A_нити   →   Q = ${f(ql.force, 2)} мм³/с`,
+      `Q_lim = min(...) = ${f(ql.lim, 2)} мм³/с   (ограничивает: ${FLOW_SUB[ql.which]})`,
+      `Q_раб = ${P.safety} % · Q_lim = ${f(R.qCap, 2)} мм³/с   →   v_поток = ${f(R.qCap, 2)} / ${f(A, 4)} = ${f(R.vFlow, 0)} мм/с`],
+      'MVS катушки это измеренный итог. Нагрев и усилие подачи это физическая проверка: если MVS заметно ниже, пластик ограничивает сам (вязкость, влага, кристалличность), если выше, то ограничивает принтер.'],
+    ['Реология и давление', 'ΔP, F', [
+      `γ̇ = (3n + 1)/(4n) · 32·Q / (π·D³) = ${f(R.shear, 0)} с⁻¹   при Q = ${f(R.Q, 1)} мм³/с и D = ${f(P.nozzleD, 1)} мм`,
+      `η = η₀ · exp[Ea/R·(1/T − 1/T_opt)] · (γ̇/1000)^(n−1) = ${f(R.eta, 0)} Па·с`,
+      `ΔP = 4·η·γ̇·(L/D) = 4·${f(R.eta, 0)}·${f(R.shear, 0)}·${P.ldNozzle} = ${f(R.dPop / 1e6, 2)} МПа`,
+      `F = ΔP · A_нити = ${f(R.dPop / 1e6, 2)}·${f(filA(P), 3)} = ${f(R.force, 1)} Н   (предел прижима ${P.fGrip} Н)`],
+      'Расплав течет как псевдопластик: чем больше поток, тем ниже вязкость, но тем выше давление. Давление растет как Q в степени n и падает с температурой.'],
+    ['Охлаждение слоя', 'v_cool', [
+      `v_воздуха = CFM·4,719·10⁻⁴·дутье·КПД / S = ${f(airSpeed(P, R.fanRec), 1)} м/с при ${R.fanRec} %`,
+      `h_конв = 8 + 6·v^0,8 = ${f(hConv(P, R.fanRec), 1)} Вт/(м²·К)`,
+      `τ = ρ·C_p·δ / (h_конв·k_отвод),   δ = A_line / (w + 2h) = ${f(A / (P.w + 2 * h), 3)} мм   →   τ = ${f(tauCool(P, h, R.fanRec), 2)} с`,
+      `t_cool = τ·ln[(T − T_среды)/(T_g − T_среды)] = ${f(tCool(P, h, R.fanRec, T), 1)} с`,
+      `t_min = ${f(R.tmc, 1)} с (${P.tCoolMode === 'calc' ? 'расчет при макс. обдуве' : 'из таблицы пластика'})`,
+      `L_path = A_layer·h / A_line = ${P.aLayer}·${f(h, 2)} / ${f(A, 4)} = ${f(R.Lp, 0)} мм   →   v_cool = L_path / t_min = ${f(R.vCool, 0)} мм/с`],
+      'Слой должен печататься не быстрее, чем он остывает. Для маленькой детали путь слоя короткий, и охлаждение становится главным ограничителем скорости.'],
+    ['Подбор температуры', 'T_print', [
+      `v_без_потока = min(v_tool; v_acc; v_cool) = min(${f(R.vKin, 0)}; ${f(R.vAcc, 0)}; ${f(R.vCool, 0)}) = ${f(R.vNon, 0)} мм/с`,
+      `T_print = минимальная T от T_opt до T_макс, при которой ${P.safety} %·Q_lim(T) ≥ A·v_без_потока`,
+      `T_print = ${T} °C${R.tFound ? '' : ' (достигнут потолок, поток ограничивает скорость)'}`],
+      'Температура поднимается только по необходимости. Чем горячее расплав, тем выше MVS и тепловой предел, но тем хуже остывание и больше нити по краям.'],
+    ['Итог по скорости', 'v_max', [
+      `v_max = min(${f(R.vFlow, 0)}; ${f(R.vCool, 0)}; ${f(R.vAcc, 0)}; ${f(R.vKin, 0)}) = ${f(R.vIn, 0)} мм/с   (${limName(R.lim, R)})`,
+      `v_внешн = min(v_max; v_defect) = min(${f(R.vIn, 0)}; ${P.vDefect}) = ${f(R.vOut, 0)} мм/с`,
+      `Q_max = A_line · v_max = ${f(R.Q, 2)} мм³/с`],
+      'Внутренние стенки и заполнение не видны, поэтому v_defect на них не действует.'],
+    ['Pressure Advance', 'K', [
+      `C_V = V_расплава / B + A_нити·L_своб / E = ${P.vMelt}/(${P.bMelt}·10⁹) + ${f(filA(P), 3)}·${P.lFree}/(${P.eFeed}·10⁹) = ${(cV(P) * 1e8).toFixed(2).replace('.', ',')}·10⁻⁸ мм³/Па`,
+      `K = k_PA · C_V · ΔP / Q = ${P.kPA}·${(cV(P) * 1e8).toFixed(2).replace('.', ',')}·10⁻⁸·${f(R.dPop, 0)} / ${f(R.Q, 1)} = ${f(R.K, 4)} с`],
+      'PA компенсирует сжатие расплава и нити в тракте. Значение зависит от потока и температуры, поэтому точное K определяется тестом Pressure Advance, а поправка k_PA подгоняет модель под этот результат.'],
+    ['Flow Ratio и обдув', 'FR, fan', [
+      `FR = FR_материала · (d_ном / d_изм)² = ${f(P.frMat, 3)}·${f(sc, 4)} = ${f(R.FR, 3)}`,
+      `диапазон по допуску ±${f(P.filTol, 2)} мм: ${f(P.frMat * Math.pow(P.filD / (P.filD + P.filTol), 2), 3)} … ${f(P.frMat * Math.pow(P.filD / (P.filD - P.filTol), 2), 3)}`,
+      `обдув = min дутье ∈ [${P.fanMin}; ${P.fanMax}] %, при котором t_cool ≤ t_слоя = ${f(tl, 1)} с   →   ${R.fanRec} %`],
+      'Нить толще номинала дает больше пластика на миллиметр подачи, поэтому поток нужно уменьшить.'],
+    ['Время печати', 't', [
+      `t_сегмента = L/v + v/a (если L ≥ v²/a), иначе 2·√(L/a)`,
+      `путь = V / A_line = ${f(P.vModel * 1000 / A, 0)} мм,  слоев: ${f(R.nLayers, 0)},  высота ${f(R.height, 0)} мм`,
+      `t = ${f(R.time / 60, 1)} мин  (с запасом 3 с на слой для перемещений)`],
+      'Оценка учитывает разгон и торможение на сегментах длины L_seg и долю пути на видимых стенках.']
+  ];
+  return `<section class="card"><h2>Расчет по шагам</h2><p class="lead">Формулы с подстановкой ваших чисел для слоя ${f(h, 2)} мм. Цифры обновляются вместе с параметрами.</p></section>` +
+    steps.map((s, i) => `<details class="step" ${i < 4 ? 'open' : ''}><summary>${i + 1}. ${s[0]}<span>${s[1]}</span></summary><div class="stepb"><div class="fm">${s[2].map(esc).join('\n')}</div><p>${s[3]}</p></div></details>`).join('');
+}
+
+/* ---- Bambu Studio ---- */
+function bambuRows(R) {
+  const mvsRec = Math.floor(R.qCap * 2) / 2, vi = Math.floor(R.vIn / 5) * 5, vo = Math.floor(R.vOut / 5) * 5;
+  return [
+    ['Фильтр', 'Температура сопла', R.T + ' °C', 'Настройки филамента → Температура'],
+    ['Фильтр', 'Температура сопла, первый слой', (R.T + 5) + ' °C', 'на 5 °C выше для сцепления'],
+    ['Фильтр', 'Максимальная объемная скорость', f(mvsRec, 1) + ' мм³/с', 'с рабочим запасом ' + P.safety + ' %'],
+    ['Фильтр', 'Flow Ratio', f(R.FR, 3), 'с поправкой на диаметр нити'],
+    ['Фильтр', 'Pressure Advance (включить)', f(R.K, 3), 'модель; уточните тестом PA'],
+    ['Фильтр', 'Обдув мин. / макс.', P.fanMin + ' % / ' + P.fanMax + ' %', 'расчетное значение для слоя: ' + R.fanRec + ' %'],
+    ['Фильтр', 'Время слоя для замедления', f(R.tmc, 1) + ' с', 'Замедлять печать для охлаждения слоя'],
+    ['Процесс', 'Высота слоя', f(R.hq, 2) + ' мм', 'кратно шагу Z ' + f(P.zStep, 2) + ' мм'],
+    ['Процесс', 'Ширина линии', f(P.w, 2) + ' мм', 'для всех типов линий'],
+    ['Процесс', 'Скорость внешней стенки', vo + ' мм/с', 'ограничитель: ' + (R.limOut === 'qual' ? 'качество (v_defect)' : limName(R.limOut, R))],
+    ['Процесс', 'Скорость внутренней стенки', vi + ' мм/с', limName(R.lim, R)],
+    ['Процесс', 'Скорость заполнения', vi + ' мм/с', 'не выше внутренней стенки'],
+    ['Процесс', 'Ускорение по умолчанию', f(aRec(P), 0) + ' мм/с²', aRing(P) < P.aMax ? 'ограничено резонансом' : 'равно a_max']
+  ];
+}
+function viewBambu(R) {
+  const mvsRec = Math.floor(R.qCap * 2) / 2, vi = Math.floor(R.vIn / 5) * 5, vo = Math.floor(R.vOut / 5) * 5;
+  const rows = bambuRows(R);
+  const txt = rows.map(r => `${r[0]}: ${r[1]} = ${r[2]}`).join('\n');
+  const json = `{\n  "nozzle_temperature": ["${R.T}"],\n  "nozzle_temperature_initial_layer": ["${R.T + 5}"],\n  "filament_max_volumetric_speed": ["${f(mvsRec, 1).replace(',', '.')}"],\n  "filament_flow_ratio": ["${R.FR.toFixed(3)}"],\n  "enable_pressure_advance": ["1"],\n  "pressure_advance": ["${R.K.toFixed(3)}"],\n  "fan_min_speed": ["${P.fanMin}"],\n  "fan_max_speed": ["${P.fanMax}"],\n  "slow_down_layer_time": ["${Math.round(R.tmc)}"],\n  "filament_density": ["${P.rho}"],\n  "filament_diameter": ["${P.filD}"]\n}`;
+  return `<section class="card"><h2>Рекомендация для Bambu Studio</h2><p class="lead">Значения для ${esc(plName())} на ${esc(prName())}, слой ${f(R.h, 2)} мм. Это расчет модели: подтвердите его калибровками ниже.</p>
+    <div class="tbl bb"><table><thead><tr><th class="l">Раздел</th><th class="l">Параметр</th><th>Значение</th><th class="l">Комментарий</th></tr></thead><tbody>${rows.map(r => `<tr style="cursor:default"><td class="l">${r[0]}</td><td class="l">${r[1]}</td><td class="num"><b>${r[2]}</b></td><td class="l">${r[3]}</td></tr>`).join('')}</tbody></table></div>
+    <div class="line" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn sm" data-copy="txt">Копировать таблицу</button><button class="btn sm" data-copy="json">Копировать фрагмент профиля</button><span class="cap note" id="cp-msg"></span></div></section>
+    <div class="cols2"><section class="card"><h2>Фрагмент профиля филамента</h2><p class="lead">Ключи в стиле профилей Bambu Studio и OrcaSlicer. Проверьте имена ключей в вашей версии.</p><pre class="code" id="bb-json">${esc(json)}</pre><pre id="bb-txt" hidden>${esc(txt)}</pre></section>
+    <section class="card"><h2>Откуда значения</h2><p class="lead">Каждое значение выводится из параметров профиля. Чтобы заменить оценки измерениями, выполните вкладку «Протокол тестов»: итоговый отчет собран во вкладке «Отчет».</p></section></div>`;
+}
+function copyText(text, msg) {
+  const done = ok => { const m = $('#cp-msg'); if (m) m.textContent = ok ? 'Скопировано' : 'Не удалось скопировать: выделите текст вручную'; };
+  const sel = () => { const pre = $('#bb-json'); if (pre) { const r = document.createRange(); r.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } done(false); };
+  try { navigator.clipboard.writeText(text).then(() => done(true), sel); } catch (e) { sel(); }
+}
+
+/* ---- отрисовка ---- */
+const TABS = [['result', 'Результат'], ['proto', 'Протокол тестов'], ['report', 'Отчет'], ['charts', 'Графики'], ['sens', 'Что влияет'], ['map', 'Карта связей'], ['steps', 'Расчет по шагам'], ['bambu', 'Bambu Studio']];
+let last = null, raf = 0;
+function schedule() { cancelAnimationFrame(raf); raf = requestAnimationFrame(render); }
+function render() {
+  const R = solve(P, P.h); last = R;
+  renderStrip(R);
+  $('#tabs').innerHTML = TABS.map(t => `<button class="tab" role="tab" data-t="${t[0]}" aria-selected="${t[0] === tab}">${t[1]}</button>`).join('');
+  $('#tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { location.hash = b.dataset.t; });
+  CH.clear();
+  const v = $('#view'); let html = '';
+  if (tab === 'result') html = viewResult(R, heights().map(h => solve(P, h)));
+  else if (tab === 'proto') html = viewProto(R);
+  else if (tab === 'report') html = viewReport(R, heights().map(h => solve(P, h)));
+  else if (tab === 'charts') html = viewCharts(R);
+  else if (tab === 'sens') html = viewSens();
+  else if (tab === 'map') html = viewMap(R);
+  else if (tab === 'steps') html = viewSteps(R);
+  else html = viewBambu(R);
+  const open = Array.from(v.querySelectorAll('details.step')).map(d => d.open);
+  v.innerHTML = html;
+  if (tab === 'steps' && open.length) v.querySelectorAll('details.step').forEach((d, i) => { if (open[i] !== undefined) d.open = open[i]; });
+  drawAll();
+  v.querySelectorAll('tbody tr[data-h]').forEach(tr => { tr.onclick = () => setH(parseFloat(tr.dataset.h)); tr.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setH(parseFloat(tr.dataset.h)); } }; });
+  v.querySelectorAll('.seg2 button').forEach(b => b.onclick = () => { sensKind = b.dataset.k; schedule(); });
+  v.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => copyText($(b.dataset.copy === 'json' ? '#bb-json' : '#bb-txt').textContent));
+  if (tab === 'map') bindMap();
+  if (tab === 'proto') bindProto(v);
+  if (tab === 'report') { bindReport(v); v.querySelectorAll('tbody tr[data-h]').forEach(tr => { tr.onclick = () => setH(parseFloat(tr.dataset.h)); }); }
+}
+function drawAll() { for (const [id, c] of CH) { if (c.heat) drawHeat(id, last); else drawChart(id); } }
+let rzT = 0; window.addEventListener('resize', () => { cancelAnimationFrame(rzT); rzT = requestAnimationFrame(() => { if (last) drawAll(); }); });
+function onHash() { const h = location.hash.slice(1); if (TABS.some(t => t[0] === h)) tab = h; else if (!h) tab = 'result'; schedule(); }
+window.addEventListener('hashchange', onHash);
+
+/* ---- тема ---- */
+function applyTheme(m) { const r = document.documentElement; if (m === 'light' || m === 'dark') r.setAttribute('data-theme', m); else r.removeAttribute('data-theme'); $('#theme').textContent = 'Тема: ' + ({ auto: 'как в системе', light: 'светлая', dark: 'темная' }[m] || 'как в системе'); }
+let themeMode = lsGet('plc.theme') || 'auto';
+$('#theme').onclick = () => { themeMode = { auto: 'light', light: 'dark', dark: 'auto' }[themeMode] || 'auto'; lsSet('plc.theme', themeMode); applyTheme(themeMode); };
+applyTheme(themeMode);
+
+/* ============ ПРОТОКОЛ ТЕСТОВ: состояние, план, расчет ============ */
+let TS = {}, SRC = {}, RES = {}, MAN = {};
+const nums = s => String(s == null ? '' : s).split(/[\s;]+/).map(x => parseFloat(x.replace(',', '.'))).filter(Number.isFinite);
+const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+const sdv = a => { if (a.length < 2) return 0; const m = mean(a); return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1)); };
+const median = a => { const b = a.slice().sort((x, y) => x - y), n = b.length; return n % 2 ? b[(n - 1) / 2] : (b[n / 2 - 1] + b[n / 2]) / 2; };
+function linfit(xs, ys) {
+  const n = xs.length, xm = mean(xs), ym = mean(ys);
+  let sxx = 0, sxy = 0; xs.forEach((x, i) => { sxx += (x - xm) ** 2; sxy += (x - xm) * (ys[i] - ym); });
+  const b = sxx ? sxy / sxx : 0, a = ym - b * xm;
+  let ss = 0; xs.forEach((x, i) => { ss += (ys[i] - a - b * x) ** 2; });
+  return { n, a, b, xm, ym, sxx, s: n > 2 ? Math.sqrt(ss / (n - 2)) : 0 };
+}
+const rnd = (x, d) => Math.round(x * Math.pow(10, d)) / Math.pow(10, d);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const plName = () => P.plastic === 'Свое' ? (P.pBase || 'PLA Lite (Bambu)') + ', свой профиль' : P.plastic;
+const prName = () => P.printer === 'Свое' ? (P.prBase || 'Bambu Lab A1') + ', свой профиль' : P.printer;
+
+/* значение поля теста: пока не введено, берется значение по умолчанию; план фиксируется при первом открытии */
+function tv(id, k, def) { const v = TS[id] && TS[id][k]; const n = typeof v === 'number' ? v : parseFloat(v); return Number.isFinite(n) ? n : def; }
+function ensurePlan(P) {
+  const set = (id, k, v) => { TS[id] = TS[id] || {}; if (TS[id][k] === undefined) TS[id][k] = v; };
+  set('temp', 'base', P.tOpt); set('temp', 'thr', 2);
+  set('fr', 'center', 1.0); set('fr', 'wnom', P.w);
+  if (!TS.fr.order) TS.fr.order = [0, 1, 2, 3, 4, 5, 6].sort(() => Math.random() - 0.5);
+  set('pa', 'qLo', Math.max(2, Math.round(P.mvsRef * 0.25))); set('pa', 'qHi', Math.max(4, Math.round(P.mvsRef * 0.6)));
+  set('pa', 'aT', 5000); set('pa', 'kStep', 0.005);
+  set('mvs', 'base', P.tOpt); set('mvs', 'qStart', Math.max(2, Math.round(P.mvsRef * 0.4)));
+  set('mvs', 'qStep', Math.max(1, Math.round(P.mvsRef * 0.1 * 2) / 2));
+  set('res', 'v', 120);
+  set('def', 'v0', 100); set('def', 'vStep', 25); set('def', 'a', Math.round(aRec(P) / 500) * 500);
+  set('cool', 'fan', P.fanMax); set('cool', 'T', P.tOpt); set('cool', 'h2', 0.12); set('cool', 'fan2', 50);
+}
+/* планы стадий: используются и в таблицах, и в G-code */
+function planOf(id, P) {
+  const A = h => aLine(P, h);
+  if (id === 'temp') { const b = tv('temp', 'base', P.tOpt); return { T: [-10, -5, 0, 5, 10].map(d => b + d) }; }
+  if (id === 'fr') { const c = tv('fr', 'center', 1), o = TS.fr.order || [0, 1, 2, 3, 4, 5, 6]; return { fr: [-3, -2, -1, 0, 1, 2, 3].map(i => rnd(c + i * 0.02, 3)), order: o }; }
+  if (id === 'pa') {
+    const a = A(0.2), N = 13, st = tv('pa', 'kStep', 0.005);
+    return { N, K: Array.from({ length: N }, (_, j) => rnd(j * st, 4)), qLo: tv('pa', 'qLo', 5), qHi: tv('pa', 'qHi', 12), aT: tv('pa', 'aT', 5000), vLo: tv('pa', 'qLo', 5) / a, vHi: tv('pa', 'qHi', 12) / a };
+  }
+  if (id === 'mvs') {
+    const N = 12, q0 = tv('mvs', 'qStart', 8), dq = tv('mvs', 'qStep', 2), b = tv('mvs', 'base', P.tOpt), a = A(0.2);
+    const Q = Array.from({ length: N }, (_, j) => q0 + j * dq);
+    return { N, Q, v: Q.map(q => q / a), T: [b, b + 10, b + 20] };
+  }
+  if (id === 'res') { const am = P.aMax; return { N: 5, a: [1, 2, 3, 4, 5].map(j => Math.round(am * j / 5 / 500) * 500), v: tv('res', 'v', 120) }; }
+  if (id === 'def') {
+    const N = 13, v0 = tv('def', 'v0', 100), dv = tv('def', 'vStep', 25);
+    return { N, v: Array.from({ length: N }, (_, j) => v0 + j * dv), h: 0.08, a: tv('def', 'a', 8000) };
+  }
+  if (id === 'cool') { return { t: [10, 8, 6, 5, 4, 3, 2.5, 2], h: 0.2, fan: tv('cool', 'fan', P.fanMax), T: tv('cool', 'T', P.tOpt), h2: tv('cool', 'h2', 0.12), fan2: tv('cool', 'fan2', 50) }; }
+  return {};
+}
+
+/* ---- расчеты по тестам: каждый возвращает {outs, lines, warn} или null ---- */
+const CALC = {};
+CALC.prep = (P) => {
+  const t = TS.prep || {}; const outs = {}; const lines = [];
+  lines.push('Чек-лист: ' + ['dried', 'nozzle', 'control'].filter(k => t[k]).length + ' из 3 отмечено');
+  if (t.dried) { outs.moisture = 0; lines.push('Влажность принята равной 0: все тесты идут на сухой нити'); }
+  return t.dried ? { outs, lines, warn: [] } : null;
+};
+CALC.diam = (P) => {
+  const d = nums((TS.diam || {}).d); if (d.length < 6) return null;
+  const m = mean(d), s = sdv(d), mn = Math.min(...d), mx = Math.max(...d), tol = Math.max(Math.abs(mn - m), Math.abs(mx - m));
+  const warn = []; if (Math.abs(m - P.filD) > 0.05) warn.push('Среднее сильно отличается от номинала ' + P.filD + ' мм: проверьте номинал.');
+  if (s > 0.02) warn.push('Большой разброс по длине нити (SD ' + f(s, 3) + ' мм): поток будет нестабильным.');
+  return { outs: { filDAct: rnd(m, 3), filTol: Math.max(0.005, rnd(tol, 3)) }, lines: ['n = ' + d.length + ', среднее ' + f(m, 3) + ' мм, SD ' + f(s, 3) + ' мм', 'мин ' + f(mn, 2) + ', макс ' + f(mx, 2) + ' мм', 'Ошибка потока из-за диаметра: ' + f((Math.pow(m / P.filD, 2) - 1) * 100, 1) + ' %'], warn };
+};
+CALC.temp = (P) => {
+  const t = TS.temp || {}, pl = planOf('temp', P), cnt = nums(t.strings), adh = parseFloat(t.adh);
+  if (cnt.length < 5 || !Number.isFinite(adh)) return null;
+  const thr = tv('temp', 'thr', 2), ok = pl.T.filter((T, i) => cnt[i] <= thr), warn = [];
+  const tMin = pl.T[clamp(Math.round(adh), 1, 5) - 1], tMax = ok.length ? Math.max(...ok) : null;
+  if (tMax === null) return { outs: {}, lines: ['Нити превышают порог на всех стадиях'], warn: ['Снизьте температуры плана или проверьте сухость нити и ретракцию.'] };
+  if (tMax < tMin) warn.push('Окно закрыто: при T, где адгезия достаточна, нити уже превышают порог. Нужна сушка или другая ретракция.');
+  const tOpt = Math.round(clamp(tMin + 5, Math.min(tMin, tMax), Math.max(tMin, tMax)));
+  return { outs: { tMin, tMax, tOpt }, lines: ['Нижняя граница по адгезии: ' + tMin + ' °C', 'Верхняя граница по нитям (не более ' + thr + '): ' + tMax + ' °C', 'T_opt = нижняя граница + 5 °C = ' + tOpt + ' °C'], warn };
+};
+CALC.fr = (P) => {
+  const t = TS.fr || {}, pl = planOf('fr', P), wn = tv('fr', 'wnom', P.w), xs = [], ys = [], means = [];
+  pl.fr.forEach((fr, i) => { const r = nums(t['r' + i]); means.push(r.length >= 3 ? mean(r) : null); if (r.length >= 3) { xs.push(fr); ys.push(mean(r)); } });
+  if (xs.length < 4) return null;
+  const L = linfit(xs, ys), warn = []; if (L.b <= 0) return { outs: {}, lines: ['Толщина не растет с потоком'], warn: ['Проверьте замеры: ожидается рост толщины с Flow Ratio.'] };
+  const x = (wn - L.a) / L.b, se = L.s / L.b * Math.sqrt(1 / L.n + (x - L.xm) ** 2 / L.sxx);
+  if (x < Math.min(...xs) || x > Math.max(...xs)) warn.push('Результат вне проверенного диапазона: сдвиньте центр плана и повторите.');
+  if (se > 0.015) warn.push('Погрешность велика: добавьте измерений на каждый образец (12 и больше).');
+  return { outs: { frMat: rnd(x * Math.pow(P.filDAct / P.filD, 2), 3) }, lines: ['Наклон: ' + f(L.b * 0.01, 4) + ' мм на 0,01 Flow Ratio', 'Flow Ratio при толщине ' + f(wn, 2) + ' мм: ' + f(x, 3) + ' ± ' + f(se, 3), 'С поправкой на диаметр нити материал: ' + f(x * Math.pow(P.filDAct / P.filD, 2), 3)], warn };
+};
+CALC.pa = (P) => {
+  const t = TS.pa || {}, pl = planOf('pa', P), N = pl.N, g = k => parseFloat(t[k]);
+  if (!['loB', 'loG', 'hiB', 'hiG'].every(k => Number.isFinite(g(k)))) return null;
+  const kOpt = (b, gp) => (pl.K[clamp(Math.round(b), 0, N - 1)] + pl.K[clamp(Math.round(gp) - 2, 0, N - 1)]) / 2;
+  const Klo = Math.max(0.0005, kOpt(g('loB'), g('loG'))), Khi = Math.max(0.0005, kOpt(g('hiB'), g('hiG'))), warn = [];
+  const nObs = 1 + Math.log(Khi / Klo) / Math.log(pl.qHi / pl.qLo), n = clamp(nObs, 0.3, 0.95);
+  if (nObs < 0.3 || nObs > 0.95) warn.push('Индекс n по тесту (' + f(nObs, 2) + ') вне физичного диапазона 0,3–0,95: взято ограничение. Повторите тест на разнесенных потоках.');
+  if (g('loB') >= g('loG') - 1) warn.push('На малом потоке зона «нейтрально» не найдена: уменьшите шаг K.');
+  if (g('hiB') >= g('hiG') - 1) warn.push('На большом потоке зона «нейтрально» не найдена: уменьшите шаг K.');
+  const Pt = Object.assign({}, P, { nPow: n, kPA: 1 }), T = P.tOpt;
+  const s1 = Klo / Kpa(Pt, pl.qLo, T), s2 = Khi / Kpa(Pt, pl.qHi, T), kPA = clamp((s1 + s2) / 2, 0.2, 4);
+  if (Math.abs(s1 / s2 - 1) > 0.35) warn.push('Масштаб модели на двух потоках расходится на ' + f(Math.abs(s1 / s2 - 1) * 100, 0) + ' %: проверьте оба замера.');
+  return { outs: { nPow: rnd(n, 2), kPA: rnd(kPA, 2) }, lines: ['K на ' + f(pl.qLo, 1) + ' мм³/с: ' + f(Klo, 4) + ' с', 'K на ' + f(pl.qHi, 1) + ' мм³/с: ' + f(Khi, 4) + ' с', 'Индекс n = 1 + ln(K_ВЫС/K_НИЗ) / ln(Q_ВЫС/Q_НИЗ) = ' + f(nObs, 2), 'Поправка модели k_PA = ' + f(kPA, 2)], warn };
+};
+CALC.mvs = (P) => {
+  const t = TS.mvs || {}, pl = planOf('mvs', P), N = pl.N, warn = [], pts = [], mode = t.mode || 'melt';
+  const mvsOf = list => { const a = nums(list); if (!a.length) return null; const s = median(a); if (s <= 1) { warn.push('Дефект уже на первой стадии: уменьшите Q_нач.'); return pl.Q[0]; } if (s > N) { warn.push('Дефекта нет до последней стадии: MVS не меньше ' + f(pl.Q[N - 1], 1) + '. Увеличьте шаг.'); return pl.Q[N - 1]; } return pl.Q[Math.round(s) - 2]; };
+  [0, 1, 2].forEach(i => { const m = mvsOf(t['on' + i]); if (m !== null) pts.push({ T: pl.T[i], q: m, none: Math.round(median(nums(t['on' + i]))) > N }); });
+  if (pts.length < 2) return null;
+  const L = linfit(pts.map(p => p.T), pts.map(p => p.q)), ref = L.a + L.b * P.tOpt;
+  if (L.b < 0) warn.push('MVS падает с температурой: проверьте замеры.');
+  const kT = Math.max(0, L.b / ref * 100), outs = { mvsRef: rnd(ref, 1), mvsKT: rnd(kT, 2) }, lines = [];
+  pts.forEach(p => lines.push('T = ' + p.T + ' °C: MVS ' + f(p.q, 1) + ' мм³/с' + (p.none ? ' (нижняя оценка)' : '')));
+  lines.push('MVS при T_opt ' + P.tOpt + ' °C: ' + f(ref, 1) + ' мм³/с, рост ' + f(kT, 2) + ' %/°C');
+  const lo = pts[0], hi = pts[pts.length - 1];
+  if (mode === 'click') { const F = dP(P, lo.q, lo.T) * filA(P) / 1e6; outs.fGrip = rnd(clamp(F, 5, 200), 0); lines.push('Отказ по щелчкам: усилие прижима по модели ' + f(F, 0) + ' Н'); }
+  else if (mode === 'melt') { const unit = qTherm(P, hi.T) / P.etaHeat, e = clamp(hi.q / unit, 0.05, 1); outs.etaHeat = rnd(e, 2); lines.push('Отказ по плавлению: доля тепла в расплав ' + f(e, 2)); if (hi.q >= P.qHot) warn.push('MVS достиг паспортного Q hotend: вероятнее предел принтера, чем тепла.'); }
+  const w = mvsOf(t.wet); if (w !== null) { const dry = L.a + L.b * pl.T[0]; lines.push('До сушки при ' + pl.T[0] + ' °C: MVS ' + f(w, 1) + ' мм³/с, потеря ' + f((1 - w / dry) * 100, 0) + ' % к сухой'); }
+  return { outs, lines, warn };
+};
+CALC.res = (P) => {
+  const t = TS.res || {}, pl = planOf('res', P), nP = parseFloat(t.nP), Lm = parseFloat(t.L), on = parseFloat(t.on);
+  if (![nP, Lm, on].every(Number.isFinite) || nP < 2 || Lm <= 0) return null;
+  const lam = Lm / nP, fr = pl.v / lam, warn = [];
+  if (fr < 15 || fr > 150) warn.push('Частота ' + f(fr, 0) + ' Гц вне типичного диапазона: проверьте длину волны и скорость.');
+  const aOn = on > pl.N ? pl.a[pl.N - 1] : pl.a[clamp(Math.round(on), 1, pl.N) - 1];
+  if (on > pl.N) warn.push('Рябь не видна до a = ' + pl.a[pl.N - 1] + ': оценка подавления нижняя.');
+  const res = P.ringTol * Math.pow(2 * Math.PI * fr, 2) / aOn, eff = clamp((1 - res) * 100, 0, 99);
+  return { outs: { fShaper: rnd(fr, 1), shaperEff: rnd(eff, 0) }, lines: ['Длина волны ' + f(lam, 2) + ' мм при ' + pl.v + ' мм/с', 'Резонанс f = v / λ = ' + f(fr, 1) + ' Гц', 'Рябь видна с a = ' + aOn + ' мм/с²: подавление ' + f(eff, 0) + ' %'], warn };
+};
+CALC.def = (P) => {
+  const t = TS.def || {}, pl = planOf('def', P), on = parseFloat(t.on);
+  if (!Number.isFinite(on)) return null;
+  const warn = [], s = Math.round(on);
+  if (s <= 1) return { outs: {}, lines: ['Дефект уже на первой стадии'], warn: ['Уменьшите начальную скорость плана.'] };
+  const v = s > pl.N ? pl.v[pl.N - 1] : pl.v[s - 2];
+  if (s > pl.N) warn.push('Дефекта нет до ' + pl.v[pl.N - 1] + ' мм/с: v_defect не меньше этого значения.');
+  const q = aLine(P, pl.h) * pl.v[Math.min(s, pl.N) - 1];
+  if (q > 0.8 * P.mvsRef) warn.push('Поток на стадии дефекта ' + f(q, 1) + ' мм³/с близок к MVS: дефект может быть потоковым, а не кинематическим.');
+  return { outs: { vDefect: v }, lines: ['Последняя чистая стадия: ' + v + ' мм/с', 'Поток на стадии дефекта: ' + f(q, 1) + ' мм³/с (' + f(q / P.mvsRef * 100, 0) + ' % от MVS)'], warn };
+};
+CALC.cool = (P) => {
+  const t = TS.cool || {}, pl = planOf('cool', P), on = parseFloat(t.on);
+  if (!Number.isFinite(on)) return null;
+  const warn = [], N = pl.t.length, s = Math.round(on);
+  if (s <= 1) return { outs: {}, lines: ['Деформация уже при 10 с'], warn: ['Увеличьте верхнюю границу времен слоя.'] };
+  const tm = s > N ? pl.t[N - 1] : pl.t[s - 2];
+  if (s > N) warn.push('Деформации нет даже при ' + pl.t[N - 1] + ' с: t_min_cool не больше этого значения.');
+  const unit = tCool(P, pl.h, pl.fan, pl.T) * P.kCond, kc = clamp(unit / tm, 0.5, 6);
+  const lines = ['Минимальное время слоя без деформации: ' + f(tm, 1) + ' с', 'Отвод тепла в нижний слой k = ' + f(kc, 2)];
+  const on2 = parseFloat(t.on2);
+  if (Number.isFinite(on2)) {
+    const s2 = Math.round(on2), tm2 = s2 > N ? pl.t[N - 1] : pl.t[Math.max(0, s2 - 2)], P2 = Object.assign({}, P, { kCond: kc }), pr = tCool(P2, pl.h2, pl.fan2, pl.T);
+    lines.push('Проверка модели (слой ' + f(pl.h2, 2) + ' мм, обдув ' + pl.fan2 + ' %): предсказано ' + f(pr, 1) + ' с, измерено ' + f(tm2, 1) + ' с, расхождение ' + f((pr / tm2 - 1) * 100, 0) + ' %');
+    if (Math.abs(pr / tm2 - 1) > 0.35) warn.push('Модель охлаждения расходится с измерением больше чем на 35 %: учитывайте только измеренное t_min_cool.');
+  }
+  return { outs: { tMinCool: tm, kCond: rnd(kc, 2), tCoolMode: 'emp' }, lines, warn };
+};
+CALC.spread = (P) => {
+  const m = nums((TS.spread || {}).mvs); if (m.length < 3) return null;
+  const cv = sdv(m) / mean(m) * 100, fr = nums((TS.spread || {}).fr), lines = ['MVS: n = ' + m.length + ', среднее ' + f(mean(m), 1) + ', CV ' + f(cv, 1) + ' %'];
+  if (fr.length >= 3) lines.push('Flow Ratio: n = ' + fr.length + ', среднее ' + f(mean(fr), 3) + ', разброс ' + f(sdv(fr) / mean(fr) * 100, 1) + ' %');
+  return { outs: { mvsSpread: rnd(clamp(2 * cv, 0, 30), 1) }, lines: lines.concat(['Полоса разброса = 2 × CV = ' + f(2 * cv, 1) + ' %']), warn: m.length < 5 ? ['Меньше 5 катушек: оценка разброса грубая.'] : [] };
+};
+const TEST_ORDER = ['prep', 'diam', 'temp', 'fr', 'pa', 'mvs', 'res', 'def', 'cool', 'spread'];
+const TEST_KEYS = { prep: ['moisture'], diam: ['filDAct', 'filTol'], temp: ['tMin', 'tMax', 'tOpt'], fr: ['frMat'], pa: ['nPow', 'kPA'], mvs: ['mvsRef', 'mvsKT', 'fGrip', 'etaHeat'], res: ['fShaper', 'shaperEff'], def: ['vDefect'], cool: ['tMinCool', 'kCond', 'tCoolMode'], spread: ['mvsSpread'] };
+/* пересчет всех тестов по порядку: результаты записываются в профиль P */
+function runProtocol() {
+  ensurePlan(P);
+  Object.keys(SRC).forEach(k => { if (SRC[k] && SRC[k].auto) delete SRC[k]; });
+  TEST_ORDER.forEach((id, i) => {
+    let r = null; try { r = CALC[id](P); } catch (e) { r = null; }
+    RES[id] = r;
+    if (r) for (const k of Object.keys(r.outs)) { if (MAN[k]) continue; if (P[k] !== r.outs[k] && PL_KEYS.includes(k)) P.plastic = 'Свое'; if (P[k] !== r.outs[k] && PR_KEYS.includes(k)) P.printer = 'Свое'; P[k] = r.outs[k]; SRC[k] = { n: i, auto: true }; }
+  });
+}
+/* ============ ГЕНЕРАТОРЫ G-CODE ДЛЯ ТЕСТОВ ============ */
+const GEN = {};
+function GB(P, title, notes) {
+  const Af = filA(P), g = { o: [], x: 0, y: 0, z: 0, top: 0, Af };
+  g.c = s => g.o.push('; ' + s);
+  g.r = s => g.o.push(s);
+  g.fr = P.frMat * Math.pow(P.filD / P.filDAct, 2);
+  g.ext = (x, y, v, q, fr) => { const L = Math.hypot(x - g.x, y - g.y), e = L * q / Af * (fr === undefined ? g.fr : fr); g.o.push('G1 X' + x.toFixed(3) + ' Y' + y.toFixed(3) + ' E' + e.toFixed(5) + ' F' + Math.round(v * 60)); g.x = x; g.y = y; };
+  g.mv = (x, y, v) => { g.o.push('G1 X' + x.toFixed(3) + ' Y' + y.toFixed(3) + ' F' + Math.round((v || 250) * 60)); g.x = x; g.y = y; };
+  g.zs = (z, hop) => { g.o.push('G1 Z' + z.toFixed(3) + ' F1200'); g.z = z; if (!hop) g.top = Math.max(g.top, z); };
+  g.ret = () => g.r('G1 E-0.8 F1800'); g.unret = () => g.r('G1 E0.8 F1800');
+  g.hopTo = (x, y, z) => { g.ret(); g.zs(g.top + 5, true); g.mv(x, y, 250); g.zs(z); g.unret(); };
+  g.pause = (sec, bx, by, px, py) => { g.ret(); g.mv(px, py, 250); g.r('G4 P' + Math.round(sec * 1000)); g.mv(bx, by, 250); g.unret(); };
+  g.fan = pc => g.r('M106 P1 S' + Math.round(pc * 2.55));
+  g.ring = (cx, cy, R, a0, v, q, fr) => { const n = Math.max(24, Math.ceil(2 * Math.PI * R / (R >= 20 ? 3 : 1.5))); for (let i = 1; i <= n; i++) { const a = a0 + 2 * Math.PI * i / n; g.ext(cx + R * Math.cos(a), cy + R * Math.sin(a), v, q, fr); } };
+  g.sq = (x, y, s, v, q, fr) => { g.ext(x + s, y, v, q, fr); g.ext(x + s, y + s, v, q, fr); g.ext(x, y + s, v, q, fr); g.ext(x, y, v, q, fr); };
+  g.head = fanPc => {
+    g.c('=== ' + title + ' ===');
+    notes.forEach(n => g.c(n));
+    g.c('ВСТАВЬТЕ ЭТОТ БЛОК ПОСЛЕ стартового блока из экспортированного G-code Bambu Studio (нагрев, калибровка стола, очистка сопла).');
+    g.c('Стартовый блок задает температуру сопла и стола и подготавливает принтер. Здесь только тело теста.');
+    g.r('G90'); g.r('M83'); g.r('M220 S100'); g.r('M221 S100'); g.fan(fanPc);
+  };
+  g.tail = () => { g.ret(); g.zs(g.top + 10, true); g.fan(0); g.c('=== КОНЕЦ: добавьте конечный блок Bambu Studio (охлаждение, парковка) ==='); };
+  g.text = () => g.o.join('\n');
+  return g;
+}
+const fmtN = (x, d) => x.toFixed(d);
+
+/* первый слой: тонкая одиночная рамка с повышенным потоком для сцепления */
+function firstLayer(g, x, y, s, w) { g.hopTo(x, y, 0.2); g.sq(x, y, s, 15, aLine({ w: w + 0.03 }, 0.2), 1.1); g.sq(x + 0.45, y + 0.45, s - 0.9, 15, aLine({ w: w + 0.03 }, 0.2), 1.1); }
+
+GEN.fr = (P) => {
+  const pl = planOf('fr', P), w = tv('fr', 'wnom', P.w), h = 0.2, A = aLine({ w }, h), S = 25, L = 40;
+  const g = GB(P, 'ТЕСТ FLOW RATIO', ['Семь квадратов с одной стенкой, 25 мм, 40 слоев по 0,2 мм, 15 мм/с.', 'E считается по номинальному диаметру нити ' + P.filD + ' мм, поток = Flow Ratio образца.', 'Замер: толщина стенки штангенциркулем у верхнего края, 12 точек, вдали от углов.']);
+  g.head(100);
+  pl.order.forEach((slot, i) => { }); const bySlot = []; pl.fr.forEach((fr, i) => bySlot[pl.order[i]] = { fr, i });
+  bySlot.forEach((o, slot) => {
+    const x = 45 + (slot % 4) * 52, y = 60 + Math.floor(slot / 4) * 70;
+    g.c('Образец №' + (o.i + 1) + ': Flow Ratio ' + fmtN(o.fr, 3) + ', положение ' + (slot + 1) + ' (x=' + x + ', y=' + y + ')');
+    firstLayer(g, x, y, S, w);
+    for (let k = 2; k <= L; k++) { g.zs(k * h); g.sq(x, y, S, 15, A, o.fr); }
+  });
+  g.tail(); return g.text();
+};
+GEN.temp = (P) => {
+  const pl = planOf('temp', P), h = 0.2, w = P.w, A = aLine(P, h), Wl = 60;
+  const g = GB(P, 'ТЕСТ ТЕМПЕРАТУРНОГО ОКНА', ['Пять стадий T = ' + pl.T.join(', ') + ' °C. На каждой: пара башен (счет нитей) и стенка 60 мм × 15 мм (излом).', 'Башни: 25 слоев, 6 челночных перемещений между башнями на слой, ретракция 0,8 мм.', 'Обдув постоянный 100 %.']);
+  g.head(100);
+  pl.T.forEach((T, i) => {
+    const y0 = 40 + i * 42;
+    g.c('--- Стадия ' + (i + 1) + ': ' + T + ' °C ---'); g.r('M109 S' + T);
+    g.hopTo(50 + 4, y0, 0.2); g.ring(50, y0, 4, 0, 30, A, undefined);
+    for (let k = 1; k <= 25; k++) {
+      if (k > 1) g.zs(k * h);
+      g.ring(50, y0, 4, 0, 40, A);
+      for (let c = 0; c < 6; c++) { g.ret(); g.mv(100 + 4, y0, 150); g.unret(); g.ret(); g.mv(50 + 4, y0, 150); g.unret(); }
+      g.ret(); g.mv(104, y0, 150); g.unret(); g.ring(100, y0, 4, 0, 40, A); g.ret(); g.mv(54, y0, 150); g.unret();
+    }
+    g.hopTo(140, y0, 0.2); g.ext(200, y0, 25, aLine({ w: w + 0.03 }, 0.2), 1.1);
+    for (let k = 2; k <= 75; k++) { g.zs(k * h); g.ext(k % 2 ? 200 : 140, y0, 40, A); }
+  });
+  g.tail(); return g.text();
+};
+GEN.pa = (P) => {
+  const pl = planOf('pa', P), h = 0.2, A = aLine(P, h), S = 40, tl = 6;
+  const g = GB(P, 'ТЕСТ PRESSURE ADVANCE', ['Две башни (малый и большой поток), по 13 стадий по 15 слоев. K растет по высоте: ' + pl.K.join(', ') + '.', 'Ускорение M204 S' + pl.aT + ', квадрат 40 мм с острыми углами, время слоя выровнено до ' + tl + ' с паузой вне детали.', 'Если M900 не поддерживается вашей прошивкой, замените на команду Pressure Advance вашего принтера.']);
+  g.head(100); g.r('M204 S' + pl.aT);
+  [['малый', pl.vLo, pl.qLo, 40], ['большой', pl.vHi, pl.qHi, 140]].forEach(([nm, v, q, x]) => {
+    const y = 60; g.c('--- Башня: ' + nm + ' поток ' + fmtN(q, 1) + ' мм³/с, v = ' + fmtN(v, 0) + ' мм/с ---');
+    g.r('M900 K0'); firstLayer(g, x, y, S, P.w); let z = 0.2;
+    pl.K.forEach((K, j) => {
+      g.c('Стадия ' + (j + 1) + ': K = ' + K); g.r('M900 K' + K);
+      for (let k = 0; k < 15; k++) {
+        z += h; g.zs(z); g.sq(x, y, S, v, A);
+        const tp = 4 * S / v; if (tl > tp + 0.3) g.pause(tl - tp, x, y, x - 25, y - 25);
+      }
+    });
+  });
+  g.tail(); return g.text();
+};
+GEN.mvs = (P) => {
+  const pl = planOf('mvs', P), h = 0.2, A = aLine(P, h), R = 35, N = pl.N;
+  const g = GB(P, 'ТЕСТ MVS', ['Три цилиндра R = 35 мм (стенка в одну линию) при T = ' + pl.T.join(', ') + ' °C. На каждом ' + N + ' стадий; поток Q = ' + pl.Q.map(q => fmtN(q, 1)).join(', ') + ' мм³/с.', 'Каждая стадия не короче 20 с непрерывной экструзии. Шов каждой следующей стадии сдвинут на ' + fmtN(360 / N, 0) + '°: считайте швы снизу вверх.', 'Фиксировано: h = 0,2 мм, w = ' + P.w + ' мм, постоянная скорость на стадии, обдув 100 %.']);
+  g.head(100);
+  pl.T.forEach((T, i) => {
+    const cx = 55 + i * 73, cy = 128; g.c('--- Цилиндр ' + (i + 1) + ': ' + T + ' °C ---'); g.r('M109 S' + T);
+    g.hopTo(cx + R, cy, 0.2); firstLayer(g, cx - 8, cy - 8, 16, P.w); g.hopTo(cx + R, cy, 0.4); let z = 0.4, a0 = 0;
+    for (let s = 0; s < N; s++) {
+      const v = pl.v[s], nL = Math.max(3, Math.ceil(20 / (2 * Math.PI * R / v)));
+      g.c('Стадия ' + (s + 1) + ': Q = ' + fmtN(pl.Q[s], 1) + ' мм³/с, v = ' + fmtN(v, 0) + ' мм/с, слоев ' + nL);
+      for (let k = 0; k < nL; k++) { g.zs(z); g.ring(cx, cy, R, a0, v, A); z += h; }
+      const da = 2 * Math.PI / N; for (let j = 1; j <= 8; j++) g.ext(cx + R * Math.cos(a0 + 2 * Math.PI + da * j / 8), cy + R * Math.sin(a0 + 2 * Math.PI + da * j / 8), 60, A); a0 += da;
+    }
+  });
+  g.tail(); return g.text();
+};
+GEN.res = (P) => {
+  const pl = planOf('res', P), h = 0.2, A = aLine(P, h), S = 40, x = 100, y = 100;
+  const g = GB(P, 'ТЕСТ РЕЗОНАНСА (БАШНЯ РЯБИ)', ['Квадрат 40 мм, скорость ' + pl.v + ' мм/с постоянна, ускорение по стадиям: ' + pl.a.join(', ') + ' мм/с² (по 40 слоев).', 'Принтер сам применяет компенсацию вибраций: тест измеряет эффективное подавление.', 'Замер: расстояние между 10 гребнями ряби на стенке после угла.']);
+  g.head(100); firstLayer(g, x, y, S, P.w); let z = 0.2;
+  pl.a.forEach((a, j) => { g.c('Стадия ' + (j + 1) + ': ускорение ' + a); g.r('M204 S' + a); for (let k = 0; k < 40; k++) { z += h; g.zs(z); g.sq(x, y, S, pl.v, A); } });
+  g.tail(); return g.text();
+};
+GEN.def = (P) => {
+  const pl = planOf('def', P), h = pl.h, A = aLine(P, h), S = 60, x = 80, y = 80, tl = 8, nL = Math.round(3 / h);
+  const g = GB(P, 'ТЕСТ V_DEFECT', ['Слой ' + h + ' мм: поток при максимальной скорости ' + fmtN(A * pl.v[pl.N - 1], 1) + ' мм³/с, ниже MVS. Скорость по стадиям: ' + pl.v.join(', ') + ' мм/с.', 'Ускорение M204 S' + pl.a + '. Время слоя выровнено до ' + tl + ' с паузой вне детали, чтобы охлаждение не менялось со скоростью.']);
+  g.head(100); g.r('M204 S' + pl.a); firstLayer(g, x, y, S, P.w); let z = 0.2;
+  pl.v.forEach((v, j) => { g.c('Стадия ' + (j + 1) + ': ' + v + ' мм/с'); for (let k = 0; k < nL; k++) { z += h; g.zs(z); g.sq(x, y, S, v, A); const tp = 4 * S / v; if (tl > tp + 0.3) g.pause(tl - tp, x, y, x - 30, y - 30); } });
+  g.tail(); return g.text();
+};
+GEN.cool = (P, variant) => {
+  const pl = planOf('cool', P), val = variant === 'val', h = val ? pl.h2 : pl.h, fan = val ? pl.fan2 : pl.fan, A = aLine(P, h), S = 12, x = 120, y = 120, nL = Math.round(4 / h);
+  const g = GB(P, 'ТЕСТ T_MIN_COOL' + (val ? ' (ПРОВЕРОЧНЫЙ)' : ''), ['Квадрат 12 мм с острыми углами, слой ' + h + ' мм, обдув ' + fan + ' %, скорость 60 мм/с.', 'Время слоя по стадиям (снизу вверх): ' + pl.t.join(', ') + ' с, выдерживается паузой вне детали.', 'Первой деформации (скругление углов, провисание) соответствует предыдущая стадия.']);
+  g.head(fan); firstLayer(g, x, y, S, P.w); let z = 0.2;
+  pl.t.forEach((t, j) => { g.c('Стадия ' + (j + 1) + ': время слоя ' + t + ' с'); for (let k = 0; k < nL; k++) { z += h; g.zs(z); g.sq(x, y, S, 60, A); const tp = 4 * S / 60; if (t > tp) g.pause(t - tp, x, y, 40, 40); } });
+  g.tail(); return g.text();
+};
+/* ============ ОПИСАНИЯ ТЕСТОВ ============ */
+const META = {
+  prep: { n: 0, title: 'Подготовка и контроль', sets: 'влажность (после сушки = 0)', vary: 'ничего не меняем: это условия для всех тестов',
+    fixed: ['одно и то же сопло, одна комната, один обдув', 'один и тот же слайсер и версия прошивки', 'стол очищен, нить сухая'],
+    resp: 'контрольный образец печатается в начале каждой сессии и показывает дрейф условий',
+    steps: ['Высушите катушку (PLA около 45–55 °C, 4–8 ч) и держите ее в сухом боксе до конца тестов.', 'Установите чистое сопло и не меняйте его до конца протокола. Другое сопло дает другие результаты.', 'Распечатайте контрольный образец: куб с одной стенкой 25 мм, 15 мм/с. Измерьте толщину стенки в 12 точках.', 'Начало каждой следующей сессии: повторите контрольный куб. Если толщина ушла больше чем на 0,02 мм, условия изменились и тесты сессии сравнивать нельзя.', 'Отметьте пункты ниже: после «катушка высушена» влажность в профиле станет равной нулю.'],
+    in: [{ k: 'dried', l: 'Катушка высушена перед тестами', t: 'chk' }, { k: 'nozzle', l: 'Сопло чистое и не будет меняться', t: 'chk' }, { k: 'control', l: 'Контрольный куб напечатан и измерен', t: 'chk' }] },
+  diam: { n: 1, title: 'Диаметр нити', sets: 'диаметр нити, допуск диаметра', vary: 'ничего: прямое измерение',
+    fixed: ['одна и та же катушка, нить размотана без натяжения', 'штангенциркуль без усилия на губках'], resp: 'размер в мм, 20 точек по длине нити',
+    steps: ['Размотайте около 2 м нити. Сделайте метки через каждые 10 см.', 'В каждой точке измерьте диаметр в двух перпендикулярных направлениях: так видна овальность.', 'Вносите все значения (минимум 6, лучше 40) через пробел.', 'Калькулятор берет среднее как фактический диаметр, а наибольшее отклонение как допуск.'],
+    in: [{ k: 'd', l: 'Измерения диаметра, мм', t: 'list', hint: '1.74 1.75 1.76 1.75 …' }] },
+  temp: { n: 2, title: 'Температурное окно', sets: 'T мин., T макс., T_opt', vary: 'температура сопла: 5 стадий по 5 °C',
+    fixed: ['слой, ширина, скорость, обдув, ретракция', 'условия печати одинаковы на всех стадиях'], resp: 'число нитей между башнями (счет) и место излома стенки (категория)',
+    steps: ['Задайте в плане центральную температуру из паспорта катушки. Стадии идут от −10 до +10 °C.', 'Скопируйте G-code (или промпт для ИИ), вставьте после стартового блока Bambu Studio и напечатайте.', 'Нити: для каждой стадии посчитайте нити между двумя башнями. Не оценивайте на глаз «много или мало»: ведите счет.', 'Адгезия: согните стенку на 90° у линии слоя. Чистый ровный излом по границе слоя означает плохую адгезию, неровный излом, деформация или побеление означают хорошую.', 'Внесите счет нитей по пяти стадиям и номер самой холодной стадии, у которой нет ровного излома по границе слоя.', 'Температурную башню с визуальным выбором здесь не используют: она смешивает температуру с временем слоя и обдувом.'],
+    plan: [{ k: 'base', l: 'Центр плана, °C', u: '°C' }, { k: 'thr', l: 'Допустимо нитей на стадию', u: 'шт' }],
+    in: [{ k: 'strings', l: 'Нитей по стадиям 1–5', t: 'list', hint: '0 1 1 4 9' }, { k: 'adh', l: 'Самая холодная стадия с хорошей адгезией (1–5)', t: 'num' }] },
+  fr: { n: 3, title: 'Flow Ratio', sets: 'Flow Ratio материала', vary: 'Flow Ratio: 7 образцов с шагом 0,02',
+    fixed: ['скорость 15 мм/с, поток ниже 1,5 мм³/с (PA и MVS не влияют)', 'прямые стенки, температура T_opt, один и тот же слой'], resp: 'толщина стенки штангенциркулем, среднее по 12 точкам на образец',
+    steps: ['Скопируйте G-code и напечатайте 7 квадратов: Flow Ratio раскладывается в случайном порядке по поверхности стола.', 'У каждого образца отметьте точки на верхнем крае стенки: по 3 на сторону, не ближе 6 мм к углам.', 'Измерьте толщину стенки в каждой точке. Для одного образца вводите от 3 значений через пробел.', 'Калькулятор строит прямую «толщина от Flow Ratio» и находит значение, при котором толщина равна заданной. Погрешность показывается рядом.', 'Если результат за границей плана, сдвиньте центр плана и повторите.', 'Верхнюю поверхность смотрите только как подтверждение результата.'],
+    plan: [{ k: 'center', l: 'Центр плана Flow Ratio', u: '' }, { k: 'wnom', l: 'Заданная ширина линии, мм', u: 'мм' }],
+    in: [0, 1, 2, 3, 4, 5, 6].map(i => ({ k: 'r' + i, l: 'Образец ' + (i + 1) + ': толщины, мм', t: 'list', hint: '0.43 0.42 0.44 …', small: 1 })) },
+  pa: { n: 4, title: 'Pressure Advance', sets: 'индекс n расплава, поправка k_PA', vary: 'K: 13 ступеней по высоте башни; два уровня потока',
+    fixed: ['ускорение, скорость, Flow Ratio из теста 3, температура', 'время слоя выровнено паузой вне детали'], resp: 'трехзначный отклик на каждой ступени: утолщение в углу, нейтрально, утончение или пропуск',
+    steps: ['Скопируйте G-code (две башни: малый и большой поток) и напечатайте.', 'Для каждой башни осмотрите углы снизу вверх. Низкий K дает утолщение в углу, высокий дает утончение или пропуск после угла.', 'Определите две границы: «последняя ступень с утолщением» (0, если утолщения нет) и «первая ступень с утончением» (число ступеней +1, если утончения нет).', 'Между этими границами лежит нейтральная зона. Оптимальный K находится в ее середине.', 'Для воспроизводимости оценку делают два человека независимо или по слепым фотографиям без подписей.', 'Два потока нужны, чтобы проверить, как K меняется с потоком: из этого выводится индекс n.'],
+    plan: [{ k: 'qLo', l: 'Малый поток, мм³/с', u: 'мм³/с' }, { k: 'qHi', l: 'Большой поток (до 0,6 MVS), мм³/с', u: 'мм³/с' }, { k: 'aT', l: 'Ускорение, мм/с²', u: 'мм/с²' }, { k: 'kStep', l: 'Шаг K', u: '' }],
+    in: [{ k: 'loB', l: 'Малый поток: последняя ступень с утолщением', t: 'num' }, { k: 'loG', l: 'Малый поток: первая ступень с утончением', t: 'num' }, { k: 'hiB', l: 'Большой поток: последняя ступень с утолщением', t: 'num' }, { k: 'hiG', l: 'Большой поток: первая ступень с утончением', t: 'num' }] },
+  mvs: { n: 5, title: 'MVS и механизм отказа', sets: 'MVS при T_opt, рост MVS с температурой, доля тепла или усилие прижима', vary: 'поток: 12 стадий; температура: 3 цилиндра (T, +10, +20 °C)',
+    fixed: ['слой 0,2 мм, ширина, обдув, Flow Ratio', 'постоянная скорость на стадии, без углов (PA не участвует)', 'каждая стадия не короче 20 с'], resp: 'номер первой стадии с устойчивым дефектом и тип отказа (щелчки или недоэкструзия)',
+    steps: ['Скопируйте G-code и напечатайте три цилиндра: каждый при своей температуре. Нить сухая.', 'Считайте швы снизу вверх: каждая стадия начинается со своего шва, сдвинутого по окружности.', 'Для каждой температуры найдите первую стадию, где стенка устойчиво становится шероховатой, с пропусками или экструдер щелкает. Сравнивайте со стадией 1 как с эталоном.', 'Повторите минимум дважды и внесите все значения через пробел: берется медиана.', 'Тип отказа: слышны щелчки или видны следы шестерни на нити означает предел усилия подачи. Недоэкструзия без щелчков означает предел плавления.', 'Для влажности (необязательно): до сушки напечатайте один цилиндр при базовой T и внесите стадию отказа. Потеря MVS относительно сухой катушки попадет в отчет.', 'MVS = поток предыдущей (последней чистой) стадии. Рабочий запас задается отдельно в разделе G-code.'],
+    plan: [{ k: 'base', l: 'Базовая T, °C', u: '°C' }, { k: 'qStart', l: 'Q первой стадии, мм³/с', u: 'мм³/с' }, { k: 'qStep', l: 'Шаг Q, мм³/с', u: 'мм³/с' }],
+    in: [{ k: 'on0', l: 'Базовая T: стадия отказа (повторы)', t: 'list', hint: '8 8 9' }, { k: 'on1', l: '+10 °C: стадия отказа', t: 'list' }, { k: 'on2', l: '+20 °C: стадия отказа', t: 'list' }, { k: 'mode', l: 'Тип отказа', t: 'sel', opts: [['melt', 'недоэкструзия без щелчков (плавление)'], ['click', 'щелчки или следы шестерни (усилие)'], ['none', 'не определен']] }, { k: 'wet', l: 'До сушки при базовой T: стадия отказа', t: 'list' }] },
+  res: { n: 6, title: 'Резонанс и ускорение', sets: 'частота резонанса, подавление резонанса', vary: 'ускорение: 5 стадий; скорость постоянна',
+    fixed: ['скорость, слой, ширина, температура', 'компенсация вибраций принтера включена как обычно'], resp: 'длина волны ряби (мм) и стадия первой видимой ряби (категория)',
+    steps: ['Скопируйте G-code и напечатайте башню: квадрат 40 мм, ускорение растет по стадиям.', 'На стенке после угла посчитайте гребни ряби. Штангенциркулем измерьте расстояние между первым и 11-м гребнем (10 периодов).', 'Определите первую стадию, где рябь видна глазом при хорошем освещении.', 'f = v / λ, где λ равна длине волны. Подавление выводится из условия, что видимая рябь равна допуску.', 'Для проверки повторите на другой скорости: частота должна совпасть.'],
+    plan: [{ k: 'v', l: 'Скорость, мм/с', u: 'мм/с' }],
+    in: [{ k: 'nP', l: 'Число периодов в замере', t: 'num', hint: '10' }, { k: 'L', l: 'Расстояние между гребнями, мм', t: 'num' }, { k: 'on', l: 'Первая стадия с видимой рябью (6 если нет)', t: 'num' }] },
+  def: { n: 7, title: 'v_defect: качество внешней стенки', sets: 'v_defect', vary: 'скорость: 13 стадий',
+    fixed: ['слой 0,08 мм: поток всегда ниже MVS, дефекты не потоковые', 'ускорение, температура, обдув', 'время слоя выровнено, охлаждение не зависит от скорости'], resp: 'первая стадия с видимой рябью, пропусками или шероховатостью относительно стадии 1',
+    steps: ['Скопируйте G-code и напечатайте: квадрат 60 мм, скорость растет по высоте.', 'Закройте подписи стадий и попросите второго человека указать первую стадию, где стенка заметно хуже первой.', 'Внесите номер стадии (13+1 = 14 если дефекта нет).', 'v_defect = скорость предыдущей стадии. Тест специально идет на слое 0,08 мм: на нем поток мал и MVS не мешает.'],
+    plan: [{ k: 'v0', l: 'Начальная скорость, мм/с', u: 'мм/с' }, { k: 'vStep', l: 'Шаг скорости, мм/с', u: 'мм/с' }, { k: 'a', l: 'Ускорение, мм/с²', u: 'мм/с²' }],
+    in: [{ k: 'on', l: 'Первая стадия с дефектом', t: 'num' }] },
+  cool: { n: 8, title: 'Минимальное время слоя', sets: 't_min_cool, отвод тепла в нижний слой', vary: 'время слоя: 8 стадий, от 10 до 2 с',
+    fixed: ['скорость, слой, обдув, температура', 'время слоя задается паузой, а не площадью'], resp: 'первая стадия со скругленными углами или провисанием относительно стадии 1',
+    steps: ['Скопируйте G-code (основной) и напечатайте квадрат 12 мм: стадии идут от долгого слоя к короткому.', 'Определите первую стадию, где углы заметно скруглены или верх провис относительно стадии 1.', 'Внесите номер: t_min_cool равно времени предыдущей стадии. Если деформации нет даже при 2 с, внесите 9.', 'Проверочный прогон: напечатайте проверочную башню с другим слоем и обдувом и внесите стадию. Калькулятор сравнит измеренное с предсказанием модели.'],
+    plan: [{ k: 'fan', l: 'Обдув основного прогона, %', u: '%' }, { k: 'T', l: 'Температура, °C', u: '°C' }, { k: 'h2', l: 'Слой проверочного прогона, мм', u: 'мм' }, { k: 'fan2', l: 'Обдув проверочного, %', u: '%' }],
+    in: [{ k: 'on', l: 'Основной: первая стадия с деформацией (9 если нет)', t: 'num' }, { k: 'on2', l: 'Проверочный: первая стадия с деформацией', t: 'num' }] },
+  spread: { n: 9, title: 'Серия катушек', sets: 'разброс MVS между катушками', vary: 'катушка: минимум 3, лучше 5 одной марки и цвета',
+    fixed: ['протокол тестов 3–5 повторяется на каждой катушке без изменений'], resp: 'MVS каждой катушки при T_opt',
+    steps: ['Для каждой новой катушки той же марки и цвета выполните тесты 1, 3, 5 (быстрый набор).', 'Внесите найденные MVS всех катушек через пробел. Здесь учитывайте и текущую катушку.', 'Разброс считается как 2 стандартных отклонения: на графиках потока он показан серой полосой.'],
+    in: [{ k: 'mvs', l: 'MVS катушек, мм³/с', t: 'list', hint: '19.5 20.5 18.0 21.0' }, { k: 'fr', l: 'Flow Ratio катушек (необязательно)', t: 'list' }] }
+};
+
+/* ---- промпты для ИИ (хендшейк для Kilo) ---- */
+const KILO_MODEL = 'Рекомендуемая модель: nemotron-3-ultra (free), рабочая у тебя в Kilo. Режим рассуждения (reasoning): medium для точечных правок G-code, high для написания скрипта постобработки. Температура 0,2. При зацикливании или потере правил: новая сессия, reasoning high, один шаг за запрос.';
+function aiPrompt(id, P) {
+  const pl = planOf(id, P), A2 = aLine(P, 0.2), z = (h) => h.toFixed(2);
+  const mk = {
+    fr: () => ({ model: 'Кубики с одной стенкой (spiral/vase выключен, 1 периметр, без верха и заполнения), 25×25 мм, 40 слоев по 0,2 мм, ширина линии ' + P.w + ', скорость 15 мм/с, 7 копий.', edits: ['В блоке каждого объекта умножь значение E на всех строках G1 с E > 0 на множитель Flow Ratio образца: ' + pl.fr.map((x, i) => (i + 1) + ' = ' + x).join('; ') + '.', 'Объекты определяй по комментариям начала печати объекта; если их нет, по координатам X/Y.', 'Первый слой не меняй.'] }),
+    temp: () => ({ model: 'Две башни R = 4 мм на расстоянии 50 мм плюс стенка 60×15 мм, 0,2 мм слой. Запиши на каждой стадии высоты 5 мм.', edits: ['Перед первой экструзией каждого диапазона высоты Z вставь M109 S{T}: ' + pl.T.map((T, i) => 'Z ' + i * 5 + '–' + (i + 1) * 5 + ' мм: ' + T + ' °C').join('; ') + '.', 'Обдув 100 % на всех стадиях, остальные команды не трогай.'] }),
+    pa: () => ({ model: 'Квадрат 40×40 мм, одна стенка, острые углы, высота 39 мм, слой 0,2 мм; два экземпляра: ' + fmtN(pl.vLo, 0) + ' и ' + fmtN(pl.vHi, 0) + ' мм/с.', edits: ['После начала слоя на высоте Z вставь M900 K{K}: ' + pl.K.map((K, j) => 'Z ' + z(0.2 + j * 3) + ' – ' + z(0.2 + (j + 1) * 3) + ': K = ' + K).join('; ') + '.', 'Во всех строках внешних периметров задай скорости ' + fmtN(pl.vLo, 0) + ' и ' + fmtN(pl.vHi, 0) + ' мм/с соответственно для двух экземпляров и добавь M204 S' + pl.aT + '.', 'Выровняй время каждого слоя до 6 с добавлением G4 вне детали (отъезд на 25 мм и пауза).'] }),
+    mvs: () => ({ model: 'Цилиндр R = 35 мм, одна стенка, слой 0,2 мм, ширина ' + P.w + ', 3 экземпляра.', edits: ['Для каждого экземпляра раздели слои на ' + pl.N + ' стадий. Число слоев стадии s = ceil(20 с / время слоя при скорости стадии), не меньше 3.', 'Измени только F на строках экструзии стадии: ' + pl.Q.map((q, i) => 'стадия ' + (i + 1) + ': Q = ' + fmtN(q, 1) + ' мм³/с, F = ' + Math.round(q / A2 * 60)).join('; ') + '. Значения E не меняй.', 'Температуры экземпляров: ' + pl.T.join(', ') + ' °C (M109 перед объектом).', 'Сдвигай шов каждой стадии на 360°/' + pl.N + ' по окружности.'] }),
+    res: () => ({ model: 'Квадрат 40×40 мм, одна стенка, острые углы, высота 40 мм, слой 0,2 мм, скорость ' + pl.v + ' мм/с.', edits: ['Вставь M204 S{a} в начале каждой стадии по 8 мм высоты: ' + pl.a.map((a, j) => 'Z ' + z(j * 8) + '–' + z((j + 1) * 8) + ': ' + a).join('; ') + '.', 'Скорость на всех внешних периметрах: ' + pl.v + ' мм/с.'] }),
+    def: () => ({ model: 'Квадрат 60×60 мм, одна стенка, слой 0,08 мм, высота около 39 мм.', edits: ['Задай скорость внешнего периметра по стадиям высоты 3 мм: ' + pl.v.map((v, j) => 'Z ' + z(0.2 + j * 3) + ': ' + v).join('; ') + ' мм/с. M204 S' + pl.a + '.', 'Выровняй время слоя до 8 с паузой G4 вне детали.'] }),
+    cool: () => ({ model: 'Квадрат 12×12 мм, одна стенка, острые углы, слой 0,2 мм (основной) или ' + z(pl.h2) + ' мм (проверочный).', edits: ['Для каждой стадии по 4 мм высоты задай время слоя: ' + pl.t.map((t, j) => 'Z ' + z(0.2 + j * 4) + ': ' + t + ' с').join('; ') + '.', 'Для каждого слоя оцени время печати по длине путей и F, добавь отъезд в сторону и G4 так, чтобы время слоя совпало с заданным. Обдув: основной ' + pl.fan + ' %, проверочный ' + pl.fan2 + ' %.'] })
+  }[id];
+  if (!mk) return null;
+  const spec = mk();
+  return ['Задача: подготовь G-code для калибровочного теста «' + META[id].title + '» на Bambu Lab A1 (пластик ' + plName() + ').', KILO_MODEL, '',
+    'Вход: файл test.gcode, экспортированный из Bambu Studio. Модель в слайсере: ' + spec.model, 'Нужно изменить:', ...spec.edits.map((e, i) => (i + 1) + '. ' + e), '',
+    'Ограничения: не менять стартовый и конечный блоки, не менять температуру стола, сохранять относительную экструзию M83. Исходный файл не перезаписывать, результат сохранить как test_' + id + '_mod.gcode.',
+    'Проверка: покажи diff по числу измененных строк и по 3 примера «было / стало»; проверь, что диапазоны высот не пересекаются, а Z растет монотонно.',
+    'Формат ответа: путь к скрипту на Python (если нужен), путь к выходному файлу, краткая сводка изменений. Не печатай весь G-code.', 'Если какой-то шаг неоднозначен, остановись и задай один вопрос.'].join('\n');
+}
+/* ============ ВКЛАДКИ «ПРОТОКОЛ ТЕСТОВ» И «ОТЧЕТ» ============ */
+const PARAM_L = {}; SCHEMA.forEach(g => g.items.forEach(it => { if (it.k) PARAM_L[it.k] = it; }));
+PARAM_L.tCoolMode = { l: 'Режим t_min_cool', u: '' };
+const PROTO_OPEN = new Set();
+const pv = v => typeof v === 'number' ? String(rnd(v, 4)).replace('.', ',') : String(v);
+const doneN = () => TEST_ORDER.filter(id => RES[id]).length;
+
+function tblRows(series) {
+  const n = series[0][1].length;
+  return `<div class="tbl"><table><thead><tr><th class="l">Стадия</th>${Array.from({ length: n }, (_, i) => `<th>${i + 1}</th>`).join('')}</tr></thead><tbody>${series.map(s => `<tr style="cursor:default"><td class="l">${s[0]}</td>${s[1].map(x => `<td class="num">${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+function stageTable(id, P) {
+  const pl = planOf(id, P), F = (a, d) => a.map(x => f(x, d));
+  if (id === 'temp') return tblRows([['T, °C', pl.T]]);
+  if (id === 'fr') return tblRows([['Flow Ratio', F(pl.fr, 3)], ['Положение на столе', pl.order.map(o => o + 1)]]);
+  if (id === 'pa') return tblRows([['K', F(pl.K, 3)]]) + `<p class="note">Малый поток ${f(pl.qLo, 1)} мм³/с (${f(pl.vLo, 0)} мм/с), большой ${f(pl.qHi, 1)} мм³/с (${f(pl.vHi, 0)} мм/с). Башни по 13 ступеней: ступень = 3 мм высоты.</p>`;
+  if (id === 'mvs') return tblRows([['Q, мм³/с', F(pl.Q, 1)], ['v, мм/с', F(pl.v, 0)], ['Шов, °', pl.Q.map((q, i) => Math.round(i * 360 / pl.N))]]) + `<p class="note">Температуры цилиндров: ${pl.T.join(', ')} °C.</p>`;
+  if (id === 'res') return tblRows([['a, мм/с²', pl.a]]);
+  if (id === 'def') return tblRows([['v, мм/с', pl.v], ['Q, мм³/с', pl.v.map(v => f(aLine(P, pl.h) * v, 1))]]);
+  if (id === 'cool') return tblRows([['Время слоя, с', F(pl.t, 1)]]);
+  return '';
+}
+function resultBlock(id) {
+  const r = RES[id]; if (!r) return '<p class="note">Результат появится после ввода замеров этого теста.</p>';
+  const keys = Object.keys(r.outs).filter(k => k !== 'tCoolMode');
+  return `<div class="tout"><b>Результат</b><ul class="diag" style="margin-top:6px">${r.lines.map(l => `<li style="--c:var(--fg3)"><span>${esc(l)}</span></li>`).join('')}${r.warn.map(w => `<li style="--c:var(--warn)"><span>${esc(w)}</span></li>`).join('')}</ul>${keys.length ? `<div class="tset"><span class="note">Записано в профиль:</span> ${keys.map(k => `<span class="chip" style="--c:var(--good)">${esc((PARAM_L[k] || {}).l || k)} = ${pv(r.outs[k])} ${esc((PARAM_L[k] || {}).u || '')}</span>`).join(' ')}</div>` : ''}</div>`;
+}
+const statusHtml = id => RES[id] ? '<span class="pill ok">выполнен</span>' : '<span class="pill" style="color:var(--fg3)">ждет замеров</span>';
+function progHtml() {
+  const n = doneN(), tot = TEST_ORDER.length;
+  return `<div class="prog"><div class="bar2"><i style="width:${n / tot * 100}%"></i></div><span class="note">Выполнено ${n} из ${tot}. Каждый тест, по которому есть замеры, уже влияет на расчеты и отмечен в параметрах меткой «тест N».</span></div>`;
+}
+function inputHtml(id, it) {
+  const v = (TS[id] || {})[it.k], idn = `t-${id}-${it.k}`;
+  if (it.t === 'chk') return `<label class="chk2"><input type="checkbox" id="${idn}" ${v ? 'checked' : ''}> ${it.l}</label>`;
+  let ctl;
+  if (it.t === 'sel') ctl = `<select id="${idn}">${it.opts.map(o => `<option value="${o[0]}" ${(v || it.opts[0][0]) === o[0] ? 'selected' : ''}>${o[1]}</option>`).join('')}</select>`;
+  else if (it.t === 'num') ctl = `<input type="number" step="any" id="${idn}" value="${v === undefined ? '' : v}" placeholder="${it.hint ? 'напр. ' + it.hint : ''}">`;
+  else ctl = `<input type="text" inputmode="decimal" id="${idn}" value="${v === undefined ? '' : esc(v)}" placeholder="${it.hint ? 'напр. ' + esc(it.hint) : ''}">`;
+  return `<div class="row"><label for="${idn}">${it.l}</label><div class="ctl">${ctl}</div></div>`;
+}
+function viewProto(R) {
+  ensurePlan(P);
+  const first = TEST_ORDER.find(id => !RES[id]);
+  const cards = TEST_ORDER.map(id => {
+    const m = META[id], hasAi = !!aiPrompt(id, P), hasGen = !!GEN[id], open = PROTO_OPEN.has(id) || (!PROTO_OPEN.size && id === first);
+    return `<details class="step" data-id="${id}" ${open ? 'open' : ''}><summary>Тест ${m.n}. ${m.title}<span id="tst-${id}">${statusHtml(id)}</span></summary><div class="stepb">
+      <div class="meta"><p><b>Определяем:</b> ${m.sets}.</p><p><b>Меняем:</b> ${m.vary}.</p><p><b>Фиксируем:</b> ${m.fixed.join('; ')}.</p><p><b>Отклик:</b> ${m.resp}.</p></div>
+      <div><b>Алгоритм</b><ol class="test" style="margin-top:6px">${m.steps.map(s => `<li>${s}</li>`).join('')}</ol></div>
+      ${m.plan ? `<div><b>План теста</b><div class="tin">${m.plan.map(p => inputHtml(id, { k: p.k, l: p.l + (p.u ? '' : ''), t: 'num' })).join('')}</div><div id="tstage-${id}">${stageTable(id, P)}</div></div>` : ''}
+      ${hasGen || hasAi ? `<div class="tools"><b>G-code и промпт</b><div class="line">${hasGen ? `<button class="btn sm" data-gen="${id}">Копировать G-code (тело теста)</button>${id === 'cool' ? `<button class="btn sm" data-gen="cool:val">G-code проверочного прогона</button>` : ''}` : ''}${hasAi ? `<button class="btn sm" data-ai="${id}">Копировать промпт для ИИ (Kilo)</button>` : ''}<span class="note cpm"></span></div></div>` : ''}
+      <div><b>Результаты замеров</b><div class="tin ${id === 'fr' ? 'tin7' : ''}">${m.in.map(it => inputHtml(id, it)).join('')}</div></div>
+      <div id="tres-${id}">${resultBlock(id)}</div>
+      <div class="line"><button class="btn sm" data-reset="${id}">Очистить замеры теста</button></div>
+    </div></details>`;
+  }).join('');
+  return `<section class="card"><h2>Протокол тестов</h2><p class="lead">Десять тестов в порядке выполнения. В протокол включены только величины, которые нельзя получить расчетом: их определяют изолированные тесты. Все остальное (скорости, температура печати, обдув, K, Flow Ratio, MVS для слайсера) выводится из введенных замеров во вкладке «Отчет».</p><div id="tprog">${progHtml()}</div>
+    <ul class="diag" style="margin-top:10px"><li style="--c:var(--c-kin)"><span>Температурное окно стоит перед остальными тестами: температура входит во все остальные условия.</span></li><li style="--c:var(--c-kin)"><span>Каждый тест меняет один фактор. Остальные фиксированы или выведены в режим, где их эффект мал.</span></li><li style="--c:var(--c-kin)"><span>G-code содержит только тело теста. Стартовый и конечный блоки возьмите из экспортированного файла Bambu Studio. Либо скопируйте промпт и отдайте ИИ правку экспортированного файла.</span></li></ul></section>${cards}`;
+}
+function softProto() {
+  const R = solve(P, P.h); last = R; renderStrip(R);
+  TEST_ORDER.forEach(id => { const a = $('#tres-' + id); if (a) a.innerHTML = resultBlock(id); const b = $('#tstage-' + id); if (b) b.innerHTML = stageTable(id, P); const s = $('#tst-' + id); if (s) s.innerHTML = statusHtml(id); });
+  const pr = $('#tprog'); if (pr) pr.innerHTML = progHtml();
+}
+function copyFb(text, btn) {
+  const msg = btn.parentNode.querySelector('.cpm');
+  const fail = () => { if (msg) msg.textContent = 'Не удалось скопировать автоматически: выделите текст ниже и скопируйте вручную'; let ta = btn.parentNode.parentNode.querySelector('textarea.fb'); if (!ta) { ta = document.createElement('textarea'); ta.className = 'fb'; ta.readOnly = true; ta.rows = 8; btn.parentNode.after(ta); } ta.value = text; ta.focus(); ta.select(); };
+  try { navigator.clipboard.writeText(text).then(() => { if (msg) msg.textContent = 'Скопировано (' + text.split('\n').length + ' строк)'; }, fail); } catch (e) { fail(); }
+}
+function bindProto(v) {
+  v.querySelectorAll('[data-gen]').forEach(b => b.onclick = () => { const [id, vr] = b.dataset.gen.split(':'); copyFb(GEN[id](P, vr), b); });
+  v.querySelectorAll('[data-ai]').forEach(b => b.onclick = () => copyFb(aiPrompt(b.dataset.ai, P), b));
+  v.querySelectorAll('[data-reset]').forEach(b => b.onclick = () => { const id = b.dataset.reset; const keep = {}; (META[id].plan || []).forEach(p => keep[p.k] = TS[id][p.k]); if (id === 'fr') keep.order = TS.fr.order; TS[id] = keep; TEST_KEYS[id].forEach(k => delete SRC[k]); runProtocol(); persist(); syncControls(); render(); });
+}
+document.addEventListener('DOMContentLoaded', () => { });
+function onProtoInput(e) {
+  const t = e.target; if (!t.id || t.id.indexOf('t-') !== 0) return;
+  const p = t.id.split('-'), id = p[1], k = p.slice(2).join('-'); TS[id] = TS[id] || {};
+  TS[id][k] = t.type === 'checkbox' ? t.checked : t.value;
+  (TEST_KEYS[id] || []).forEach(x => delete MAN[x]);
+  runProtocol(); persist(); syncControls(); softProto();
+}
+
+/* ---- отчет ---- */
+function reportData(R, rows) {
+  const meas = [];
+  TEST_ORDER.forEach(id => { const r = RES[id]; if (!r) return; Object.keys(r.outs).filter(k => k !== 'tCoolMode').forEach(k => meas.push({ k, l: (PARAM_L[k] || {}).l || k, v: r.outs[k], u: (PARAM_L[k] || {}).u || '', t: META[id].n, tn: META[id].title })); });
+  const left = []; SCHEMA.forEach(g => g.items.forEach(it => { if (it.k && (it.b === 'est' || it.b === 'lit') && !SRC[it.k]) left.push(it.l); }));
+  const warns = []; TEST_ORDER.forEach(id => { const r = RES[id]; if (r) r.warn.forEach(w => warns.push('Тест ' + META[id].n + ': ' + w)); });
+  const val = []; TEST_ORDER.forEach(id => { const r = RES[id]; if (r) r.lines.forEach(l => { if (l.indexOf('Проверка модели') === 0) val.push(l); }); });
+  return { meas, left, warns, val, bb: bambuRows(R) };
+}
+function reportText(R, rows) {
+  const d = reportData(R, rows), L = [];
+  L.push('ОТЧЕТ ПО КАТУШКЕ: ' + plName() + ', ' + prName(), 'Выполнено тестов: ' + doneN() + ' из ' + TEST_ORDER.length, '', 'ИЗМЕРЕНО В ТЕСТАХ');
+  d.meas.forEach(m => L.push('  [тест ' + m.t + '] ' + m.l + ' = ' + pv(m.v) + ' ' + m.u));
+  L.push('', 'РЕКОМЕНДУЕМЫЕ ПАРАМЕТРЫ (расчет)', '  Flow Ratio ' + f(R.FR, 3) + '; Pressure Advance K ' + f(R.K, 3) + '; ускорение ' + f(aRec(P), 0) + ' мм/с²; t_min_cool ' + f(R.tmc, 1) + ' с; MVS для слайсера ' + f(Math.floor(R.qCap * 2) / 2, 1) + ' мм³/с');
+  rows.forEach(r => L.push('  слой ' + f(r.h, 2) + ': v ' + f(r.vIn, 0) + ' мм/с (внешняя ' + f(r.vOut, 0) + '), Q ' + f(r.Q, 1) + ', T ' + r.T + ' °C, обдув ' + r.fanRec + ' %, K ' + f(r.K, 3) + ', ограничитель: ' + limName(r.lim, r) + ', ' + f(r.time / 60, 0) + ' мин'));
+  L.push('', 'BAMBU STUDIO'); d.bb.forEach(b => L.push('  ' + b[0] + ': ' + b[1] + ' = ' + b[2]));
+  if (d.val.length) { L.push('', 'ПРОВЕРКА МОДЕЛИ'); d.val.forEach(x => L.push('  ' + x)); }
+  if (d.warns.length) { L.push('', 'ПРЕДУПРЕЖДЕНИЯ'); d.warns.forEach(x => L.push('  ' + x)); }
+  L.push('', 'ОСТАЛИСЬ ОЦЕНКАМИ (без теста): ' + d.left.join('; '));
+  return L.join('\n');
+}
+function viewReport(R, rows) {
+  const d = reportData(R, rows), n = doneN();
+  const meas = d.meas.length ? `<div class="tbl"><table><thead><tr><th class="l">Параметр</th><th>Значение</th><th class="l">Тест</th></tr></thead><tbody>${d.meas.map(m => `<tr style="cursor:default"><td class="l">${esc(m.l)}</td><td class="num">${pv(m.v)} ${esc(m.u)}</td><td class="l">${m.t}. ${esc(m.tn)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="note">Пока ни один тест не дал результата. Вводите замеры во вкладке «Протокол тестов».</p>';
+  const tab = `<div class="tbl"><table><thead><tr><th>h, мм</th><th>v внутр., мм/с</th><th>v внешн., мм/с</th><th>Q_max, мм³/с</th><th>T_print, °C</th><th>Обдув, %</th><th>K (PA)</th><th class="l">Ограничитель</th><th>Время</th></tr></thead><tbody>${rows.map(r => `<tr data-h="${r.h}" aria-selected="${Math.abs(r.h - P.h) < 1e-9}"><td class="num">${f(r.h, 2)}</td><td class="num">${f(r.vIn, 0)}</td><td class="num">${f(r.vOut, 0)}</td><td class="num">${f(r.Q, 1)}</td><td class="num">${r.T}</td><td class="num">${r.fanRec}</td><td class="num">${f(r.K, 3)}</td><td class="l"><span class="chip" style="--c:var(${LIM[r.lim].c})">${esc(limName(r.lim, r))}</span></td><td class="num">${f(r.time / 60, 0)} мин</td></tr>`).join('')}</tbody></table></div>`;
+  return `<section class="card hero"><div><h2>Отчет по катушке</h2><p class="lead" style="margin:2px 0 0">${esc(plName())} на ${esc(prName())}. Выполнено тестов: ${n} из ${TEST_ORDER.length}. ${n < 6 ? 'Часть параметров еще оценки: отчет будет точнее после основных тестов (2–5).' : 'Основные тесты выполнены.'}</p></div>
+    <div class="stats"><div class="stat"><span>Flow Ratio</span><b>${f(R.FR, 3)}</b></div><div class="stat"><span>Pressure Advance K</span><b>${f(R.K, 3)}</b></div><div class="stat"><span>MVS для слайсера</span><b>${f(Math.floor(R.qCap * 2) / 2, 1)}</b><i>мм³/с</i></div><div class="stat"><span>Ускорение</span><b>${f(aRec(P), 0)}</b><i>мм/с²</i></div><div class="stat"><span>t_min_cool</span><b>${f(R.tmc, 1)}</b><i>с</i></div></div>
+    <div class="line" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm solid" data-rep="1">Копировать отчет</button><span class="note cpm"></span></div></section>
+    <section class="card"><h2>Измерено в тестах</h2><p class="lead">Эти параметры получены из ваших замеров и записаны в профиль.</p>${meas}</section>
+    <section class="card"><h2>Рекомендуемые параметры по высотам слоя</h2><p class="lead">Производные величины: считаются по измеренным параметрам. Нажмите строку, чтобы выбрать высоту.</p>${tab}</section>
+    <div class="cols2"><section class="card"><h2>Параметры для Bambu Studio</h2><div class="tbl bb"><table><thead><tr><th class="l">Раздел</th><th class="l">Параметр</th><th>Значение</th></tr></thead><tbody>${d.bb.map(b => `<tr style="cursor:default"><td class="l">${b[0]}</td><td class="l">${b[1]}</td><td class="num"><b>${b[2]}</b></td></tr>`).join('')}</tbody></table></div></section>
+    <section class="card"><h2>Проверка и предупреждения</h2><ul class="diag">${d.val.map(x => `<li style="--c:var(--c-kin)"><span>${esc(x)}</span></li>`).join('')}${d.warns.map(x => `<li style="--c:var(--warn)"><span>${esc(x)}</span></li>`).join('')}${!d.val.length && !d.warns.length ? '<li style="--c:var(--good)"><span>Предупреждений нет.</span></li>' : ''}</ul><p class="note" style="margin-top:10px">Остались оценками, без теста: ${d.left.length ? esc(d.left.join('; ')) : 'нет'}.</p></section></div>`;
+}
+function bindReport(v) { v.querySelectorAll('[data-rep]').forEach(b => b.onclick = () => copyFb(reportText(last, heights().map(h => solve(P, h))), b)); }
+/* ============ ЗАПУСК ============ */
+(function loadTests() {
+  try { const s = JSON.parse(lsGet('plc.v1')); if (s) { TS = s.TS || {}; MAN = s.MAN || {}; } } catch (e) { }
+})();
+runProtocol();
+const viewEl = $('#view');
+viewEl.addEventListener('input', onProtoInput);
+viewEl.addEventListener('change', onProtoInput);
+viewEl.addEventListener('toggle', e => { const d = e.target; if (d.matches && d.matches('details.step[data-id]')) { if (d.open) PROTO_OPEN.add(d.dataset.id); else PROTO_OPEN.delete(d.dataset.id); } }, true);
+buildControls();
+if (matchMedia('(max-width: 999px)').matches) $('#panel').open = false;
+onHash();
+</script>
+
+</body></html>

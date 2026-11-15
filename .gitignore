@@ -4,7 +4,8 @@
 !.env.example
 *.key
 *.pem
-credentials.json
+credentials*
+auth.json
 token.json
 
 # --- локальные настройки инструмента ---

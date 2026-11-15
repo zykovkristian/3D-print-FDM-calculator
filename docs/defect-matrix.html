@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Матрица: температура × поток, зоны дефектов</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 16px; color: #222; max-width: 1100px; }
+  h1 { font-size: 20px; }
+  .note { background: #fff8e1; border: 1px solid #e0c060; padding: 8px; border-radius: 6px; font-size: 13px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 0; font-size: 13px; }
+  .controls label { display: flex; flex-direction: column; gap: 2px; }
+  table { border-collapse: collapse; }
+  td { width: 46px; height: 22px; border: 1px solid #fff; cursor: pointer; }
+  th { font-size: 12px; font-weight: normal; padding: 0 6px; }
+  .legend span { display: inline-block; padding: 2px 8px; margin: 2px; border-radius: 4px; font-size: 12px; }
+  #info { border: 1px solid #ccc; border-radius: 6px; padding: 10px; margin-top: 12px; font-size: 14px; min-height: 70px; }
+  .ok    { background: #c8e6c9; }
+  .under { background: #90caf9; }
+  .deg   { background: #ef9a9a; }
+  .ooze  { background: #ffe082; }
+  td.sel { outline: 2px solid #000; }
+</style>
+</head>
+<body>
+
+<h1>Матрица «температура × поток» для PLA, сопло 0,4 мм</h1>
+
+<div class="note">
+  Границы зон условные, их не измеряли на принтере. Двигайте ползунки, пока границы не совпадут с вашими первыми замерами.
+  Сечение линии: высота слоя 0,20 мм, ширина 0,42 мм, A = 0,0754 мм², скорость v = Q / A.
+</div>
+
+<div class="controls">
+  <label>Поток на границе недоэкструзии при 180 °C, мм³/с
+    <input type="range" id="f0" min="1" max="12" step="0.5" value="2"><output id="f0v"></output></label>
+  <label>Поток на границе недоэкструзии при 260 °C, мм³/с
+    <input type="range" id="f1" min="10" max="30" step="0.5" value="24"><output id="f1v"></output></label>
+  <label>Порог деградации при 230 °C, мм³/с
+    <input type="range" id="d0" min="1" max="20" step="0.5" value="6"><output id="d0v"></output></label>
+  <label>Доза деградации удваивается каждые, °C
+    <input type="range" id="dk" min="4" max="20" step="1" value="14"><output id="dkv"></output></label>
+</div>
+
+<table id="grid"></table>
+
+<div class="legend">
+  <span class="ok">Рабочая зона</span>
+  <span class="under">Недоэкструзия</span>
+  <span class="deg">Перегрев и деградация</span>
+  <span class="ooze">Сочение (T выше 245 °C)</span>
+</div>
+
+<div id="info">Нажмите клетку, чтобы увидеть, что происходит с пластиком в этой точке.</div>
+
+<script>
+const TS = [];
+for (let t = 180; t <= 260; t += 5) TS.push(t);      // температура сопла, °C
+const QS = [];
+for (let q = 2; q <= 24; q += 2) QS.push(q);         // поток Q, мм³/с
+const H = 0.2, W = 0.42;
+const A = H * (W - H) + Math.PI * H * H / 4;         // сечение линии, мм²
+
+const $ = id => document.getElementById(id);
+const par = () => ({ f0: +$('f0').value, f1: +$('f1').value, d0: +$('d0').value, dk: +$('dk').value });
+
+// Граница недоэкструзии: выше неё сопло не успевает расплавить пластик (условная линейная кривая)
+function qFlow(T, p) { return p.f0 + (p.f1 - p.f0) * (T - 180) / 80; }
+
+// Граница деградации: ниже неё пластик слишком долго сидит в горячем сопле.
+// Время в сопле ~ V / Q, поэтому порог растёт с T (условная экспонента)
+function qDeg(T, p) { return p.d0 * Math.pow(2, (T - 230) / p.dk); }
+
+function zone(T, Q, p) {
+  if (Q > qFlow(T, p)) return 'under';
+  if (Q < qDeg(T, p)) return 'deg';
+  if (T > 245) return 'ooze';
+  return 'ok';
+}
+
+const TXT = {
+  under: { t: 'Недоэкструзия',
+    d: 'Пластик не успевает расплавиться и стать достаточно жидким, сопло выдаёт меньше, чем задано. Видно: пропуски и разрывы линии, слабое сцепление слоёв, шероховатость, щелчки экструдера (шестерня проскальзывает).' },
+  deg:   { t: 'Перегрев и деградация',
+    d: 'Высокая температура при малом потоке: пластик дольше сидит в сопле. Полимерные цепи рвутся, пластик темнеет, выделяются летучие вещества. Видно: пузыри, желтоватый или бурый оттенок, запах, нити, нагар на сопле, который может забить его.' },
+  ooze:  { t: 'Сочение (высокая температура)',
+    d: 'Расплав слишком жидкий, течёт при перемещении головки без подачи. Видно: нити между частями, капли, провисание мостов и навесов, мягкие углы.' },
+  ok:    { t: 'Рабочая зона',
+    d: 'Поток проходит полностью, заметной деградации нет. Проверьте образцом: блеск, сцепление слоёв, отсутствие нитей.' }
+};
+
+function draw() {
+  const p = par();
+  ['f0', 'f1', 'd0', 'dk'].forEach(k => $(k + 'v').textContent = $(k).value);
+  let h = '<caption>Строки: температура сопла, °C (сверху горячее). Столбцы: поток Q, мм³/с</caption>';
+  h += '<tr><th>T, °C \\ Q</th>' + QS.map(q => `<th>${q}</th>`).join('') + '</tr>';
+  TS.slice().reverse().forEach(T => {
+    h += `<tr><th>${T}</th>`;
+    QS.forEach(Q => {
+      h += `<td class="${zone(T, Q, p)}" data-t="${T}" data-q="${Q}"></td>`;
+    });
+    h += '</tr>';
+  });
+  $('grid').innerHTML = h;
+}
+
+$('grid').addEventListener('click', e => {
+  const td = e.target.closest('td');
+  if (!td) return;
+  document.querySelectorAll('td.sel').forEach(x => x.classList.remove('sel'));
+  td.classList.add('sel');
+  const T = +td.dataset.t, Q = +td.dataset.q, p = par();
+  const z = zone(T, Q, p);
+  const v = Q / A;
+  $('info').innerHTML =
+    `<b>${T} °C, Q = ${Q} мм³/с (v ≈ ${v.toFixed(0)} мм/с): ${TXT[z].t}</b><br>` +
+    `${TXT[z].d}<br>` +
+    `<small>Граница недоэкструзии при этой T: ${qFlow(T, p).toFixed(1)} мм³/с. ` +
+    `Граница деградации: ${qDeg(T, p).toFixed(1)} мм³/с.</small>`;
+});
+
+['f0', 'f1', 'd0', 'dk'].forEach(id => $(id).addEventListener('input', draw));
+draw();
+</script>
+</body>
+</html>

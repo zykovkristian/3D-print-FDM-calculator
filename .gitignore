@@ -8,7 +8,9 @@ credentials.json
 token.json
 
 # --- локальные настройки инструмента ---
-.kilo/agent-manager.json
+# .kilo/ — машинное состояние Kilo (agent-manager.json, plans/, воркдеревья).
+# Долговечный файл под .kilo/ открывать отдельным отрицанием (!).
+.kilo/*
 
 # --- система и редакторы ---
 .DS_Store

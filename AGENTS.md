@@ -15,6 +15,12 @@
 - `docs/parameter-testing-methods-research.md` — ресёрч: DoE-логика тестирования, научная критика методов, противоречия между источниками.
 - `docs/speed-limit-analysis.md` — что в границах скорости считается, а что измеряется; кинематика и расчёт v_max(h).
 - `docs/test-protocol.md` — протокол тестов: порядок, алгоритмы, поля ввода, корректировка после теста.
+- `docs/mvs-matrix-geometry.md` — геометрия траектории матрицы MVS: двухзаходная спираль, переход по общей касательной, послойная сборка, проверки.
 - `README.md` — краткое описание для внешнего читателя.
+- `tools/mvs-matrix.html` — автономный генератор G-code для матрицы MVS (T × Q): слой одной непрерывной траекторией.
+- `docs/MVS_Matrix_Labyrinth_GCode_Generator.html` — первая версия генератора (архив, заменена `tools/mvs-matrix.html`).
+- `docs/MVS_dialoge.md` — переписка по разработке матрицы MVS (исходное задание).
+- `docs/image1.png`, `docs/image2.png`, `docs/image.png` — референсы формы матрицы (ряд цилиндров, вид сверху двойной спирали).
 - `tests/model.test.mjs` — проверки расчётной модели, запуск `node --test`.
+- `tests/mvs-matrix.test.mjs` — проверки генератора матрицы MVS, запуск `node --test`.
 - `.github/workflows/ci.yml` — CI, тот же прогон на push и pull request.

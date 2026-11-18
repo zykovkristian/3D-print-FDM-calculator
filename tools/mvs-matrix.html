@@ -1,0 +1,2149 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Матрица MVS — генератор G-code</title>
+<style>
+:root{
+  --bg:#0e1216; --surf:#151b21; --surf2:#1b232a; --surf3:#202a33;
+  --line:#26313a; --line2:#34414d;
+  --fg:#e8eef3; --fg2:#aab7c2; --fg3:#77858f;
+  --ok:#5cc98a; --warn:#e7c77a; --err:#ff8f7a; --info:#7ea4ff;
+  --c1:#4d8dff; --c2:#33c6bd; --c3:#8bd86f; --c4:#e6d65e; --c5:#f29a48; --c6:#ee5c4e;
+  --f-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --f-mono:ui-monospace,SFMono-Regular,"Cascadia Mono",Consolas,monospace;
+  --r:8px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:14px/1.5 var(--f-ui);-webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0;font-weight:600;letter-spacing:.01em}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+
+/* ---------- шапка ---------- */
+.top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;
+  padding:14px 20px;border-bottom:1px solid var(--line);background:var(--surf)}
+.brand h1{font-size:18px}
+.brand .sub{color:var(--fg3);font-size:12px}
+.top-actions{display:flex;gap:8px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:var(--surf);padding:5px 11px;font-size:12px;color:var(--fg2)}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg);font-weight:600}
+.btn{background:var(--surf2);border:1px solid var(--line2);border-radius:6px;padding:6px 12px;color:var(--fg)}
+.btn:hover{border-color:var(--fg3)}
+.btn.solid{background:var(--fg);color:var(--bg);border-color:var(--fg);font-weight:600}
+.btn.solid:hover{opacity:.9}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.sm{padding:3px 9px;font-size:12px}
+
+/* ---------- полоса итогов ---------- */
+.strip{position:sticky;top:0;z-index:9;background:var(--bg);border-bottom:1px solid var(--line);
+  padding:8px 20px;display:flex;flex-wrap:wrap;gap:4px 20px;align-items:baseline;font-variant-numeric:tabular-nums}
+.kpi{display:flex;align-items:baseline;gap:5px;font-size:12px}
+.kpi .k{color:var(--fg3)}
+.kpi .v{font-family:var(--f-mono);font-size:13px}
+.strip .badge{margin-left:auto;font-size:12px;padding:2px 8px;border-radius:5px;border:1px solid var(--line2);color:var(--fg2)}
+.strip .badge.dirty{color:var(--warn);border-color:#6b5a2e}
+
+/* ---------- раскладка ---------- */
+.layout{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:16px;padding:16px 20px 60px;align-items:start}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+@media(max-width:1080px){.layout{grid-template-columns:1fr}}
+
+/* ---------- блоки ---------- */
+.card{background:var(--surf);border:1px solid var(--line);border-radius:var(--r);padding:0;overflow:hidden}
+.card>.hd{display:flex;align-items:center;gap:9px;padding:10px 14px;background:var(--surf2);border-bottom:1px solid var(--line)}
+.card>.hd .n{font-family:var(--f-mono);font-size:11px;color:var(--fg3);border:1px solid var(--line2);border-radius:4px;padding:1px 5px}
+.card>.hd h2{font-size:13px;letter-spacing:.02em;text-transform:uppercase;color:var(--fg2)}
+.card>.hd .hd-right{margin-left:auto;display:flex;gap:6px;align-items:center}
+.card>.bd{padding:13px 14px}
+.card.collapsed>.bd{display:none}
+.card>.hd .chev{margin-left:auto;color:var(--fg3);font-size:11px;transition:transform .15s}
+.card.collapsed>.hd .chev{transform:rotate(-90deg)}
+
+/* ---------- поля ---------- */
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px}
+.fields.one{grid-template-columns:1fr}
+@media(max-width:560px){.fields{grid-template-columns:1fr}}
+.field{min-width:0}
+.field.wide{grid-column:1/-1}
+.field>label{display:block;font-size:11px;color:var(--fg3);margin-bottom:3px;letter-spacing:.02em}
+.field>label .u{color:var(--fg3);opacity:.75;font-family:var(--f-mono)}
+.field input,.field select,.field textarea{width:100%;min-width:0;background:var(--bg);border:1px solid var(--line2);
+  border-radius:5px;padding:6px 8px;font-family:var(--f-mono);font-size:13px}
+.field textarea{min-height:74px;resize:vertical;font-size:12px;line-height:1.45}
+.field input[type=checkbox]{width:auto;accent-color:var(--fg);vertical-align:-2px}
+.field select{font-family:var(--f-ui);font-size:13px}
+.field .hint{font-size:11px;color:var(--fg3);margin-top:3px;font-family:var(--f-mono)}
+.field.err input,.field.err select,.field.err textarea{border-color:var(--err)}
+.field.warn input,.field.warn select{border-color:#8a7433}
+.check{display:flex;gap:7px;align-items:flex-start;font-size:12px;color:var(--fg2)}
+.check input{margin-top:3px}
+.check span small{display:block;color:var(--fg3);font-size:11px}
+.row{display:flex;gap:8px;align-items:center}
+.row.wrap{flex-wrap:wrap}
+.spacer{flex:1}
+.sep{height:1px;background:var(--line);margin:13px -14px}
+.sub-h{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--fg3);margin:0 0 8px}
+
+/* ---------- проблемы ---------- */
+.issues{display:flex;flex-direction:column;gap:6px}
+.issue{display:flex;gap:8px;font-size:12px;line-height:1.4;padding:6px 8px;border-radius:5px;
+  border-left:3px solid var(--line2);background:var(--surf2)}
+.issue.err{border-left-color:var(--err)}
+.issue.warn{border-left-color:var(--warn)}
+.issue.info{border-left-color:var(--info)}
+.issue .lv{font-family:var(--f-mono);font-size:10px;text-transform:uppercase;padding-top:1px;min-width:34px}
+.issue.err .lv{color:var(--err)} .issue.warn .lv{color:var(--warn)} .issue.info .lv{color:var(--info)}
+.issue button{background:none;border:0;color:inherit;text-align:left;padding:0;font:inherit;flex:1}
+.issue button:hover{color:var(--fg)}
+.ok-note{font-size:12px;color:var(--ok);display:flex;gap:6px;align-items:center}
+
+/* ---------- вкладки ---------- */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 10px;background:var(--surf2)}
+.tabs button{border:0;background:none;padding:8px 12px;font-size:12px;color:var(--fg3);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--fg)}
+.tabpane{display:none;padding:12px 14px}
+.tabpane.on{display:block}
+.preview-box{background:#0a0f13;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.preview-box svg,.preview-box canvas{display:block;width:100%;height:auto}
+.preview-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:9px;font-size:12px;color:var(--fg3)}
+.preview-bar input[type=range]{flex:1;min-width:120px;accent-color:var(--fg)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--fg3);margin-top:7px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:2px;margin-right:4px}
+
+/* ---------- таблицы ---------- */
+.tw{overflow:auto;border:1px solid var(--line);border-radius:6px}
+table{border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:tabular-nums}
+th,td{padding:6px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{color:var(--fg3);font-weight:500;text-align:right;background:var(--surf2);position:sticky;top:0}
+th:first-child,td:first-child{text-align:left}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:var(--surf2)}
+td.mono{font-family:var(--f-mono)}
+.tag{font-family:var(--f-mono);font-size:11px;padding:1px 5px;border-radius:4px;border:1px solid var(--line2)}
+.tag.ok{color:var(--ok);border-color:#2f5c41}
+.tag.warn{color:var(--warn);border-color:#6b5a2e}
+.tag.err{color:var(--err);border-color:#7a3d33}
+
+/* ---------- сводка ---------- */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stat{background:var(--surf2);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+.stat .k{font-size:11px;color:var(--fg3)}
+.stat .v{font-family:var(--f-mono);font-size:16px;margin-top:1px}
+.stat .s{font-size:11px;color:var(--fg3);font-family:var(--f-mono)}
+.notes{font-size:12px;color:var(--fg2);line-height:1.55}
+.notes b{color:var(--fg)}
+.notes ul{margin:6px 0 0;padding-left:18px}
+.notes li{margin-bottom:4px}
+
+/* ---------- код ---------- */
+pre.code{margin:0;background:#080c10;border:1px solid var(--line);border-radius:6px;padding:10px 12px;
+  font-family:var(--f-mono);font-size:11.5px;line-height:1.45;max-height:420px;overflow:auto;color:#c8d4de;
+  white-space:pre;tab-size:2}
+pre.code .c{color:#5f7383}
+pre.code .m{color:#d9a05b}
+pre.code .g{color:#7fb2e5}
+.audit{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:10px}
+.audit .stat .v{font-size:13px}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--line2);border-top-color:var(--fg);
+  border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <h1 data-i18n="title">Матрица MVS</h1>
+    <div class="sub" data-i18n="subtitle">Генератор G-code · температура × объёмная скорость</div>
+  </div>
+  <div class="top-actions">
+    <div class="seg" id="langSeg" role="group" aria-label="Язык">
+      <button type="button" data-lang="ru" aria-pressed="true">RU</button>
+      <button type="button" data-lang="en" aria-pressed="false">EN</button>
+    </div>
+    <button class="btn" id="btnReset" type="button" data-i18n="reset">Сбросить</button>
+  </div>
+</header>
+
+<div class="strip" id="strip"></div>
+
+<main class="layout">
+
+  <!-- ЛЕВАЯ КОЛОНКА: параметры -->
+  <div class="col" id="colParams">
+
+    <section class="card" data-block="printer">
+      <div class="hd"><span class="n">1</span><h2 data-i18n="b1">Принтер</h2><span class="chev">▾</span></div>
+      <div class="bd">
+        <div class="fields">
+          <div class="field wide"><label for="preset" data-i18n="fPreset">Пресет</label>
+            <select id="preset"></select><div class="hint" id="presetHint"></div></div>
+          <div class="field"><label for="flavor" data-i18n="fFlavor">Диалект команд</label>
+            <select id="flavor">
+              <option value="bambu">Bambu Lab</option>
+              <option value="marlin">Marlin</option>
+              <option value="klipper">Klipper</option>
+            </select></div>
+          <div class="field"><label for="nozzle" data-i18n="fNozzle">Сопло, мм</label>
+            <input id="nozzle" type="number" min="0.2" max="1.2" step="0.05" value="0.4"></div>
+          <div class="field"><label for="bedX" data-i18n="fBedX">Стол X, мм</label>
+            <input id="bedX" type="number" min="80" max="600" step="1" value="180"></div>
+          <div class="field"><label for="bedY" data-i18n="fBedY">Стол Y, мм</label>
+            <input id="bedY" type="number" min="80" max="600" step="1" value="180"></div>
+          <div class="field"><label for="bedH" data-i18n="fBedH">Высота Z, мм</label>
+            <input id="bedH" type="number" min="50" max="600" step="1" value="180"></div>
+          <div class="field"><label for="vTool" data-i18n="fVTool">Предел скорости, мм/с</label>
+            <input id="vTool" type="number" min="50" max="1500" step="10" value="500"></div>
+          <div class="field"><label for="aMax" data-i18n="fAMax">Предел ускорения, мм/с²</label>
+            <input id="aMax" type="number" min="200" max="40000" step="100" value="10000"></div>
+          <div class="field"><label for="qHot" data-i18n="fQHot">Потолок хотэнда, мм³/с</label>
+            <input id="qHot" type="number" min="2" max="80" step="0.5" value="28"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" data-block="material">
+      <div class="hd"><span class="n">2</span><h2 data-i18n="b2">Материал</h2><span class="chev">▾</span></div>
+      <div class="bd">
+        <div class="fields">
+          <div class="field"><label for="fd" data-i18n="fFd">Диаметр прутка, мм</label>
+            <input id="fd" type="number" min="1.6" max="3" step="0.01" value="1.75"></div>
+          <div class="field"><label for="rho" data-i18n="fRho">Плотность, г/см³</label>
+            <input id="rho" type="number" min="0.8" max="2.2" step="0.01" value="1.24"></div>
+          <div class="field"><label for="fr" data-i18n="fFr">Flow Ratio</label>
+            <input id="fr" type="number" min="0.7" max="1.3" step="0.01" value="1"></div>
+          <div class="field"><label for="price" data-i18n="fPrice">Цена, ₽/кг</label>
+            <input id="price" type="number" min="0" max="20000" step="50" value="2000"></div>
+          <div class="field"><label for="bedT" data-i18n="fBedT">Стол, °C</label>
+            <input id="bedT" type="number" min="0" max="120" step="5" value="60"></div>
+          <div class="field"><label for="fan" data-i18n="fFan">Обдув, %</label>
+            <input id="fan" type="number" min="0" max="100" step="5" value="30"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" data-block="plan">
+      <div class="hd"><span class="n">3</span><h2 data-i18n="b3">План факторов</h2><span class="chev">▾</span></div>
+      <div class="bd">
+        <div class="fields">
+          <div class="field wide"><label for="vsList" data-i18n="fVsList">Ряд объёмной скорости, мм³/с</label>
+            <input id="vsList" type="text" value="5, 8, 11, 14, 17, 20">
+            <div class="hint" id="vsHint"></div></div>
+          <div class="field"><label for="tStart" data-i18n="fTStart">Температура от, °C</label>
+            <input id="tStart" type="number" min="120" max="350" step="1" value="190"></div>
+          <div class="field"><label for="tEnd" data-i18n="fTEnd">Температура до, °C</label>
+            <input id="tEnd" type="number" min="120" max="350" step="1" value="220"></div>
+          <div class="field"><label for="tStep" data-i18n="fTStep">Шаг температуры, °C</label>
+            <input id="tStep" type="number" min="1" max="50" step="1" value="10"></div>
+          <div class="field"><label for="band" data-i18n="fBand">Высота зоны, мм</label>
+            <input id="band" type="number" min="0.4" max="60" step="0.2" value="10">
+            <div class="hint" id="bandHint"></div></div>
+          <div class="field"><label for="cols" data-i18n="fCols">Ячеек в ряду</label>
+            <input id="cols" type="number" min="1" max="12" step="1" value="6">
+            <div class="hint" id="colsHint"></div></div>
+          <div class="field"><label for="pitch" data-i18n="fPitch">Шаг между центрами, мм</label>
+            <input id="pitch" type="number" min="10" max="120" step="0.5" value="28">
+            <div class="hint" id="pitchHint"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" data-block="cell">
+      <div class="hd"><span class="n">4</span><h2 data-i18n="b4">Ячейка</h2><span class="chev">▾</span></div>
+      <div class="bd">
+        <div class="fields">
+          <div class="field"><label for="diameter" data-i18n="fDiameter">Диаметр, мм</label>
+            <input id="diameter" type="number" min="12" max="80" step="1" value="25"></div>
+          <div class="field"><label for="lw" data-i18n="fLw">Ширина линии, мм</label>
+            <input id="lw" type="number" min="0.3" max="1.2" step="0.01" value="0.48"></div>
+          <div class="field"><label for="lh" data-i18n="fLh">Высота слоя, мм</label>
+            <input id="lh" type="number" min="0.06" max="0.4" step="0.01" value="0.2"></div>
+          <div class="field"><label for="gap" data-i18n="fGap">Зазор дорожек, мм</label>
+            <input id="gap" type="number" min="0.05" max="3" step="0.02" value="0.72">
+            <div class="hint" id="gapHint"></div></div>
+          <div class="field"><label for="rminMode" data-i18n="fRminMode">Внутренний радиус</label>
+            <select id="rminMode"><option value="auto">auto</option><option value="manual">manual</option></select></div>
+          <div class="field"><label for="rminVal" data-i18n="fRminVal">r_min, мм</label>
+            <input id="rminVal" type="number" min="0.5" max="30" step="0.01" value="5.42"></div>
+          <div class="field"><label for="turnsMode" data-i18n="fTurnsMode">Витков на ветвь</label>
+            <select id="turnsMode"><option value="auto">auto</option><option value="manual">manual</option></select></div>
+          <div class="field"><label for="turnsVal" data-i18n="fTurnsVal">Витки</label>
+            <input id="turnsVal" type="number" min="0.5" max="40" step="0.1" value="5.1"></div>
+          <div class="field"><label for="startAngleMode" data-i18n="fStartAngleMode">Угол старта</label>
+            <select id="startAngleMode"><option value="auto">auto</option><option value="manual">manual</option></select>
+            <div class="hint" id="startAngleHint"></div></div>
+          <div class="field"><label for="startAngle" data-i18n="fStartAngle">Угол, °</label>
+            <input id="startAngle" type="number" min="0" max="360" step="0.5" value="208.8"></div>
+          <div class="field"><label for="linkAmp" data-i18n="fLinkAmp">Амплитуда перехода, мм</label>
+            <input id="linkAmp" type="number" min="0" max="8" step="0.05" value="0">
+            <div class="hint" id="linkAmpHint"></div></div>
+          <div class="field"><label for="quality" data-i18n="fQuality">Плотность, мм</label>
+            <input id="quality" type="number" min="0.3" max="3" step="0.1" value="1.2">
+            <div class="hint" id="qualityHint"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" data-block="trans">
+      <div class="hd"><span class="n">5</span><h2 data-i18n="b5">Переходы и адгезия</h2><span class="chev">▾</span></div>
+      <div class="bd">
+        <p class="sub-h" data-i18n="sBrim">Brim</p>
+        <div class="fields">
+          <div class="field"><label>&nbsp;</label>
+            <label class="check"><input id="brimOn" type="checkbox" checked><span><span data-i18n="fBrimOn">Включить brim</span><small data-i18n="hBrimOn">общий контур вокруг всех ячеек</small></span></label></div>
+          <div class="field"><label for="brimLoops" data-i18n="fBrimLoops">Витков</label>
+            <input id="brimLoops" type="number" min="1" max="12" step="1" value="3"></div>
+          <div class="field"><label for="brimLayers" data-i18n="fBrimLayers">Слоёв</label>
+            <input id="brimLayers" type="number" min="1" max="6" step="1" value="1"></div>
+          <div class="field"><label for="brimGap" data-i18n="fBrimGap">Зазор от стенки, мм</label>
+            <input id="brimGap" type="number" min="0" max="3" step="0.05" value="0.3"></div>
+        </div>
+        <div class="sep"></div>
+        <p class="sub-h" data-i18n="sTrans">Переходы</p>
+        <div class="fields">
+          <div class="field"><label>&nbsp;</label>
+            <label class="check"><input id="beadOn" type="checkbox"><span><span data-i18n="fBeadOn">Метка границы зон</span><small data-i18n="hBeadOn">полка на первом слое зоны</small></span></label></div>
+          <div class="field"><label for="beadSize" data-i18n="fBeadSize">Вынос полки, мм</label>
+            <input id="beadSize" type="number" min="0.1" max="2" step="0.05" value="0.6"></div>
+          <div class="field"><label for="dwell" data-i18n="fDwell">Выдержка на смене T, с</label>
+            <input id="dwell" type="number" min="0" max="120" step="1" value="5"></div>
+          <div class="field"><label for="parkMode" data-i18n="fParkMode">Точка парковки</label>
+            <select id="parkMode"><option value="auto">auto</option><option value="manual">manual</option></select></div>
+          <div class="field"><label for="parkX" data-i18n="fParkX">Парковка X, мм</label>
+            <input id="parkX" type="number" min="0" max="600" step="1" value="10"></div>
+          <div class="field"><label for="parkY" data-i18n="fParkY">Парковка Y, мм</label>
+            <input id="parkY" type="number" min="0" max="600" step="1" value="10"></div>
+          <div class="field"><label for="retractLen" data-i18n="fRetractLen">Ретракт, мм</label>
+            <input id="retractLen" type="number" min="0" max="4" step="0.1" value="0.8"></div>
+          <div class="field"><label for="retractSpeed" data-i18n="fRetractSpeed">Скорость ретракта, мм/с</label>
+            <input id="retractSpeed" type="number" min="5" max="100" step="5" value="30"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" data-block="extra">
+      <div class="hd"><span class="n">6</span><h2 data-i18n="b6">Дополнения</h2><span class="chev">▾</span></div>
+      <div class="bd">
+        <div class="fields one">
+          <div class="field"><label for="prologue" data-i18n="fPrologue">Дополнить пролог</label>
+            <textarea id="prologue" placeholder="; вставьте свои команды — уйдут как есть"></textarea></div>
+          <div class="field"><label for="epilogue" data-i18n="fEpilogue">Дополнить эпилог</label>
+            <textarea id="epilogue" placeholder="; вставьте свои команды — уйдут как есть"></textarea></div>
+          <div class="field"><label for="fileName" data-i18n="fFileName">Имя файла</label>
+            <input id="fileName" type="text" value="mvs-matrix"></div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ПРАВАЯ КОЛОНКА: проверки, предпросмотр, отчёт, код -->
+  <div class="col" id="colOut">
+
+    <section class="card" data-block="issues">
+      <div class="hd"><span class="n">7</span><h2 data-i18n="b7">Проверки</h2>
+        <div class="hd-right"><button class="btn sm" id="btnRegen" type="button" data-i18n="regen">Пересчитать</button></div></div>
+      <div class="bd"><div class="issues" id="issues"></div></div>
+    </section>
+
+    <section class="card" data-block="preview">
+      <div class="hd"><span class="n">8</span><h2 data-i18n="b8">Предпросмотр</h2></div>
+      <div class="tabs" role="tablist">
+        <button role="tab" aria-selected="true" data-tab="bed" data-i18n="tabBed">Стол</button>
+        <button role="tab" aria-selected="false" data-tab="layer" data-i18n="tabLayer">Слой</button>
+        <button role="tab" aria-selected="false" data-tab="iso" data-i18n="tabIso">3D</button>
+      </div>
+      <div class="tabpane on" data-pane="bed">
+        <div class="preview-box"><svg id="svgBed" viewBox="0 0 460 300" role="img" aria-label="Схема стола"></svg></div>
+        <div class="legend" id="bedLegend"></div>
+      </div>
+      <div class="tabpane" data-pane="layer">
+        <div class="preview-box"><svg id="svgLayer" viewBox="0 0 460 300" role="img" aria-label="Срез слоя"></svg></div>
+        <div class="preview-bar">
+          <span data-i18n="lblLayer">Слой</span>
+          <input type="range" id="layerSlider" min="0" max="10" value="0">
+          <span id="layerInfo" class="mono"></span>
+        </div>
+        <div class="legend">
+          <span><i style="background:var(--fg)"></i><span data-i18n="lgPath">траектория слоя</span></span>
+          <span><i style="background:var(--warn)"></i><span data-i18n="lgLink">переход между цилиндрами</span></span>
+          <span><i style="background:var(--err)"></i><span data-i18n="lgCut">урезано по кривизне</span></span>
+          <span><i style="background:var(--ok)"></i><span data-i18n="lgEnd">конец траектории</span></span>
+        </div>
+      </div>
+      <div class="tabpane" data-pane="iso">
+        <div class="preview-box"><canvas id="cvIso" width="920" height="600"></canvas></div>
+        <div class="preview-bar">
+          <div class="seg" id="isoMode">
+            <button type="button" data-mode="vs" aria-pressed="true" data-i18n="isoVs">карта VS</button>
+            <button type="button" data-mode="t" aria-pressed="false" data-i18n="isoT">карта T</button>
+          </div>
+          <span class="spacer"></span>
+          <span data-i18n="isoHint">потяните мышью, чтобы повернуть</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" data-block="report">
+      <div class="hd"><span class="n">9</span><h2 data-i18n="b9">Отчёт</h2></div>
+      <div class="bd" id="reportBody"></div>
+    </section>
+
+    <section class="card" data-block="code">
+      <div class="hd"><span class="n">10</span><h2 data-i18n="b10">G-code</h2>
+        <div class="hd-right">
+          <button class="btn sm" id="btnCopy" type="button" data-i18n="copy" disabled>Копировать</button>
+          <button class="btn sm solid" id="btnDownload" type="button" data-i18n="download" disabled>Скачать</button>
+        </div></div>
+      <div class="bd">
+        <div class="row wrap" style="margin-bottom:10px">
+          <button class="btn solid" id="btnBuild" type="button" data-i18n="build">Сформировать G-code</button>
+          <span id="buildStatus" style="font-size:12px;color:var(--fg3)"></span>
+        </div>
+        <div class="audit" id="auditBox"></div>
+        <pre class="code" id="codeBox"></pre>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script>
+/* ============ ЯДРО ============ */
+
+const PRESETS = {
+  a1mini: { name: 'Bambu Lab A1 mini', flavor: 'bambu', bedX: 180, bedY: 180, bedH: 180, vTool: 500, aMax: 10000, qHot: 28, nozzle: 0.4 },
+  a1: { name: 'Bambu Lab A1', flavor: 'bambu', bedX: 256, bedY: 256, bedH: 256, vTool: 500, aMax: 10000, qHot: 28, nozzle: 0.4 },
+  p1p: { name: 'Bambu Lab P1P', flavor: 'bambu', bedX: 256, bedY: 256, bedH: 256, vTool: 500, aMax: 20000, qHot: 32, nozzle: 0.4 },
+  p1s: { name: 'Bambu Lab P1S', flavor: 'bambu', bedX: 256, bedY: 256, bedH: 256, vTool: 500, aMax: 20000, qHot: 32, nozzle: 0.4 },
+  x1c: { name: 'Bambu Lab X1-Carbon', flavor: 'bambu', bedX: 256, bedY: 256, bedH: 256, vTool: 500, aMax: 20000, qHot: 32, nozzle: 0.4 },
+  custom: { name: 'Пользовательский / Custom', flavor: 'marlin', bedX: 220, bedY: 220, bedH: 250, vTool: 300, aMax: 5000, qHot: 20, nozzle: 0.4 }
+};
+
+const FLAVORS = {
+  bambu: {
+    home: 'G28 ; home all',
+    bedSet: (t) => `M140 S${t}`,
+    bedWait: (t) => `M190 S${t}`,
+    nozzleSet: (t) => `M104 S${t}`,
+    nozzleWait: (t) => `M109 S${t}`,
+    fan: (p) => `M106 P1 S${Math.round(p * 2.55)}`,
+    accel: (a) => `M204 S${Math.round(a)}`,
+    dwell: (s) => `G4 S${Math.round(s)}`,
+    wait: 'M400',
+    end: 'M400\nM104 S0\nM140 S0\nM106 P1 S0\nG28 X Y ; home XY'
+  },
+  marlin: {
+    home: 'G28 ; home all',
+    bedSet: (t) => `M140 S${t}`,
+    bedWait: (t) => `M190 S${t}`,
+    nozzleSet: (t) => `M104 S${t}`,
+    nozzleWait: (t) => `M109 S${t}`,
+    fan: (p) => `M106 S${Math.round(p * 2.55)}`,
+    accel: (a) => `M204 S${Math.round(a)}`,
+    dwell: (s) => `G4 S${Math.round(s)}`,
+    wait: 'M400',
+    end: 'M400\nM104 S0\nM140 S0\nM106 S0\nG28 X Y ; home XY'
+  },
+  klipper: {
+    home: 'G28 ; home all',
+    bedSet: (t) => `M140 S${t}`,
+    bedWait: (t) => `M190 S${t}`,
+    nozzleSet: (t) => `M104 S${t}`,
+    nozzleWait: (t) => `M109 S${t}`,
+    fan: (p) => `M106 S${Math.round(p * 2.55)}`,
+    accel: (a) => `SET_VELOCITY_LIMIT ACCEL=${Math.round(a)}`,
+    dwell: (s) => `G4 S${Math.round(s)}`,
+    wait: 'M400',
+    end: 'M400\nM104 S0\nM140 S0\nM106 S0\nG28 X Y ; home XY'
+  }
+};
+
+const I18N = {
+  ru: {
+    title: 'Матрица MVS',
+    subtitle: 'Генератор G-code · температура × объёмная скорость',
+    reset: 'Сбросить', regen: 'Пересчитать', build: 'Сформировать G-code',
+    copy: 'Копировать', download: 'Скачать .gcode', copied: 'Скопировано в буфер',
+    building: 'Генерация...', done: 'G-code готов', errGen: 'Исправьте ошибки перед генерацией',
+    b1: 'Принтер', b2: 'Материал', b3: 'План факторов', b4: 'Ячейка',
+    b5: 'Переходы и адгезия', b6: 'Дополнения', b7: 'Проверки',
+    b8: 'Предпросмотр', b9: 'Отчёт', b10: 'G-code',
+    fPreset: 'Пресет', fFlavor: 'Диалект команд', fNozzle: 'Сопло, мм',
+    fBedX: 'Стол X, мм', fBedY: 'Стол Y, мм', fBedH: 'Высота Z, мм',
+    fVTool: 'Предел скорости, мм/с', fAMax: 'Предел ускорения, мм/с²', fQHot: 'Потолок хотэнда, мм³/с',
+    fFd: 'Диаметр прутка, мм', fRho: 'Плотность, г/см³', fFr: 'Flow Ratio', fPrice: 'Цена, ₽/кг',
+    fBedT: 'Стол, °C', fFan: 'Обдув, %',
+    fVsList: 'Ряд объёмной скорости, мм³/с', fTStart: 'Температура от, °C', fTEnd: 'Температура до, °C',
+    fTStep: 'Шаг температуры, °C', fBand: 'Высота зоны, мм', fCols: 'Ячеек в ряду', fPitch: 'Шаг между центрами, мм',
+    fDiameter: 'Диаметр, мм', fLw: 'Ширина линии, мм', fLh: 'Высота слоя, мм', fGap: 'Зазор дорожек, мм',
+    fRminMode: 'Внутренний радиус', fRminVal: 'r_min, мм', fTurnsMode: 'Витков на ветвь', fTurnsVal: 'Витки',
+    fStartAngle: 'Угол старта, °', fStartAngleMode: 'Угол старта спирали', fLinkAmp: 'Амплитуда перехода, мм', fQuality: 'Плотность точек, мм',
+    sBrim: 'Brim (кайма)', fBrimOn: 'Включить brim', hBrimOn: 'общий контур вокруг всех ячеек',
+    fBrimLoops: 'Витков', fBrimLayers: 'Слоёв', fBrimGap: 'Зазор от стенки, мм',
+    sTrans: 'Переходы', fBeadOn: 'Метка границы зон', hBeadOn: 'полка на первом слое зоны',
+    fBeadSize: 'Вынос полки, мм', fDwell: 'Выдержка на смене T, с',
+    fParkMode: 'Точка парковки', fParkX: 'Парковка X, мм', fParkY: 'Парковка Y, мм',
+    fRetractLen: 'Ретракт, мм', fRetractSpeed: 'Скорость ретракта, мм/с',
+    fPrologue: 'Дополнить пролог', fEpilogue: 'Дополнить эпилог', fFileName: 'Имя файла',
+    tabBed: 'Стол', tabLayer: 'Слой', tabIso: '3D',
+    lblLayer: 'Слой',     lgPath: 'траектория слоя', lgLink: 'переход между цилиндрами', lgCut: 'срез F по кривизне', lgEnd: 'конец траектории',
+    isoVs: 'карта VS', isoT: 'карта T', isoHint: 'потяните мышью для вращения',
+    thCell: 'Ячейка', thVs: 'VS, мм³/с', thV: 'v, мм/с', thF: 'F, мм/мин',
+    thLen: 'Путь/слой', thTimeL: 'Время слоя', thTimeT: 'Время зоны', thFil: 'Пластик',
+    thCut: 'Срез по a', thStatus: 'Статус',
+    kpiDim: 'Габариты X×Y', kpiHeight: 'Высота', kpiMass: 'Масса', kpiTime: 'Время',
+    kpiLayers: 'Слоёв', kpiCost: 'Стоимость', kpiLines: 'Строк G-code',
+    issuesTitle: 'Проверки валидности', noIssues: 'Ошибок геометрии и лимитов не обнаружено'
+  },
+  en: {
+    title: 'MVS Matrix',
+    subtitle: 'G-code Generator · Temperature × Volumetric Speed',
+    reset: 'Reset', regen: 'Recalculate', build: 'Build G-code',
+    copy: 'Copy', download: 'Download .gcode', copied: 'Copied to clipboard',
+    building: 'Generating...', done: 'G-code ready', errGen: 'Fix errors before generation',
+    b1: 'Printer', b2: 'Material', b3: 'Factor Plan', b4: 'Cell Geometry',
+    b5: 'Transitions & Adhesion', b6: 'Additions', b7: 'Validation Checks',
+    b8: 'Preview', b9: 'Report', b10: 'G-code',
+    fPreset: 'Preset', fFlavor: 'Flavor', fNozzle: 'Nozzle, mm',
+    fBedX: 'Bed X, mm', fBedY: 'Bed Y, mm', fBedH: 'Bed Z, mm',
+    fVTool: 'Speed Limit, mm/s', fAMax: 'Accel Limit, mm/s²', fQHot: 'Hotend Max, mm³/s',
+    fFd: 'Filament Dia, mm', fRho: 'Density, g/cm³', fFr: 'Flow Ratio', fPrice: 'Price, $/kg',
+    fBedT: 'Bed, °C', fFan: 'Fan, %',
+    fVsList: 'Volumetric Speed Series, mm³/s', fTStart: 'Temp From, °C', fTEnd: 'Temp To, °C',
+    fTStep: 'Temp Step, °C', fBand: 'Band Height, mm', fCols: 'Cells in row', fPitch: 'Pitch, mm',
+    fDiameter: 'Diameter, mm', fLw: 'Line Width, mm', fLh: 'Layer Height, mm', fGap: 'Track Gap, mm',
+    fRminMode: 'Inner Radius', fRminVal: 'r_min, mm', fTurnsMode: 'Turns per branch', fTurnsVal: 'Turns',
+    fStartAngle: 'Start Angle, °', fStartAngleMode: 'Spiral start angle', fLinkAmp: 'Transition Amplitude, mm', fQuality: 'Point chord, mm',
+    sBrim: 'Brim', fBrimOn: 'Enable brim', hBrimOn: 'continuous brim around all cells',
+    fBrimLoops: 'Loops', fBrimLayers: 'Layers', fBrimGap: 'Gap to wall, mm',
+    sTrans: 'Transitions', fBeadOn: 'Zone boundary mark', hBeadOn: 'step on zone entry layer',
+    fBeadSize: 'Step size, mm', fDwell: 'Dwell on temp change, s',
+    fParkMode: 'Park position', fParkX: 'Park X, mm', fParkY: 'Park Y, mm',
+    fRetractLen: 'Retract, mm', fRetractSpeed: 'Retract Speed, mm/s',
+    fPrologue: 'Prepend start gcode', fEpilogue: 'Append end gcode', fFileName: 'File name',
+    tabBed: 'Bed', tabLayer: 'Layer', tabIso: '3D',
+    lblLayer: 'Layer',     lgPath: 'layer path', lgLink: 'transition between cylinders', lgCut: 'F capped by accel', lgEnd: 'path end',
+    isoVs: 'VS map', isoT: 'T map', isoHint: 'drag mouse to rotate',
+    thCell: 'Cell', thVs: 'VS, mm³/s', thV: 'v, mm/s', thF: 'F, mm/min',
+    thLen: 'Path/layer', thTimeL: 'Layer time', thTimeT: 'Zone time', thFil: 'Plastic',
+    thCut: 'Accel cap', thStatus: 'Status',
+    kpiDim: 'Dimensions X×Y', kpiHeight: 'Height', kpiMass: 'Mass', kpiTime: 'Time',
+    kpiLayers: 'Layers', kpiCost: 'Cost', kpiLines: 'G-code lines',
+    issuesTitle: 'Validation checks', noIssues: 'No errors or limit breaches found'
+  }
+};
+
+function defaults() {
+  return {
+    preset: 'a1mini', flavor: 'bambu',
+    bedX: 180, bedY: 180, bedH: 180,
+    vTool: 500, aMax: 10000, qHot: 28, nozzle: 0.4,
+    fd: 1.75, rho: 1.24, fr: 1.0, price: 2000, bedT: 60, fan: 30,
+    vsList: '5, 8, 11, 14, 17, 20',
+    tStart: 190, tEnd: 220, tStep: 10, band: 10, cols: 6, pitch: 28,
+    diameter: 25, lw: 0.48, lh: 0.20, gap: 0.72,
+    rminMode: 'auto', rminVal: 5.42, turnsMode: 'auto', turnsVal: 2.85,
+    startAngleMode: 'auto', startAngle: 208.8, quality: 1.2, linkAmp: 0,
+    brimOn: true, brimLoops: 3, brimLayers: 1, brimGap: 0.3,
+    beadOn: false, beadSize: 0.6, dwell: 5,
+    parkMode: 'auto', parkX: 10, parkY: 10,
+    retractLen: 0.8, retractSpeed: 30,
+    prologue: '', epilogue: '', fileName: 'mvs-matrix'
+  };
+}
+
+function parseVsList(str) {
+  if (Array.isArray(str)) return str.map(Number).filter(x => Number.isFinite(x) && x > 0);
+  return String(str || '').split(/[,;\s]+/).map(x => parseFloat(x.trim())).filter(x => Number.isFinite(x) && x > 0);
+}
+
+function parseTemps(p) {
+  const t0 = Math.min(p.tStart, p.tEnd), t1 = Math.max(p.tStart, p.tEnd), step = Math.max(1, p.tStep);
+  const arr = [];
+  for (let t = t0; t <= t1 + 1e-4 && arr.length < 25; t += step) arr.push(Math.round(t));
+  return arr;
+}
+
+function derive(p) {
+  const vs = parseVsList(p.vsList);
+  const ts = parseTemps(p);
+  const cells = vs.length;
+  const cols = Math.max(1, Math.min(cells, Math.round(p.cols || cells)));
+  const rows = Math.ceil(cells / cols);
+  const zones = ts.length;
+
+  const A_line = p.lw * p.lh;
+  const A_fil = Math.PI * (p.fd / 2) ** 2;
+  const R_out = p.diameter / 2 - p.lw / 2;
+  const g = p.lw + p.gap;
+
+  const vMaxPlan = vs.length ? Math.max(...vs) / A_line : 200;
+  const aEff = Math.max(100, p.aMax * 0.8);
+  const rMinAuto = Math.max(g, (vMaxPlan * vMaxPlan) / aEff);
+  const r_min = p.rminMode === 'manual' ? Math.max(g / 2, p.rminVal) : rMinAuto;
+
+  const deltaR = Math.max(0.1, R_out - r_min);
+  const nAuto = deltaR / (2 * g);
+  const n = p.turnsMode === 'manual' ? Math.max(0.2, p.turnsVal) : nAuto;
+
+  const layersPerZone = Math.max(1, Math.round(p.band / p.lh));
+  const totalLayers = layersPerZone * zones;
+  const totalHeight = totalLayers * p.lh;
+
+  const bboxWidth = (cols - 1) * p.pitch + p.diameter;
+  const bboxDepth = (rows - 1) * p.pitch + p.diameter;
+  const centerX = p.bedX / 2;
+  const centerY = p.bedY / 2;
+  const minX = centerX - bboxWidth / 2;
+  const maxX = centerX + bboxWidth / 2;
+  const minY = centerY - bboxDepth / 2;
+  const maxY = centerY + bboxDepth / 2;
+
+  // Центры ячеек: ряд по X, шаг p.pitch
+  const cellCenters = [];
+  for (let i = 0; i < cells; i++) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    cellCenters.push({
+      cx: minX + p.diameter / 2 + col * p.pitch,
+      cy: minY + p.diameter / 2 + row * p.pitch,
+      vs: vs[i]
+    });
+  }
+
+  // Угол старта спирали. Вход ячейки и её выход лежат на противоположных
+  // сторонах цилиндра. Чтобы переход между цилиндрами был прямой отрезок —
+  // внутренняя общая касательная двух окружностей радиуса R_out, — угол
+  // выбирается из условия касания: cos(phi) = 2*R_out / pitch.
+  const th0Auto = autoStartAngle(p, R_out);
+  const th0Manual = (p.startAngle || 0) * Math.PI / 180;
+  const th0 = p.startAngleMode === 'manual' ? th0Manual : th0Auto;
+  return {
+    vs, ts, cells, cols, rows, zones,
+    A_line, A_fil, R_out, g,
+    v_max: vMaxPlan, a_eff: aEff, r_min, n,
+    layersPerZone, totalLayers, totalHeight,
+    cellCenters, th0, th0Auto,
+    gapX: p.pitch - p.diameter,          // зазор между соседними цилиндрами, мм
+    bbox: { width: bboxWidth, depth: bboxDepth, minX, maxX, minY, maxY, centerX, centerY }
+  };
+}
+
+/* ============ ГЕОМЕТРИЯ ТРАЕКТОРИИ ============ */
+
+// Радиус кривизны по трём соседним точкам (радиус описанной окружности).
+function curvatureRadius(pts, i) {
+  if (i <= 0 || i >= pts.length - 1) return Infinity;
+  const a = pts[i - 1], b = pts[i], c = pts[i + 1];
+  const ab = Math.hypot(b.x - a.x, b.y - a.y);
+  const bc = Math.hypot(c.x - b.x, c.y - b.y);
+  const ca = Math.hypot(a.x - c.x, a.y - c.y);
+  if (ab < 1e-9 || bc < 1e-9 || ca < 1e-9) return Infinity;
+  const s = (ab + bc + ca) / 2;
+  const area = Math.sqrt(Math.max(0, s * (s - ab) * (s - bc) * (s - ca)));
+  if (area < 1e-9) return Infinity;
+  return (ab * bc * ca) / (4 * area);
+}
+
+// Угол входа спирали: внутренняя общая касательная двух окружностей
+// радиуса R_out с шагом pitch. Для слоя-метки радиус больше — угол считается
+// заново, иначе переход перестаёт быть касательной.
+function autoStartAngle(p, R_out) {
+  const ratio = Math.min(1, (2 * R_out) / Math.max(1e-6, p.pitch));
+  return (180 + Math.acos(ratio) * 180 / Math.PI) * Math.PI / 180;
+}
+
+// Двухзаходная лабиринтная спираль ячейки в локальных координатах (центр в 0,0).
+// Ветвь A: снаружи внутрь (угол растёт). Разворот в центре — полуокружность
+// радиуса g/2, радиус при этом уменьшается на g, угол не меняется.
+// Ветвь B: из центра наружу по соседнему каналу (угол убывает), ветви идут
+// параллельно со смещением ровно на g.
+// Замыкающая дуга: продолжение ветви B наружу на пол-оборота — внешняя
+// цилиндрическая граница ячейки.
+// Итог: вход и выход ячейки лежат на противоположных сторонах, касательные
+// в обеих точках совпадают по направлению — это делает стык с переходом
+// гладким, без излома.
+function spiralCell(p, d, opts) {
+  const o = opts || {};
+  const R_out = o.bead ? (d.R_out + (p.beadSize || 0.6)) : d.R_out;
+  const r_min = Math.max(d.r_min, d.g * 0.75);
+  const g = d.g;
+  const n = d.n;
+  const th0 = p.startAngleMode === 'manual'
+    ? (p.startAngle || 0) * Math.PI / 180
+    : autoStartAngle(p, R_out);
+  const total = 2 * Math.PI * n;
+  const chord = Math.max(0.3, Math.min(3.0, p.quality || 1.2));
+
+  const steps = Math.max(24, Math.round(total * ((R_out + r_min) / 2) / chord));
+  const turnSteps = Math.max(16, Math.round(Math.PI * (g / 2) / (chord * 0.35)));
+  const closeSteps = Math.max(24, Math.round(Math.PI * ((R_out + (R_out - g)) / 2) / chord));
+
+  const pts = [];
+
+  // Ветвь A: от внешнего радиуса к центру, угол растёт.
+  for (let i = 0; i <= steps; i++) {
+    const u = i / steps;
+    const th = th0 + total * u;
+    const r = R_out - (R_out - r_min) * u;
+    pts.push({ x: r * Math.cos(th), y: r * Math.sin(th), seg: 'branchA' });
+  }
+
+  // Разворот в центре: полуокружность радиуса g/2, центр окружности на
+  // радиусе (r_min - g/2) под углом конца ветви A.
+  const thEnd = th0 + total;
+  const dirX = Math.cos(thEnd), dirY = Math.sin(thEnd);
+  const cX = (r_min - g / 2) * dirX, cY = (r_min - g / 2) * dirY;
+  for (let i = 1; i <= turnSteps; i++) {
+    const phi = Math.PI * i / turnSteps;
+    const cs = Math.cos(phi), sn = Math.sin(phi);
+    pts.push({
+      x: cX + (g / 2) * (cs * dirX - sn * dirY),
+      y: cY + (g / 2) * (cs * dirY + sn * dirX),
+      seg: 'turn'
+    });
+  }
+
+  // Ветвь B: из центра наружу по соседнему каналу, угол убывает.
+  // Начало совпадает с концом разворота, поэтому стартовая точка пропускается.
+  for (let i = 1; i <= steps; i++) {
+    const u = i / steps;
+    const th = thEnd - total * u;
+    const r = (r_min - g) + (R_out - r_min) * u;
+    pts.push({ x: r * Math.cos(th), y: r * Math.sin(th), seg: 'branchB' });
+  }
+
+  // Замыкающая дуга: продолжение ветви B наружу на пол-оборота.
+  const rBend = R_out - g;
+  for (let i = 1; i <= closeSteps; i++) {
+    const u = i / closeSteps;
+    const th = th0 - Math.PI * u;
+    const r = rBend + g * u;
+    pts.push({ x: r * Math.cos(th), y: r * Math.sin(th), seg: 'close' });
+  }
+
+  return pts;
+}
+
+// Переход между ячейками: гладкая S-кривая в зазоре между цилиндрами.
+// Конец и начало совпадают с точками спиралей, касательные берутся из
+// фактической геометрии, поэтому стык непрерывен и по положению, и по
+// направлению. Амплитуда отклонения от хорды задаётся параметром linkAmp.
+function linkPath(endPt, endDir, startPt, startDir, amp, chord) {
+  const dx = startPt.x - endPt.x, dy = startPt.y - endPt.y;
+  const len = Math.hypot(dx, dy) || 1e-6;
+  const ux = dx / len, uy = dy / len;                 // единичный вектор хорды
+  const px = -uy, py = ux;                            // нормаль к хорде
+
+  const bez = (h) => {
+    const c1x = endPt.x + endDir.x * h, c1y = endPt.y + endDir.y * h;
+    const c2x = startPt.x - startDir.x * h, c2y = startPt.y - startDir.y * h;
+    const steps = Math.max(8, Math.ceil(len / Math.max(0.2, (chord || 1.2) * 0.6)));
+    const out = [];
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps, mt = 1 - t;
+      const b0 = mt * mt * mt, b1 = 3 * mt * mt * t, b2 = 3 * mt * t * t, b3 = t * t * t;
+      const x = b0 * endPt.x + b1 * c1x + b2 * c2x + b3 * startPt.x;
+      const y = b0 * endPt.y + b1 * c1y + b2 * c2y + b3 * startPt.y;
+      out.push({ x, y });
+    }
+    return out;
+  };
+
+  // Переход по прямой: равномерное деление хорды (Безье с нулевыми ручками
+  // даёт неравномерный шаг и «залипание» в начале).
+  const straight = () => {
+    const steps = Math.max(8, Math.ceil(len / Math.max(0.2, (chord || 1.2) * 0.6)));
+    const out = [];
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      out.push({ x: endPt.x + dx * t, y: endPt.y + dy * t });
+    }
+    return out;
+  };
+
+  // Калибровка ручки под требуемую амплитуду отклонения от хорды.
+  // amp = 0 — переход идёт по прямой хорде; при автоматическом угле старта
+  // хорда совпадает с внутренней общей касательной двух цилиндров, и переход
+  // получается прямым и гладким.
+  const deviation = (pts) => {
+    let m = 0;
+    for (const q of pts) {
+      const t = Math.max(0, Math.min(1, ((q.x - endPt.x) * ux + (q.y - endPt.y) * uy) / len));
+      const cx = endPt.x + ux * len * t, cy = endPt.y + uy * len * t;
+      m = Math.max(m, Math.hypot(q.x - cx, q.y - cy));
+    }
+    return m;
+  };
+
+  let h = 0;
+  let raw;
+  if (amp > 0.01) {
+    h = Math.max(len * 0.35, 0.5);
+    const dev = deviation(bez(h));
+    if (dev > 1e-6) h *= (amp / dev);
+    raw = bez(h);
+  } else {
+    raw = straight();
+  }
+
+  // Точки внутренние (без дублирования концов) + амплитуда для отчёта.
+  const pts = raw.slice(1, -1).map(q => ({ x: q.x, y: q.y, seg: 'link' }));
+  return { pts, amp: deviation(raw), length: len };
+}
+
+// Полная цепочка слоя: все ячейки и переходы одной непрерывной линией.
+// Каждая точка несёт номер ячейки (-1 для перехода), тип участка и VS.
+// flip = true — змейка: ячейки идут в обратном порядке, геометрия ячейки
+// отражается по X, поэтому конец слоя совпадает с началом следующего.
+function chainPath(p, d, opts) {
+  const o = opts || {};
+  const amp = Math.max(0, p.linkAmp ?? 0);
+  const chord = Math.max(0.3, Math.min(3.0, p.quality || 1.2));
+  const out = [];
+  const links = [];
+
+  const order = [];
+  for (let i = 0; i < d.cells; i++) order.push(o.flip ? d.cells - 1 - i : i);
+
+  // Локальные спирали ячеек. В змейке ячейка проходится в обратном порядке,
+  // поэтому её точки берутся с конца: конец слоя тогда совпадает с началом
+  // следующего и перемещения между слоями не нужны.
+  const locals = [];
+  for (let i = 0; i < d.cells; i++) {
+    const raw = spiralCell(p, d, o);
+    locals.push(o.flip ? raw.slice().reverse() : raw);
+  }
+
+  for (let oi = 0; oi < order.length; oi++) {
+    const i = order[oi];
+    const local = locals[i];
+    const c = d.cellCenters[i];
+    for (const pt of local) {
+      out.push({ x: c.cx + pt.x, y: c.cy + pt.y, cell: i, seg: pt.seg, vs: d.vs[i] });
+    }
+    if (oi < order.length - 1) {
+      const j = order[oi + 1];
+      const nextLocal = locals[j];
+      const nc = d.cellCenters[j];
+
+      const endIdx = out.length - 1;
+      const endPt = out[endIdx];
+      const prevPt = out[endIdx - 1];
+      const endDir = unit(endPt.x - prevPt.x, endPt.y - prevPt.y);
+      const startPt = { x: nc.cx + nextLocal[0].x, y: nc.cy + nextLocal[0].y };
+      const startDir = unit(nextLocal[1].x - nextLocal[0].x, nextLocal[1].y - nextLocal[0].y);
+      const link = linkPath(endPt, endDir, startPt, startDir, amp, chord);
+
+      // VS рампа по длине перехода: от значения текущей ячейки к следующей.
+      // Нормировка по фактической длине полилинии перехода, чтобы на его конце
+      // объёмная скорость точно равнялась значению следующего цилиндра.
+      const vsA = d.vs[i], vsB = d.vs[j];
+      const cum = [];
+      let acc = 0;
+      let prev = endPt;
+      for (const q of link.pts) {
+        acc += Math.hypot(q.x - prev.x, q.y - prev.y);
+        cum.push(acc);
+        prev = q;
+      }
+      const tot = cum.length ? cum[cum.length - 1] : 1e-9;
+      link.pts.forEach((q, k) => {
+        const u = Math.max(0, Math.min(1, cum[k] / (tot || 1e-9)));
+        out.push({ x: q.x, y: q.y, cell: -1, seg: 'link', toCell: j, vs: vsA + (vsB - vsA) * u });
+      });
+      links.push({ from: i, to: j, length: link.length, amp: link.amp });
+    }
+  }
+
+  return { pts: out, links, order };
+}
+
+// Длина цепочки по точкам.
+function chainLength(pts) {
+  let s = 0;
+  for (let i = 1; i < pts.length; i++) {
+    s += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+  }
+  return s;
+}
+
+function unit(x, y) {
+  const l = Math.hypot(x, y);
+  if (l < 1e-9) return { x: 0, y: 0 };
+  return { x: x / l, y: y / l };
+}
+
+// Подача по каждой точке: номинал по VS, ограничение по ускорению и кривизне.
+function pathFeeds(p, d, pts) {
+  const res = [];
+  for (let i = 0; i < pts.length; i++) {
+    const vs = pts[i].vs || d.vs[0];
+    const vNom = vs / d.A_line;
+    const R = curvatureRadius(pts, i);
+    const vCap = R > 1e-6 ? Math.sqrt(d.a_eff * R) : 0;
+    const v = Math.min(vNom, vCap);
+    res.push({ F: v * 60, v, capped: v < vNom * 0.98, R });
+  }
+  return res;
+}
+
+// Замеры: длина траектории по ячейкам и по переходам (измерительная область).
+function measureChain(p, d, chain) {
+  const pts = chain.pts;
+  const cells = d.vs.map(v => ({ vs: v, len: 0, lenIn: 0 }));
+  const links = [];
+  let curLink = null;
+
+  for (let i = 1; i < pts.length; i++) {
+    const seg = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+    const c = pts[i].cell;
+    const cPrev = pts[i - 1].cell;
+    if (c >= 0 && c === cPrev) {
+      curLink = null;
+      cells[c].len += seg;
+      // измерительная область — внутри диска цилиндра
+      const ctr = d.cellCenters[c];
+      const rad = Math.hypot(pts[i].x - ctr.cx, pts[i].y - ctr.cy);
+      if (rad <= (p.diameter / 2) + 1e-6) cells[c].lenIn += seg;
+    } else {
+      const target = c >= 0 ? c : (pts[i].toCell ?? (curLink ? curLink.to : -1));
+      if (!curLink || curLink.to !== target) {
+        curLink = { to: target, len: 0 };
+        links.push(curLink);
+      }
+      curLink.len += seg;
+    }
+  }
+  return { cells, links, total: cells.reduce((s, c) => s + c.len, 0) + links.reduce((s, l) => s + l.len, 0) };
+}
+
+// Локальная траектория одной ячейки (прежнее имя cellPath).
+function cellPath(p, cellIndex, isBeadLayer = false) {
+  const d = derive(p);
+  return spiralCell(p, d, { bead: isBeadLayer });
+}
+
+// Подача по списку точек при постоянном VS (прежнее имя layerFeed).
+function layerFeed(p, pts, Q) {
+  const d = derive(p);
+  const tagged = pts.map(q => ({ x: q.x, y: q.y, vs: Q }));
+  return pathFeeds(p, d, tagged);
+}
+
+/* ============ ПРОВЕРКИ ГЕОМЕТРИИ ТРАЕКТОРИИ ============ */
+
+// Математическая проверка цепочки: непрерывность, самопересечения,
+// минимальное расстояние между несмежными дорожками, круглость ячеек.
+function checkChain(p, d, chain) {
+  const out = [];
+  const pts = chain.pts;
+  const n = pts.length;
+
+  // 1. Непрерывность: конец одного участка совпадает с началом следующего.
+  let maxJump = 0, jumpAt = -1;
+  for (let i = 1; i < n; i++) {
+    const dseg = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+    if (dseg > maxJump) { maxJump = dseg; jumpAt = i; }
+  }
+  const chord = Math.max(0.3, Math.min(3.0, p.quality || 1.2));
+  if (maxJump > chord * 2) {
+    out.push({ level: 'error', field: 'quality', code: 'gap-continuity', msg: `Разрыв траектории ${maxJump.toFixed(2)} мм в точке ${jumpAt} — линия не непрерывна` });
+  }
+
+  // 2. Касательная в стыках: угол излома между соседними участками.
+  let maxTurn = 0, turnAt = -1;
+  for (let i = 1; i < n - 1; i++) {
+    const l1 = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+    const l2 = Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y);
+    if (l1 < 1e-9 || l2 < 1e-9) continue;              // повторяющиеся точки
+    const v1 = unit(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+    const v2 = unit(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y);
+    const ang = Math.acos(Math.max(-1, Math.min(1, v1.x * v2.x + v1.y * v2.y)));
+    if (ang > maxTurn) { maxTurn = ang; turnAt = i; }
+  }
+  const turnDeg = maxTurn * 180 / Math.PI;
+  if (turnDeg > 25) {
+    out.push({ level: 'error', field: 'quality', code: 'kink', msg: `Излом ${turnDeg.toFixed(1)}° в точке ${turnAt} — стык не гладкий` });
+  }
+
+  // 3. Самопересечения и минимальное расстояние между несмежными дорожками.
+  //    Поиск по равномерной сетке: точки раскладываются в ячейки с шагом lw.
+  const cell = Math.max(0.2, p.lw);
+  const grid = new Map();
+  const key = (ix, iy) => ix + ',' + iy;
+  for (let i = 0; i < n; i++) {
+    const ix = Math.floor(pts[i].x / cell), iy = Math.floor(pts[i].y / cell);
+    const k = key(ix, iy);
+    if (!grid.has(k)) grid.set(k, []);
+    grid.get(k).push(i);
+  }
+  const seen = new Set();
+  let minDist = Infinity, minAt = -1;
+  let cross = null;
+  const near = (i, j) => {
+    const dx = pts[i].x - pts[j].x, dy = pts[i].y - pts[j].y;
+    return dx * dx + dy * dy;
+  };
+  for (const bucket of grid.values()) {
+    for (const i of bucket) {
+      const ix = Math.floor(pts[i].x / cell), iy = Math.floor(pts[i].y / cell);
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          const other = grid.get(key(ix + dx, iy + dy));
+          if (!other) continue;
+          for (const j of other) {
+            if (j <= i) continue;
+            const gap = Math.abs(j - i);
+            if (gap < 3) continue;                       // соседние точки — одна дорожка
+            // Разворот в центре — намеренный hairpin: две дорожки там сходят
+            // в одну точку, близость заложена конструкцией.
+            if (pts[i].seg === 'turn' || pts[j].seg === 'turn') continue;
+            const kk = i * 100000 + j;
+            if (seen.has(kk)) continue;
+            seen.add(kk);
+            const dist = Math.sqrt(near(i, j));
+            if (dist < minDist) { minDist = dist; minAt = i; }
+            if (dist < 1e-7 && !cross) cross = { i, j };
+          }
+        }
+      }
+    }
+  }
+  if (cross) {
+    out.push({ level: 'error', field: 'quality', code: 'self-intersection', msg: `Самопересечение траектории в точке ${cross.i}` });
+  }
+  if (minDist < p.lw * 0.9) {
+    out.push({ level: 'error', field: 'gap', code: 'min-distance', msg: `Минимальное расстояние между дорожками ${minDist.toFixed(2)} мм < ширины линии ${p.lw.toFixed(2)} мм (точка ${minAt})` });
+  }
+
+  // 4. Круглость ячеек: внешний контур держит радиус цилиндра.
+  for (let c = 0; c < d.cells; c++) {
+    const ctr = d.cellCenters[c];
+    let rMax = 0;
+    for (const q of pts) {
+      if (q.cell !== c) continue;
+      rMax = Math.max(rMax, Math.hypot(q.x - ctr.cx, q.y - ctr.cy));
+    }
+    const R = p.diameter / 2;
+    if (rMax > R + 1e-6 || rMax < R - d.g - 1e-6) {
+      out.push({ level: 'warn', field: 'diameter', code: 'roundness', msg: `Ячейка ${c + 1}: внешний радиус ${rMax.toFixed(2)} мм отличается от ${R.toFixed(2)} мм` });
+    }
+  }
+
+  // 5. Переходы вне измерительной области цилиндров (по радиусу траектории).
+  //    По одному сообщению на переход, а не на каждую точку.
+  const linkRuns = new Map();
+  for (const q of pts) {
+    if (q.cell >= 0) continue;
+    const key = q.toCell ?? -1;
+    if (!linkRuns.has(key)) linkRuns.set(key, { to: key, minR: Infinity, at: null });
+    const run = linkRuns.get(key);
+    for (let c = 0; c < d.cells; c++) {
+      const ctr = d.cellCenters[c];
+      const r = Math.hypot(q.x - ctr.cx, q.y - ctr.cy);
+      if (r < run.minR) { run.minR = r; run.at = c + 1; }
+    }
+  }
+  for (const run of linkRuns.values()) {
+    if (run.minR < d.R_out - 1e-6) {
+      out.push({ level: 'error', field: 'linkAmp', code: 'link-in-cell', msg: `Переход к ячейке ${run.to + 1} заходит внутрь цилиндра ${run.at} (r = ${run.minR.toFixed(2)} мм < ${d.R_out.toFixed(2)} мм)` });
+    }
+  }
+
+  return {
+    issues: out,
+    stats: {
+      points: n,
+      maxJump,
+      maxTurnDeg: turnDeg,
+      minDist: minDist === Infinity ? null : minDist,
+      linkLen: chain.links.map(l => l.length)
+    }
+  };
+}
+
+function validate(p) {
+  const errs = [];
+  const d = derive(p);
+
+  if (d.bbox.minX < 2 || d.bbox.maxX > p.bedX - 2) {
+    errs.push({ level: 'error', field: 'cols', code: 'bed-x', msg: `Габарит по X (${d.bbox.width.toFixed(1)} мм) выходит за стол ${p.bedX} мм` });
+  }
+  if (d.bbox.minY < 2 || d.bbox.maxY > p.bedY - 2) {
+    errs.push({ level: 'error', field: 'cols', code: 'bed-y', msg: `Габарит по Y (${d.bbox.depth.toFixed(1)} мм) выходит за стол ${p.bedY} мм` });
+  }
+  if (d.totalHeight > p.bedH) {
+    errs.push({ level: 'error', field: 'bedH', code: 'bed-h', msg: `Высота модели ${d.totalHeight.toFixed(1)} мм превышает лимит Z ${p.bedH} мм` });
+  }
+  if (d.cells > 1 && p.pitch < p.diameter + p.gap) {
+    errs.push({ level: 'error', field: 'pitch', code: 'pitch', msg: `Шаг ячеек ${p.pitch} мм меньше диаметра с зазором (${(p.diameter + p.gap).toFixed(1)} мм)` });
+  }
+  if (p.gap < 0.1) {
+    errs.push({ level: 'error', field: 'gap', code: 'gap', msg: `Зазор дорожек ${p.gap} мм слишком мал, дорожки сольются` });
+  }
+  if (d.r_min <= d.g / 2) {
+    errs.push({ level: 'error', field: 'rminVal', code: 'rmin', msg: `Внутренний радиус ${d.r_min.toFixed(2)} мм меньше радиуса разворота ${(d.g / 2).toFixed(2)} мм` });
+  }
+  if (d.n < 0.5) {
+    errs.push({ level: 'error', field: 'diameter', code: 'turns', msg: `Недостаточно места для спирали (витков ${d.n.toFixed(2)} < 0.5)` });
+  }
+  if (d.v_max > p.vTool) {
+    errs.push({ level: 'error', field: 'vTool', code: 'v-tool', msg: `Требуемая скорость ${d.v_max.toFixed(1)} мм/с превышает предел принтера ${p.vTool} мм/с` });
+  }
+
+  // Предупреждения
+  const qMax = Math.max(...d.vs);
+  if (qMax > p.qHot) {
+    errs.push({ level: 'warn', field: 'qHot', code: 'q-hot', msg: `Максимальный VS (${qMax} мм³/с) выше паспортного потолка хотэнда (${p.qHot} мм³/с)` });
+  }
+  const tMax = Math.max(...d.ts);
+  if (tMax > 280) {
+    errs.push({ level: 'warn', field: 'tEnd', code: 't-cap', msg: `Температура ${tMax} °C близка к пределу термистора/хотэнда` });
+  }
+  if (Math.abs(p.band % p.lh) > 1e-4) {
+    errs.push({ level: 'info', field: 'band', code: 'band', msg: `Высота зоны ${p.band} мм округлена до ${(d.layersPerZone * p.lh).toFixed(2)} мм (кратна шагу Z)` });
+  }
+  const qMin = Math.min(...d.vs);
+  const tRes = 25 / qMin; // при объеме расплава ~25 мм3
+  if (tRes > 8) {
+    errs.push({ level: 'info', field: 'vsList', code: 'res-time', msg: `На VS ${qMin} мм³/с время пребывания в сопле ~${tRes.toFixed(1)} с — возможна деградация при долгих паузах` });
+  }
+  if (p.beadOn && p.gap < 0.8) {
+    errs.push({ level: 'warn', field: 'beadOn', code: 'bead', msg: `Метка границы включена, но зазор ${p.gap} мм мал: соседние полки могут сблизиться` });
+  }
+
+  // Угол старта спирали. В режиме auto он вычисляется как угол общей
+  // касательной двух соседних цилиндров — тогда переход прямой и гладкий.
+  // Ручное значение ломает касание и добавляет излом в стык.
+  if (p.startAngleMode === 'manual') {
+    const thAuto = d.th0Auto * 180 / Math.PI;
+    const diff = Math.abs((((p.startAngle || 0) - thAuto) % 360 + 540) % 360 - 180);
+    if (diff > 1) {
+      errs.push({ level: 'warn', field: 'startAngle', code: 'start-angle', msg: `Ручной угол ${(p.startAngle || 0).toFixed(1)}° отличается от расчётного ${thAuto.toFixed(1)}° — переход перестанет быть касательной, в стыке появится излом` });
+    }
+  }
+
+  // Зазор между цилиндрами должен вмещать переход.
+  const gapLink = d.gapX - (p.beadOn ? 2 * (p.beadSize || 0.6) : 0);
+  if (d.cells > 1 && gapLink < 1.0) {
+    errs.push({ level: 'error', field: 'pitch', code: 'link-gap', msg: `Зазор между цилиндрами ${gapLink.toFixed(1)} мм слишком мал для перехода — увеличьте шаг или уменьшите диаметр` });
+  }
+  if (d.cells > 1 && gapLink > 0.5 && (p.linkAmp ?? 0) > gapLink * 0.9) {
+    errs.push({ level: 'warn', field: 'linkAmp', code: 'link-amp', msg: `Амплитуда перехода ${(p.linkAmp ?? 0).toFixed(1)} мм близка к зазору ${gapLink.toFixed(1)} мм` });
+  }
+
+  return errs;
+}
+
+function compose(p) {
+  const d = derive(p);
+  const flv = FLAVORS[p.flavor] || FLAVORS.bambu;
+  const issues = validate(p);
+  const hasErrors = issues.some(x => x.level === 'error');
+
+  const cellCenters = d.cellCenters;
+
+  let out = `; =========================================================\n`;
+  out += `; MVS MATRIX G-CODE GENERATOR v2.0\n`;
+  out += `; Profile: ${PRESETS[p.preset]?.name || 'Custom'} (${p.flavor})\n`;
+  out += `; Cells: ${d.cells}, VS: [${d.vs.join(', ')}] mm3/s\n`;
+  out += `; Temperatures: [${d.ts.join(', ')}] C, Band: ${p.band} mm\n`;
+  out += `; Total Height: ${d.totalHeight.toFixed(2)} mm, Total Layers: ${d.totalLayers}\n`;
+  out += `; Layer Height: ${p.lh} mm, Line Width: ${p.lw} mm\n`;
+  out += `; Filament Dia: ${p.fd} mm, Density: ${p.rho} g/cm3\n`;
+  out += `; Trajectory: one continuous extrusion per layer (cells + transitions)\n`;
+  out += `; =========================================================\n\n`;
+
+  // Start G-code
+  out += `; --- START PROLOGUE ---\n`;
+  out += `G90 ; absolute coordinates\n`;
+  out += `M83 ; relative extrusion mode\n`;
+  out += `${flv.home}\n`;
+  out += `${flv.bedWait(p.bedT)}\n`;
+  out += `${flv.nozzleSet(d.ts[0])}\n`;
+  out += `${flv.nozzleWait(d.ts[0])}\n`;
+  out += `${flv.fan(p.fan)}\n`;
+  out += `${flv.accel(p.aMax)}\n`;
+  out += `G92 E0\n`;
+
+  if (p.prologue && p.prologue.trim()) {
+    out += `\n; --- USER PROLOGUE ---\n${p.prologue.trim()}\n; --- END USER PROLOGUE ---\n`;
+  }
+
+  // Brim (если включен)
+  if (p.brimOn) {
+    out += `\n; --- BRIM ---\n`;
+    const loops = Math.max(1, Math.min(8, p.brimLoops || 3));
+    const bLayers = Math.max(1, Math.min(3, p.brimLayers || 1));
+    const bGap = Math.max(0, p.brimGap || 0.3);
+    for (let bl = 0; bl < bLayers; bl++) {
+      const zBrim = (bl + 1) * p.lh;
+      for (let loop = 0; loop < loops; loop++) {
+        const offset = bGap + loop * p.lw;
+        for (let ci = 0; ci < cellCenters.length; ci++) {
+          const { cx, cy } = cellCenters[ci];
+          const rad = p.diameter / 2 + offset;
+          const steps = 36;
+          out += `G0 X${(cx + rad).toFixed(3)} Y${cy.toFixed(3)} Z${zBrim.toFixed(3)} F3600\n`;
+          for (let s = 1; s <= steps; s++) {
+            const th = (s / steps) * 2 * Math.PI;
+            const px = cx + rad * Math.cos(th);
+            const py = cy + rad * Math.sin(th);
+            const dist = 2 * Math.PI * rad / steps;
+            const e = dist * d.A_line / d.A_fil;
+            out += `G1 X${px.toFixed(3)} Y${py.toFixed(3)} E${e.toFixed(5)} F1800\n`;
+          }
+        }
+      }
+    }
+  }
+
+  // Основная печать: по температурным зонам, затем по слоям.
+  // Внутри слоя вся траектория — одна непрерывная экструзия: ячейки и
+  // переходы между ними, без ретрактов и без холостых перемещений.
+  let parkX = p.parkX, parkY = p.parkY;
+  if (p.parkMode === 'auto') {
+    parkX = Math.max(5, d.bbox.minX - 20);
+    parkY = Math.max(5, d.bbox.minY - 20);
+  }
+
+  // Траектория слоя зависит только от направления обхода и признака метки,
+  // поэтому варианты считаются один раз и переиспользуются по слоям.
+  const chainVariants = new Map();
+  const layerChain = (bead, flip) => {
+    const key = (bead ? 'b' : 'n') + (flip ? 'f' : 'l');
+    let ch = chainVariants.get(key);
+    if (!ch) {
+      ch = chainPath(p, d, { bead, flip });
+      chainVariants.set(key, ch);
+    }
+    return ch;
+  };
+
+  for (let zi = 0; zi < d.zones; zi++) {
+    const targetT = d.ts[zi];
+    out += `\n; =========================================================\n`;
+    out += `; ZONE ${zi + 1}/${d.zones}: TARGET TEMPERATURE ${targetT} C\n`;
+    out += `; =========================================================\n`;
+
+    if (zi > 0) {
+      out += `; Transition: park and wait for temp stabilization\n`;
+      out += `G1 E-${p.retractLen.toFixed(2)} F${p.retractSpeed * 60}\n`;
+      out += `G0 Z${((zi * d.layersPerZone + 1) * p.lh + 2.0).toFixed(3)} F1200\n`;
+      out += `G0 X${parkX.toFixed(3)} Y${parkY.toFixed(3)} F6000\n`;
+      out += `${flv.nozzleSet(targetT)}\n`;
+      out += `${flv.nozzleWait(targetT)}\n`;
+      if (p.dwell > 0) out += `${flv.dwell(p.dwell)}\n`;
+    }
+
+    for (let li = 0; li < d.layersPerZone; li++) {
+      const globalLayer = zi * d.layersPerZone + li;
+      const zCur = (globalLayer + 1) * p.lh;
+      const isBead = p.beadOn && li === 0 && zi > 0;
+      // Змейка: на нечётных слоях ячейки проходятся в обратном порядке и в
+      // обратном направлении, поэтому конец слоя попадает в начало следующего —
+      // между слоями нет холостых перемещений.
+      const flip = globalLayer % 2 === 1;
+      const chain = layerChain(isBead, flip);
+      const pts = chain.pts;
+      const feeds = pathFeeds(p, d, pts);
+      const lenLayer = chainLength(pts);
+
+      out += `\n; LAYER ${globalLayer + 1}: Z=${zCur.toFixed(3)} mm, ${pts.length} точек, длина ${lenLayer.toFixed(1)} мм${flip ? ', обход справа налево' : ', обход слева направо'}${isBead ? ' (BEAD)' : ''}\n`;
+
+      // Подвод к началу слоя. Первый слой и первый слой новой зоны требуют
+      // позиционирования по XY; между слоями одной зоны точки совпадают.
+      const x0 = pts[0].x, y0 = pts[0].y;
+      if (globalLayer === 0) {
+        out += `G0 Z${(zCur + 0.4).toFixed(3)} F1200\n`;
+        out += `G0 X${x0.toFixed(3)} Y${y0.toFixed(3)} F6000\n`;
+        out += `G0 Z${zCur.toFixed(3)} F1200\n`;
+      } else if (li === 0 && zi > 0) {
+        out += `G0 X${x0.toFixed(3)} Y${y0.toFixed(3)} F6000\n`;
+        out += `G0 Z${zCur.toFixed(3)} F1200\n`;
+        out += `G1 E${p.retractLen.toFixed(2)} F${p.retractSpeed * 60}\n`;
+      } else {
+        out += `G0 Z${zCur.toFixed(3)} F1200\n`;
+      }
+
+      // Непрерывная экструзия слоя
+      let lastCell = null;
+      for (let j = 1; j < pts.length; j++) {
+        const cur = pts[j];
+        const prev = pts[j - 1];
+        if (cur.cell !== lastCell) {
+          lastCell = cur.cell;
+          if (cur.cell >= 0) {
+            out += `; CELL ${cur.cell + 1}: VS ${d.vs[cur.cell]} mm3/s\n`;
+          } else {
+            out += `; LINK -> CELL ${cur.toCell + 1}: VS ${d.vs[cur.toCell]} mm3/s (переход)\n`;
+          }
+        }
+        const dist = Math.hypot(cur.x - prev.x, cur.y - prev.y);
+        const e = dist * d.A_line / d.A_fil;
+        const feed = Math.max(1, Math.round(feeds[j].F));
+        out += `G1 X${cur.x.toFixed(3)} Y${cur.y.toFixed(3)} E${e.toFixed(5)} F${feed}\n`;
+      }
+      // Конец слоя: без ретракта — следующая зона сама сделает ретракт при смене T
+    }
+  }
+
+  // End G-code
+  out += `\n; --- END EPILOGUE ---\n`;
+  out += `${flv.end}\n`;
+  if (p.epilogue && p.epilogue.trim()) {
+    out += `\n; --- USER EPILOGUE ---\n${p.epilogue.trim()}\n; --- END USER EPILOGUE ---\n`;
+  }
+
+  return { gcode: out, report: d, issues };
+}
+
+function audit(gcode, p) {
+  const d = derive(p);
+  const mismatches = [];
+
+  let sumE = 0;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  let maxZ = 0, maxF = 0;
+  const zSet = new Set();
+  let hasG28 = false, hasM190 = false, hasM109 = false;
+
+  const lines = gcode.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i].trim();
+    if (!l || l.startsWith(';')) continue;
+
+    if (l.startsWith('G28')) hasG28 = true;
+    if (l.startsWith('M190')) hasM190 = true;
+    if (l.startsWith('M109')) hasM109 = true;
+
+    const eMatch = l.match(/\bE([0-9.-]+)/);
+    if (eMatch) sumE += parseFloat(eMatch[1]);
+
+    const xMatch = l.match(/\bX([0-9.-]+)/);
+    if (xMatch) {
+      const x = parseFloat(xMatch[1]);
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+    }
+
+    const yMatch = l.match(/\bY([0-9.-]+)/);
+    if (yMatch) {
+      const y = parseFloat(yMatch[1]);
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+
+    const zMatch = l.match(/\bZ([0-9.-]+)/);
+    if (zMatch) {
+      const z = parseFloat(zMatch[1]);
+      zSet.add(z.toFixed(3));
+      if (z > maxZ) maxZ = z;
+    }
+
+    const fMatch = l.match(/\bF([0-9.]+)/);
+    if (fMatch) {
+      const f = parseFloat(fMatch[1]);
+      if (f > maxF) maxF = f;
+    }
+  }
+
+  if (!hasG28) mismatches.push('Отсутствует хоуминг G28');
+  if (!hasM190) mismatches.push('Отсутствует прогрев стола M190');
+  if (!hasM109) mismatches.push('Отсутствует стабилизация температуры сопла M109');
+
+  if (maxX > p.bedX || minX < 0) mismatches.push(`Координаты X выходят за стол: [${minX.toFixed(1)} .. ${maxX.toFixed(1)}]`);
+  if (maxY > p.bedY || minY < 0) mismatches.push(`Координаты Y выходят за стол: [${minY.toFixed(1)} .. ${maxY.toFixed(1)}]`);
+
+  return {
+    E: sumE,
+    layers: zSet.size,
+    zTop: maxZ,
+    maxF,
+    bbox: { minX, maxX, minY, maxY },
+    mismatches
+  };
+}
+
+if (typeof module !== 'undefined') {
+  module.exports = {
+    PRESETS, FLAVORS, I18N, defaults, derive,
+    spiralCell, linkPath, chainPath, chainLength, pathFeeds, measureChain, checkChain,
+    cellPath, layerFeed, validate, compose, audit
+  };
+}
+
+/* ============ ИНТЕРФЕЙС ============ */
+
+(function() {
+  if (typeof window === 'undefined') return;
+
+  const STORAGE_KEY = 'mvs.matrix.v1';
+  let curLang = 'ru';
+  let curParams = defaults();
+  let generatedGcode = '';
+  let isDirty = false;
+
+  const $ = (sel) => (typeof sel === 'string' && (sel.startsWith('#') || sel.startsWith('.') || sel.startsWith('[') || sel.includes(' ')))
+    ? document.querySelector(sel)
+    : document.getElementById(sel);
+  const $$ = (sel) => document.querySelectorAll(sel);
+
+  // Кэш цепочек: траектория пересчитывается при каждом изменении параметров,
+  // а нужна сразу в нескольких местах (проверки, отчёт, превью).
+  const chainCache = new Map();
+  function getChain(d, opts) {
+    const key = JSON.stringify([curParams, opts || {}]);
+    let ch = chainCache.get(key);
+    if (!ch) {
+      ch = chainPath(curParams, d, opts || {});
+      chainCache.set(key, ch);
+      if (chainCache.size > 12) chainCache.delete(chainCache.keys().next().value);
+    }
+    return ch;
+  }
+  function clearChainCache() { chainCache.clear(); }
+
+  // Инициализация пресетов
+  function initPresets() {
+    const sel = $('preset');
+    sel.innerHTML = '';
+    for (const [key, obj] of Object.entries(PRESETS)) {
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = obj.name;
+      sel.appendChild(opt);
+    }
+  }
+
+  // Локализация страницы
+  function setLang(lang) {
+    curLang = lang;
+    $$('#langSeg button').forEach(b => {
+      b.setAttribute('aria-pressed', b.dataset.lang === lang ? 'true' : 'false');
+    });
+    const dict = I18N[lang] || I18N.ru;
+    $$('[data-i18n]').forEach(el => {
+      const k = el.dataset.i18n;
+      if (dict[k]) el.textContent = dict[k];
+    });
+    renderReport();
+    renderIssues();
+  }
+
+  // Чтение полей формы в объект
+  function readForm() {
+    return {
+      preset: $('preset').value,
+      flavor: $('flavor').value,
+      nozzle: +$('nozzle').value || 0.4,
+      bedX: +$('bedX').value || 180,
+      bedY: +$('bedY').value || 180,
+      bedH: +$('bedH').value || 180,
+      vTool: +$('vTool').value || 500,
+      aMax: +$('aMax').value || 10000,
+      qHot: +$('qHot').value || 28,
+      fd: +$('fd').value || 1.75,
+      rho: +$('rho').value || 1.24,
+      fr: +$('fr').value || 1.0,
+      price: +$('price').value || 2000,
+      bedT: +$('bedT').value || 60,
+      fan: +$('fan').value || 30,
+      vsList: $('vsList').value,
+      tStart: +$('tStart').value || 190,
+      tEnd: +$('tEnd').value || 220,
+      tStep: +$('tStep').value || 10,
+      band: +$('band').value || 10,
+      cols: +$('cols').value || 6,
+      pitch: +$('pitch').value || 28,
+      diameter: +$('diameter').value || 25,
+      lw: +$('lw').value || 0.48,
+      lh: +$('lh').value || 0.20,
+      gap: +$('gap').value || 0.72,
+      rminMode: $('rminMode').value,
+      rminVal: +$('rminVal').value || 5.42,
+      turnsMode: $('turnsMode').value,
+      turnsVal: +$('turnsVal').value || 2.85,
+      startAngleMode: $('startAngleMode').value,
+      startAngle: +$('startAngle').value || 208.8,
+      linkAmp: +$('linkAmp').value || 0,
+      quality: +$('quality').value || 1.2,
+      brimOn: $('brimOn').checked,
+      brimLoops: +$('brimLoops').value || 3,
+      brimLayers: +$('brimLayers').value || 1,
+      brimGap: +$('brimGap').value || 0.3,
+      beadOn: $('beadOn').checked,
+      beadSize: +$('beadSize').value || 0.6,
+      dwell: +$('dwell').value || 5,
+      parkMode: $('parkMode').value,
+      parkX: +$('parkX').value || 10,
+      parkY: +$('parkY').value || 10,
+      retractLen: +$('retractLen').value || 0.8,
+      retractSpeed: +$('retractSpeed').value || 30,
+      prologue: $('prologue').value,
+      epilogue: $('epilogue').value,
+      fileName: $('fileName').value || 'mvs-matrix'
+    };
+  }
+
+  // Запись объекта в форму
+  function writeForm(p) {
+    $('preset').value = p.preset || 'a1mini';
+    $('flavor').value = p.flavor || 'bambu';
+    $('nozzle').value = p.nozzle ?? 0.4;
+    $('bedX').value = p.bedX ?? 180;
+    $('bedY').value = p.bedY ?? 180;
+    $('bedH').value = p.bedH ?? 180;
+    $('vTool').value = p.vTool ?? 500;
+    $('aMax').value = p.aMax ?? 10000;
+    $('qHot').value = p.qHot ?? 28;
+    $('fd').value = p.fd ?? 1.75;
+    $('rho').value = p.rho ?? 1.24;
+    $('fr').value = p.fr ?? 1.0;
+    $('price').value = p.price ?? 2000;
+    $('bedT').value = p.bedT ?? 60;
+    $('fan').value = p.fan ?? 30;
+    $('vsList').value = p.vsList ?? '5, 8, 11, 14, 17, 20';
+    $('tStart').value = p.tStart ?? 190;
+    $('tEnd').value = p.tEnd ?? 220;
+    $('tStep').value = p.tStep ?? 10;
+    $('band').value = p.band ?? 10;
+    $('cols').value = p.cols ?? 6;
+    $('pitch').value = p.pitch ?? 28;
+    $('diameter').value = p.diameter ?? 25;
+    $('lw').value = p.lw ?? 0.48;
+    $('lh').value = p.lh ?? 0.20;
+    $('gap').value = p.gap ?? 0.72;
+    $('rminMode').value = p.rminMode || 'auto';
+    $('rminVal').value = p.rminVal ?? 5.42;
+    $('turnsMode').value = p.turnsMode || 'auto';
+    $('turnsVal').value = p.turnsVal ?? 2.85;
+    $('startAngleMode').value = p.startAngleMode || 'auto';
+    $('startAngle').value = p.startAngle ?? 208.8;
+    $('linkAmp').value = p.linkAmp ?? 0;
+    $('quality').value = p.quality ?? 1.2;
+    $('brimOn').checked = Boolean(p.brimOn);
+    $('brimLoops').value = p.brimLoops ?? 3;
+    $('brimLayers').value = p.brimLayers ?? 1;
+    $('brimGap').value = p.brimGap ?? 0.3;
+    $('beadOn').checked = Boolean(p.beadOn);
+    $('beadSize').value = p.beadSize ?? 0.6;
+    $('dwell').value = p.dwell ?? 5;
+    $('parkMode').value = p.parkMode || 'auto';
+    $('parkX').value = p.parkX ?? 10;
+    $('parkY').value = p.parkY ?? 10;
+    $('retractLen').value = p.retractLen ?? 0.8;
+    $('retractSpeed').value = p.retractSpeed ?? 30;
+    $('prologue').value = p.prologue || '';
+    $('epilogue').value = p.epilogue || '';
+    $('fileName').value = p.fileName || 'mvs-matrix';
+  }
+
+  // Обновление состояния и подсказок
+  function updateUI() {
+    curParams = readForm();
+    const d = derive(curParams);
+
+    // Автоматические вычисления в подсказках
+    $('rminVal').disabled = curParams.rminMode === 'auto';
+    if (curParams.rminMode === 'auto') $('rminVal').value = d.r_min.toFixed(2);
+
+    $('turnsVal').disabled = curParams.turnsMode === 'auto';
+    if (curParams.turnsMode === 'auto') $('turnsVal').value = d.n.toFixed(2);
+
+    $('parkX').disabled = curParams.parkMode === 'auto';
+    $('parkY').disabled = curParams.parkMode === 'auto';
+
+    $('gapHint').textContent = `g = ${(curParams.lw + curParams.gap).toFixed(2)} мм`;
+    $('pitchHint').textContent = `min: ${(curParams.diameter + curParams.gap).toFixed(1)} мм`;
+    $('bandHint').textContent = `${d.layersPerZone} сл. × ${d.zones} зон = ${d.totalLayers} сл.`;
+    $('startAngle').disabled = curParams.startAngleMode === 'auto';
+    $('startAngleHint').textContent = `auto: ${(d.th0Auto * 180 / Math.PI).toFixed(1)}° — общая касательная`;
+    $('linkAmpHint').textContent = `0 = прямая касательная, зазор ${d.gapX.toFixed(1)} мм`;
+
+    renderStrip(d);
+    renderIssues();
+    renderBedPreview(d);
+    renderLayerPreview(d);
+    renderIsoPreview(d);
+    renderReport(d);
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ lang: curLang, params: curParams }));
+    } catch (_) {}
+  }
+
+  // Липкая полоса итогов
+  function renderStrip(d) {
+    const strip = $('strip');
+    const dict = I18N[curLang] || I18N.ru;
+    strip.innerHTML = `
+      <div class="kpi"><span class="k">${dict.kpiDim}:</span><span class="v">${d.bbox.width.toFixed(1)}×${d.bbox.depth.toFixed(1)} мм</span></div>
+      <div class="kpi"><span class="k">${dict.kpiHeight}:</span><span class="v">${d.totalHeight.toFixed(1)} мм</span></div>
+      <div class="kpi"><span class="k">${dict.kpiLayers}:</span><span class="v">${d.totalLayers}</span></div>
+      <div class="kpi"><span class="k">Зон T:</span><span class="v">${d.zones} (${d.ts[0]}–${d.ts[d.ts.length - 1]}°C)</span></div>
+      <div class="badge ${isDirty ? 'dirty' : ''}">${isDirty ? 'Не сохранено' : 'Актуально'}</div>
+    `;
+  }
+
+  // Ошибки и предупреждения
+  function renderIssues() {
+    const box = $('issues');
+    const dict = I18N[curLang] || I18N.ru;
+    const issues = validate(curParams).slice();
+
+    // Математические проверки траектории слоя
+    const d = derive(curParams);
+    let chainStats = null;
+    try {
+      const chk = checkChain(curParams, d, getChain(d, {}));
+      issues.push(...chk.issues);
+      chainStats = chk.stats;
+    } catch (err) {
+      issues.push({ level: 'error', field: 'quality', code: 'chain-fail', msg: `Не удалось построить траекторию: ${err.message}` });
+    }
+
+    // Сброс подсветки полей
+    $$('.field').forEach(f => f.classList.remove('err', 'warn'));
+
+    if (!issues.length) {
+      box.innerHTML = `<div class="ok-note">✓ ${dict.noIssues}</div>`;
+      $('btnBuild').disabled = false;
+      return;
+    }
+
+    let hasErrors = false;
+    let html = '';
+    for (const iss of issues) {
+      if (iss.level === 'error') hasErrors = true;
+      const el = $(iss.field);
+      if (el && el.closest('.field')) {
+        el.closest('.field').classList.add(iss.level === 'error' ? 'err' : 'warn');
+      }
+      html += `
+        <div class="issue ${iss.level}">
+          <span class="lv">${iss.level}</span>
+          <button type="button" data-field="${iss.field}">${iss.msg}</button>
+        </div>
+      `;
+    }
+    box.innerHTML = html;
+    $('btnBuild').disabled = hasErrors;
+
+    if (chainStats) {
+      const st = chainStats;
+      box.innerHTML += `<div class="ok-note" style="margin-top:6px">
+        ✓ траектория: ${st.points} точек, макс. разрыв ${st.maxJump.toFixed(2)} мм, макс. излом ${st.maxTurnDeg.toFixed(1)}°, мин. расстояние ${st.minDist === null ? '—' : st.minDist.toFixed(2) + ' мм'}
+      </div>`;
+    }
+
+    box.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = $(btn.dataset.field);
+        if (target) {
+          target.focus();
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+    });
+  }
+
+  // Предпросмотр 2D: Стол
+  function renderBedPreview(d) {
+    const svg = $('svgBed');
+    const bedX = curParams.bedX, bedY = curParams.bedY;
+    const pad = 20;
+    const vW = 460, vH = 300;
+    const scale = Math.min((vW - 2 * pad) / bedX, (vH - 2 * pad) / bedY);
+    const offX = (vW - bedX * scale) / 2;
+    const offY = (vH - bedY * scale) / 2;
+
+    const colors = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)', 'var(--c6)'];
+    // Ось Y принтера направлена вверх, SVG — вниз: отражаем координату.
+    const sy = (y) => offY + (bedY - y) * scale;
+
+    let out = `<rect x="${offX}" y="${offY}" width="${bedX * scale}" height="${bedY * scale}" fill="#111820" stroke="var(--line2)" stroke-width="1.5" rx="6"/>`;
+
+    // Сетка стола
+    for (let x = 20; x < bedX; x += 20) {
+      out += `<line x1="${offX + x * scale}" y1="${offY}" x2="${offX + x * scale}" y2="${offY + bedY * scale}" stroke="var(--line)" stroke-width="0.5"/>`;
+    }
+    for (let y = 20; y < bedY; y += 20) {
+      out += `<line x1="${offX}" y1="${offY + y * scale}" x2="${offX + bedX * scale}" y2="${offY + y * scale}" stroke="var(--line)" stroke-width="0.5"/>`;
+    }
+
+    // Bbox детали
+    out += `<rect x="${offX + d.bbox.minX * scale}" y="${offY + d.bbox.minY * scale}" width="${d.bbox.width * scale}" height="${d.bbox.depth * scale}" fill="none" stroke="var(--line2)" stroke-dasharray="3 3"/>`;
+
+    // Ячейки
+    for (let i = 0; i < d.cells; i++) {
+      const c = d.cellCenters[i];
+      const colr = colors[i % colors.length];
+
+      out += `<circle cx="${offX + c.cx * scale}" cy="${sy(c.cy)}" r="${(curParams.diameter / 2) * scale}" fill="none" stroke="${colr}" stroke-width="2.5"/>`;
+      out += `<circle cx="${offX + c.cx * scale}" cy="${sy(c.cy)}" r="${(d.r_min) * scale}" fill="none" stroke="${colr}" stroke-dasharray="2 2" stroke-width="1"/>`;
+      out += `<text x="${offX + c.cx * scale}" y="${sy(c.cy + curParams.diameter / 2 + 5)}" fill="var(--fg2)" font-size="10" font-family="var(--f-mono)" text-anchor="middle">VS ${d.vs[i]}</text>`;
+    }
+
+    svg.innerHTML = out;
+  }
+
+  // Предпросмотр 2D: срез слоя — вся цепочка одной линией
+  function renderLayerPreview(d) {
+    const svg = $('svgLayer');
+    const slider = $('layerSlider');
+    slider.max = d.totalLayers;
+    const lIdx = Math.min(d.totalLayers, Math.max(1, +slider.value || 1));
+    const z = (lIdx * curParams.lh).toFixed(2);
+    const zIdx = Math.floor((lIdx - 1) / d.layersPerZone);
+    const t = d.ts[zIdx] || d.ts[0];
+    $('layerInfo').textContent = `№ ${lIdx} / ${d.totalLayers} (Z = ${z} мм, T = ${t} °C)`;
+
+    const isBead = curParams.beadOn && (lIdx - 1) % d.layersPerZone === 0 && zIdx > 0;
+    const flip = (lIdx - 1) % 2 === 1;
+    const chain = getChain(d, { bead: isBead, flip });
+    const pts = chain.pts;
+    const feeds = pathFeeds(curParams, d, pts);
+
+    // Габариты цепочки → viewBox в миллиметрах
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const q of pts) {
+      if (q.x < minX) minX = q.x; if (q.x > maxX) maxX = q.x;
+      if (q.y < minY) minY = q.y; if (q.y > maxY) maxY = q.y;
+    }
+    const pad = Math.max(4, curParams.diameter * 0.12);
+    const vw = Math.max(1, maxX - minX + 2 * pad);
+    const vh = Math.max(1, maxY - minY + 2 * pad);
+    svg.setAttribute('viewBox', `${(minX - pad).toFixed(2)} ${(minY - pad).toFixed(2)} ${vw.toFixed(2)} ${vh.toFixed(2)}`);
+
+    const colors = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)', 'var(--c6)'];
+    // В системе координат принтера Y растёт вверх, в SVG — вниз: отражаем.
+    const fy = (y) => (minY + maxY) - y;
+    const pathOf = (arr) => arr.map((q, i) => `${i ? 'L' : 'M'} ${q.x.toFixed(3)} ${fy(q.y).toFixed(3)}`).join(' ');
+
+    let out = '';
+
+    // Опорные окружности цилиндров
+    for (let i = 0; i < d.cells; i++) {
+      const c = d.cellCenters[i];
+      out += `<circle cx="${c.cx.toFixed(3)}" cy="${fy(c.cy).toFixed(3)}" r="${(curParams.diameter / 2).toFixed(3)}" fill="none" stroke="var(--line2)" stroke-width="1" stroke-dasharray="3 2" vector-effect="non-scaling-stroke"/>`;
+    }
+
+    // Разбивка цепочки на участки: ячейка или переход
+    const runs = [];
+    let cur = null;
+    for (const q of pts) {
+      const key = q.cell >= 0 ? 'c' + q.cell : 'l' + (q.toCell ?? '');
+      if (!cur || cur.key !== key) { cur = { key, cell: q.cell, toCell: q.toCell, pts: [] }; runs.push(cur); }
+      cur.pts.push(q);
+    }
+
+    for (const run of runs) {
+      if (run.pts.length < 2) continue;
+      const stroke = run.cell >= 0 ? colors[run.cell % colors.length] : 'var(--warn)';
+      const width = run.cell >= 0 ? 1.6 : 2.6;
+      out += `<path d="${pathOf(run.pts)}" fill="none" stroke="${stroke}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
+    }
+
+    // Участки со срезом F по кривизне
+    for (let i = 1; i < pts.length; i++) {
+      if (!feeds[i].capped) continue;
+      const a = pts[i - 1], b = pts[i];
+      out += `<line x1="${a.x.toFixed(3)}" y1="${fy(a.y).toFixed(3)}" x2="${b.x.toFixed(3)}" y2="${fy(b.y).toFixed(3)}" stroke="var(--err)" stroke-width="3.2" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
+    }
+
+    // Стрелки направления движения — по равномерной длине пути
+    const arrowEvery = Math.max(14, curParams.diameter * 1.3);
+    let acc = arrowEvery;
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i];
+      const len = Math.hypot(b.x - a.x, b.y - a.y);
+      if (acc + len < arrowEvery) { acc += len; continue; }
+      const t = (arrowEvery - acc) / len;
+      const px = a.x + (b.x - a.x) * t, py = fy(a.y + (b.y - a.y) * t);
+      const ang = Math.atan2(fy(b.y) - fy(a.y), b.x - a.x) * 180 / Math.PI;
+      const s = Math.max(1.2, curParams.diameter * 0.055);
+      out += `<path d="M 0 0 L ${s.toFixed(2)} ${(-s * 0.5).toFixed(2)} L ${s.toFixed(2)} ${(s * 0.5).toFixed(2)} Z" fill="var(--fg)" stroke="none" transform="translate(${px.toFixed(3)} ${py.toFixed(3)}) rotate(${ang.toFixed(1)})" opacity="0.8"/>`;
+      acc = 0;
+    }
+
+    // Начало и конечная точка траектории
+    const st = pts[0], en = pts[pts.length - 1];
+    out += `<circle cx="${st.x.toFixed(3)}" cy="${fy(st.y).toFixed(3)}" r="${(curParams.diameter * 0.04).toFixed(2)}" fill="var(--warn)"/>`;
+    out += `<circle cx="${en.x.toFixed(3)}" cy="${fy(en.y).toFixed(3)}" r="${(curParams.diameter * 0.04).toFixed(2)}" fill="var(--ok)"/>`;
+
+    // Номера ячеек и значения VS
+    for (let i = 0; i < d.cells; i++) {
+      const c = d.cellCenters[i];
+      const fs = Math.max(3, curParams.diameter * 0.115);
+      const halo = `stroke="var(--bg)" stroke-width="${(fs * 0.22).toFixed(2)}" paint-order="stroke" stroke-linejoin="round"`;
+      out += `<text x="${c.cx.toFixed(3)}" y="${fy(c.cy - curParams.diameter * 0.14).toFixed(3)}" fill="var(--fg)" font-size="${fs.toFixed(2)}" font-family="var(--f-mono)" text-anchor="middle" ${halo}>${i + 1}</text>`;
+      out += `<text x="${c.cx.toFixed(3)}" y="${fy(c.cy + curParams.diameter * 0.28).toFixed(3)}" fill="var(--fg2)" font-size="${(fs * 0.78).toFixed(2)}" font-family="var(--f-mono)" text-anchor="middle" ${halo}>VS ${d.vs[i]}</text>`;
+    }
+
+    svg.innerHTML = out;
+  }
+
+  // Предпросмотр 3D: Самописная изометрия
+  let isoRotX = 0.8, isoRotY = 0.6;
+  let isDragging = false, lastMX = 0, lastMY = 0;
+  let isoMode = 'vs';
+
+  function renderIsoPreview(d) {
+    const cv = $('cvIso');
+    const ctx = cv.getContext('2d');
+    const W = cv.width, H = cv.height;
+    ctx.clearRect(0, 0, W, H);
+
+    const cosX = Math.cos(isoRotX), sinX = Math.sin(isoRotX);
+    const cosY = Math.cos(isoRotY), sinY = Math.sin(isoRotY);
+
+    const project = (x, y, z) => {
+      // Центрируем относительно центра стола; ось Y принтера направлена вверх
+      const dx = x - curParams.bedX / 2;
+      const dy = -(y - curParams.bedY / 2);
+      const dz = z;
+      const x1 = dx * cosY - dy * sinY;
+      const y1 = dx * sinY + dy * cosY;
+      const y2 = y1 * cosX - dz * sinX;
+      const z2 = y1 * sinX + dz * cosX;
+      const scl = 2.4;
+      return { px: W / 2 + x1 * scl, py: H / 2 + y2 * scl };
+    };
+
+    // Отрисовка контура стола
+    const b0 = project(0, 0, 0);
+    const b1 = project(curParams.bedX, 0, 0);
+    const b2 = project(curParams.bedX, curParams.bedY, 0);
+    const b3 = project(0, curParams.bedY, 0);
+
+    ctx.strokeStyle = '#26313a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(b0.px, b0.py); ctx.lineTo(b1.px, b1.py);
+    ctx.lineTo(b2.px, b2.py); ctx.lineTo(b3.px, b3.py); ctx.closePath();
+    ctx.stroke();
+
+    // Отрисовка цилиндров (шаг по слоям для скорости)
+    const vsColors = ['#4d8dff', '#33c6bd', '#8bd86f', '#e6d65e', '#f29a48', '#ee5c4e'];
+    const pts = cellPath(curParams, 0);
+    const stepL = Math.max(1, Math.round(d.totalLayers / 30));
+
+    // Переходы между цилиндрами — те же отрезки, что и в слое
+    const chain = getChain(d, {});
+    const linkRuns = [];
+    let lr = null;
+    for (const q of chain.pts) {
+      if (q.cell >= 0) { lr = null; continue; }
+      if (!lr || lr.to !== q.toCell) { lr = { to: q.toCell, pts: [] }; linkRuns.push(lr); }
+      lr.pts.push(q);
+    }
+
+    for (let ci = 0; ci < d.cells; ci++) {
+      const c = d.cellCenters[ci];
+
+      for (let l = 0; l < d.totalLayers; l += stepL) {
+        const z = (l + 1) * curParams.lh;
+        const zIdx = Math.floor(l / d.layersPerZone);
+
+        let color = vsColors[ci % vsColors.length];
+        if (isoMode === 't') {
+          const uT = zIdx / Math.max(1, d.zones - 1);
+          color = `hsl(${Math.round(220 - uT * 220)}, 85%, 60%)`;
+        }
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let i = 0; i < pts.length; i += 3) {
+          const pr = project(c.cx + pts[i].x, c.cy + pts[i].y, z);
+          if (i === 0) ctx.moveTo(pr.px, pr.py);
+          else ctx.lineTo(pr.px, pr.py);
+        }
+        ctx.stroke();
+      }
+    }
+
+    // Переходы между цилиндрами
+    for (let l = 0; l < d.totalLayers; l += stepL) {
+      const z = (l + 1) * curParams.lh;
+      ctx.strokeStyle = '#e7c77a';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (const run of linkRuns) {
+        run.pts.forEach((q, i) => {
+          const pr = project(q.x, q.y, z);
+          if (i === 0) ctx.moveTo(pr.px, pr.py);
+          else ctx.lineTo(pr.px, pr.py);
+        });
+      }
+      ctx.stroke();
+    }
+  }
+
+  // Отчёт и сводка
+  function renderReport(d) {
+    if (!d) d = derive(curParams);
+    const dict = I18N[curLang] || I18N.ru;
+    const body = $('reportBody');
+
+    const area = d.A_line;
+    const fil = d.A_fil;
+
+    // Цепочка слоя: длины по ячейкам и по переходам
+    const chain = getChain(d, {});
+    const meas = measureChain(curParams, d, chain);
+    const linkLenTotal = meas.links.reduce((s, l) => s + l.len, 0);
+    const layerLen = meas.total;
+    const cellLen = meas.cells.map(c => c.len);
+    const uniformLen = cellLen[0] || 0;
+
+    const totalExtrusionLen = layerLen * d.totalLayers;
+    const totalVolume = totalExtrusionLen * area;
+    const totalMassG = (totalVolume * curParams.rho) / 1000;
+    const cost = (totalMassG / 1000) * curParams.price;
+
+    let totalPrintTimeSec = 0;
+    const rowsHtml = d.vs.map((v, i) => {
+      const vMmS = v / area;
+      const fMin = vMmS * 60;
+      const lenCell = cellLen[i] || 0;
+      const timeLayerSec = lenCell / vMmS;
+      const timeZoneSec = timeLayerSec * d.layersPerZone;
+      totalPrintTimeSec += timeZoneSec * d.zones;
+      const massCellG = (lenCell * d.totalLayers * area * curParams.rho) / 1000;
+      const r_req = (vMmS * vMmS) / (curParams.aMax || 10000);
+      const isCapped = r_req > d.r_min;
+
+      return `
+        <tr>
+          <td>${i + 1}</td>
+          <td class="mono">${v}</td>
+          <td class="mono">${vMmS.toFixed(1)}</td>
+          <td class="mono">${Math.round(fMin)}</td>
+          <td class="mono">${lenCell.toFixed(0)} мм</td>
+          <td class="mono">${timeLayerSec.toFixed(1)} с</td>
+          <td class="mono">${(timeZoneSec / 60).toFixed(1)} мин</td>
+          <td class="mono">${massCellG.toFixed(1)} г</td>
+          <td><span class="tag ${isCapped ? 'warn' : 'ok'}">${isCapped ? 'ДА (r<' + r_req.toFixed(1) + ')' : 'НЕТ'}</span></td>
+          <td><span class="tag ${vMmS > curParams.vTool ? 'err' : 'ok'}">${vMmS > curParams.vTool ? 'ПРЕВЫШЕН' : 'OK'}</span></td>
+        </tr>
+      `;
+    }).join('');
+
+    const estTimeMin = (totalPrintTimeSec / 60) * 1.25; // +25% на ускорения и переходы
+
+    body.innerHTML = `
+      <div class="tw" style="margin-bottom:14px">
+        <table>
+          <thead>
+            <tr>
+              <th>${dict.thCell}</th><th>${dict.thVs}</th><th>${dict.thV}</th><th>${dict.thF}</th>
+              <th>${dict.thLen}</th><th>${dict.thTimeL}</th><th>${dict.thTimeT}</th><th>${dict.thFil}</th>
+              <th>${dict.thCut}</th><th>${dict.thStatus}</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+
+      <div class="grid2" style="margin-bottom:14px">
+        <div class="stat"><div class="k">${dict.kpiMass}</div><div class="v">${totalMassG.toFixed(1)} г</div><div class="s">${totalVolume.toFixed(0)} мм³</div></div>
+        <div class="stat"><div class="k">${dict.kpiTime} (оценка)</div><div class="v">${(estTimeMin / 60).toFixed(1)} ч</div><div class="s">~${Math.round(estTimeMin)} мин</div></div>
+        <div class="stat"><div class="k">${dict.kpiCost}</div><div class="v">${cost.toFixed(1)} ₽</div><div class="s">по ${curParams.price} ₽/кг</div></div>
+        <div class="stat"><div class="k">Суммарный путь</div><div class="v">${(totalExtrusionLen / 1000).toFixed(0)} м</div><div class="s">${d.totalLayers} слоёв</div></div>
+        <div class="stat"><div class="k">Длина слоя</div><div class="v">${layerLen.toFixed(0)} мм</div><div class="s">${chain.pts.length} точек</div></div>
+        <div class="stat"><div class="k">Переходы</div><div class="v">${linkLenTotal.toFixed(1)} мм</div><div class="s">${chain.links.length} шт, по ${(linkLenTotal / Math.max(1, chain.links.length)).toFixed(1)} мм</div></div>
+        <div class="stat"><div class="k">Измерительная область</div><div class="v">${uniformLen.toFixed(0)} мм</div><div class="s">внутри цилиндра, слой</div></div>
+        <div class="stat"><div class="k">Зазор между цилиндрами</div><div class="v">${d.gapX.toFixed(1)} мм</div><div class="s">место под переход</div></div>
+      </div>
+
+      <div class="notes">
+        <b>Методические допущения и границы теста:</b>
+        <ul>
+          <li><b>Одна линия на слой:</b> все шесть цилиндров и переходы между ними печатаются одной непрерывной экструзией — без ретрактов и холостых перемещений внутри слоя.</li>
+          <li><b>Переход между VS:</b> на участке перехода объёмная скорость плавно меняется от значения предыдущего цилиндра к следующему; длина перехода (${linkLenTotal.toFixed(1)} мм на слой) не входит в измерительную область цилиндров.</li>
+          <li><b>Разброс времени слоя:</b> ячейки 5 и 20 мм³/с имеют 4-кратную разницу во времени прохода — обдув влияет сильнее на медленные ячейки.</li>
+          <li><b>Стык слоёв:</b> на нечётных слоях обход идёт справа налево, поэтому конец слоя попадает в начало следующего — перемещения между слоями нет.</li>
+          <li><b>Шов:</b> старт каждого слоя фиксирован в точке входа первого цилиндра (угол ${curParams.startAngle}°), формируя явный реперный рубец.</li>
+        </ul>
+      </div>
+    `;
+  }
+
+  // Обработчики событий
+  function attachEvents() {
+    // Язык
+    $$('#langSeg button').forEach(b => {
+      b.addEventListener('click', () => setLang(b.dataset.lang));
+    });
+
+    // Сброс
+    $('btnReset').addEventListener('click', () => {
+      if (confirm('Сбросить все параметры к значениям по умолчанию?')) {
+        curParams = defaults();
+        writeForm(curParams);
+        isDirty = false;
+        updateUI();
+      }
+    });
+
+    // Пресет принтера
+    $('preset').addEventListener('change', (e) => {
+      const pr = PRESETS[e.target.value];
+      if (pr) {
+        $('flavor').value = pr.flavor;
+        $('bedX').value = pr.bedX;
+        $('bedY').value = pr.bedY;
+        $('bedH').value = pr.bedH;
+        $('vTool').value = pr.vTool;
+        $('aMax').value = pr.aMax;
+        $('qHot').value = pr.qHot;
+        $('nozzle').value = pr.nozzle;
+        updateUI();
+      }
+    });
+
+    // Автопересчёт предпросмотра при любом изменении полей (делегирование событий)
+    const paramsCol = $('colParams');
+    const onParamChange = () => { isDirty = true; updateUI(); };
+    paramsCol.addEventListener('input', (e) => {
+      if (e.target.matches('input, select, textarea')) onParamChange();
+    });
+    paramsCol.addEventListener('change', (e) => {
+      if (e.target.matches('input, select, textarea')) onParamChange();
+    });
+
+    // Аккордеоны блоков
+    $$('.card>.hd').forEach(hd => {
+      hd.addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON') return;
+        hd.closest('.card').classList.toggle('collapsed');
+      });
+    });
+
+    // Переключение вкладок предпросмотра
+    $$('.tabs button').forEach(b => {
+      b.addEventListener('click', () => {
+        $$('.tabs button').forEach(x => x.setAttribute('aria-selected', 'false'));
+        $$('.tabpane').forEach(x => x.classList.remove('on'));
+        b.setAttribute('aria-selected', 'true');
+        const p = document.querySelector(`[data-pane="${b.dataset.tab}"]`);
+        if (p) p.classList.add('on');
+        const d = derive(curParams);
+        if (b.dataset.tab === 'bed') renderBedPreview(d);
+        else if (b.dataset.tab === 'layer') renderLayerPreview(d);
+        else if (b.dataset.tab === 'iso') renderIsoPreview(d);
+      });
+    });
+
+    // Ползунок слоя
+    $('layerSlider').addEventListener('input', () => {
+      renderLayerPreview(derive(curParams));
+    });
+
+    // Режим 3D
+    $$('#isoMode button').forEach(b => {
+      b.addEventListener('click', () => {
+        $$('#isoMode button').forEach(x => x.setAttribute('aria-pressed', 'false'));
+        b.setAttribute('aria-pressed', 'true');
+        isoMode = b.dataset.mode;
+        renderIsoPreview(derive(curParams));
+      });
+    });
+
+    // Вращение 3D мышь / тач
+    const cv = $('cvIso');
+    cv.addEventListener('mousedown', (e) => { isDragging = true; lastMX = e.clientX; lastMY = e.clientY; });
+    window.addEventListener('mouseup', () => { isDragging = false; });
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - lastMX;
+      const dy = e.clientY - lastMY;
+      lastMX = e.clientX; lastMY = e.clientY;
+      isoRotY += dx * 0.01;
+      isoRotX = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, isoRotX + dy * 0.01));
+      renderIsoPreview(derive(curParams));
+    });
+
+    // Генерация G-code
+    $('btnBuild').addEventListener('click', () => {
+      const status = $('buildStatus');
+      status.textContent = 'Генерация...';
+      setTimeout(() => {
+        const res = compose(curParams);
+        generatedGcode = res.gcode;
+        const aud = audit(generatedGcode, curParams);
+
+        $('codeBox').textContent = generatedGcode.slice(0, 12000) + (generatedGcode.length > 12000 ? '\n\n; ... [ОСТАЛЬНОЙ КОД ДОСТУПЕН В СКАЧИВАЕМОМ ФАЙЛЕ] ...' : '');
+        $('btnDownload').disabled = false;
+        $('btnCopy').disabled = false;
+
+        $('auditBox').innerHTML = `
+          <div class="stat"><div class="k">Строк</div><div class="v">${generatedGcode.split('\n').length.toLocaleString()}</div></div>
+          <div class="stat"><div class="k">Размер файла</div><div class="v">${(generatedGcode.length / 1024).toFixed(0)} КБ</div></div>
+          <div class="stat"><div class="k">Экструзия E</div><div class="v">${aud.E.toFixed(1)} мм</div></div>
+          <div class="stat"><div class="k">Аудит</div><div class="v" style="color:${aud.mismatches.length ? 'var(--err)' : 'var(--ok)'}">${aud.mismatches.length ? 'Ошибка' : 'Совпадает'}</div></div>
+        `;
+        status.textContent = 'Готово!';
+        isDirty = false;
+        renderStrip(derive(curParams));
+      }, 20);
+    });
+
+    // Скачивание
+    $('btnDownload').addEventListener('click', () => {
+      if (!generatedGcode) return;
+      const blob = new Blob([generatedGcode], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${curParams.fileName || 'mvs-matrix'}.gcode`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Копирование
+    $('btnCopy').addEventListener('click', async () => {
+      if (!generatedGcode) return;
+      await navigator.clipboard.writeText(generatedGcode);
+      $('btnCopy').textContent = 'Скопировано!';
+      setTimeout(() => { $('btnCopy').textContent = 'Копировать'; }, 2000);
+    });
+  }
+
+  // Запуск
+  function init() {
+    initPresets();
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      if (saved && saved.params) {
+        curParams = { ...defaults(), ...saved.params };
+        curLang = saved.lang || 'ru';
+      }
+    } catch (_) {}
+    writeForm(curParams);
+    attachEvents();
+    setLang(curLang);
+    updateUI();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+
+
+</script>
+</body>
+</html>

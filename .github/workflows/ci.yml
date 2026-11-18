@@ -15,3 +15,5 @@ jobs:
           node-version: "24"
       - name: Smoke-тест модели
         run: node --test tests/model.test.mjs
+      - name: Тест генератора MVS матрицы
+        run: node --test tests/mvs-matrix.test.mjs

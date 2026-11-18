@@ -1,0 +1,1886 @@
+{
+  "schema": "spiral-row/v1",
+  "units": "mm",
+  "frame": "Стол XY, X вправо, Y вверх; CCW = G3, CW = G2; ij = центр дуги минус начало дуги",
+  "params": {
+    "count": 5,
+    "angle_deg": 0,
+    "row_center": [
+      80,
+      80
+    ],
+    "gap_mm": 0,
+    "outward_rotation_first": "CCW",
+    "close_edge_tails": false,
+    "reverse": false,
+    "turns_per_branch": 3.5,
+    "pitch_mm": 2,
+    "line_width_mm": 0.42,
+    "layer_height_mm": 0.2,
+    "pitch_inner_mm": null,
+    "inner_levels": 0,
+    "core_x_mm": 20,
+    "per_spiral_overrides": [],
+    "bed_mm": [
+      180,
+      180
+    ]
+  },
+  "spirals": [
+    {
+      "index": 1,
+      "role": "first",
+      "center": [
+        -48,
+        80
+      ],
+      "pitch_mm": 2,
+      "pitch_inner_mm": 2,
+      "inner_levels": 0,
+      "core_x_mm": 20,
+      "s_loop_radius_mm": 10,
+      "s_points_distance_mm": 40,
+      "semicircles_inward": 7,
+      "semicircles_outward": 7,
+      "turns_inward": 3.5,
+      "turns_outward": 3.5,
+      "entry": [
+        -80,
+        80
+      ],
+      "exit": [
+        -16,
+        80
+      ],
+      "outward_rotation": "CCW"
+    },
+    {
+      "index": 2,
+      "role": "middle",
+      "center": [
+        16,
+        80
+      ],
+      "pitch_mm": 2,
+      "pitch_inner_mm": 2,
+      "inner_levels": 0,
+      "core_x_mm": 20,
+      "s_loop_radius_mm": 10,
+      "s_points_distance_mm": 40,
+      "semicircles_inward": 7,
+      "semicircles_outward": 7,
+      "turns_inward": 3.5,
+      "turns_outward": 3.5,
+      "entry": [
+        -16,
+        80
+      ],
+      "exit": [
+        48,
+        80
+      ],
+      "outward_rotation": "CCW"
+    },
+    {
+      "index": 3,
+      "role": "middle",
+      "center": [
+        80,
+        80
+      ],
+      "pitch_mm": 2,
+      "pitch_inner_mm": 2,
+      "inner_levels": 0,
+      "core_x_mm": 20,
+      "s_loop_radius_mm": 10,
+      "s_points_distance_mm": 40,
+      "semicircles_inward": 7,
+      "semicircles_outward": 7,
+      "turns_inward": 3.5,
+      "turns_outward": 3.5,
+      "entry": [
+        48,
+        80
+      ],
+      "exit": [
+        112,
+        80
+      ],
+      "outward_rotation": "CCW"
+    },
+    {
+      "index": 4,
+      "role": "middle",
+      "center": [
+        144,
+        80
+      ],
+      "pitch_mm": 2,
+      "pitch_inner_mm": 2,
+      "inner_levels": 0,
+      "core_x_mm": 20,
+      "s_loop_radius_mm": 10,
+      "s_points_distance_mm": 40,
+      "semicircles_inward": 7,
+      "semicircles_outward": 7,
+      "turns_inward": 3.5,
+      "turns_outward": 3.5,
+      "entry": [
+        112,
+        80
+      ],
+      "exit": [
+        176,
+        80
+      ],
+      "outward_rotation": "CCW"
+    },
+    {
+      "index": 5,
+      "role": "last",
+      "center": [
+        208,
+        80
+      ],
+      "pitch_mm": 2,
+      "pitch_inner_mm": 2,
+      "inner_levels": 0,
+      "core_x_mm": 20,
+      "s_loop_radius_mm": 10,
+      "s_points_distance_mm": 40,
+      "semicircles_inward": 7,
+      "semicircles_outward": 7,
+      "turns_inward": 3.5,
+      "turns_outward": 3.5,
+      "entry": [
+        176,
+        80
+      ],
+      "exit": [
+        240,
+        80
+      ],
+      "outward_rotation": "CCW"
+    }
+  ],
+  "path": [
+    {
+      "n": 1,
+      "type": "arc",
+      "spiral": 1,
+      "phase": "inward",
+      "from": [
+        -80,
+        80
+      ],
+      "to": [
+        -18,
+        80
+      ],
+      "center": [
+        -49,
+        80
+      ],
+      "r": 31,
+      "dir": "CW",
+      "ij": [
+        31,
+        0
+      ]
+    },
+    {
+      "n": 2,
+      "type": "arc",
+      "spiral": 1,
+      "phase": "inward",
+      "from": [
+        -18,
+        80
+      ],
+      "to": [
+        -76,
+        80
+      ],
+      "center": [
+        -47,
+        80
+      ],
+      "r": 29,
+      "dir": "CW",
+      "ij": [
+        -29,
+        0
+      ]
+    },
+    {
+      "n": 3,
+      "type": "arc",
+      "spiral": 1,
+      "phase": "inward",
+      "from": [
+        -76,
+        80
+      ],
+      "to": [
+        -22,
+        80
+      ],
+      "center": [
+        -49,
+        80
+      ],
+      "r": 27,
+      "dir": "CW",
+      "ij": [
+        27,
+        0
+      ]
+    },
+    {
+      "n": 4,
+      "type": "arc",
+      "spiral": 1,
+      "phase": "inward",
+      "from": [
+        -22,
+        80
+      ],
+      "to": [
+        -72,
+        80
+      ],
+      "center": [
+        -47,
+        80
+      ],
+      "r": 25,
+      "dir": "CW",
+      "ij": [
+        -25,
+        0
+      ]
+    },
+    {
+      "n": 5,
+      "type": "arc",
+      "spiral": 1,
+      "phase": "inward",
+      "from": [
+        -72,
+        80
+      ],
+      "to": [
+        -26,
+        80
+      ],
+      "center": [
+        -49,
+        80
+      ],
+      "r": 23,
+      "dir": "CW",
+      "ij": [
+        23,
+        0
+      ]
+    },
+    {
+      "n": 6,
+      "type": "arc",
+      "spiral": 1,
+      "phase": "inward",
+      "from": [
+        -26,
+        80
+      ],
+      "to": [
+        -68,
+        80
+      ],
+      "center": [
+        -47,
+        80
+      ],
+      "r": 21,
+      "dir": "CW",
+      "ij": [
+        -21,
+        0
+      ]
+    },
+    {
+      "n": 7,
+      "type": "arc",
+      "spiral": 1,
+      "phase": "inward",
+      "from": [
+        -68,
+        80
+      ],
+      "to": [
+        -48,
+        80
+      ],
+      "center": [
+        -58,
+        80
+      ],
+      "r": 10,
+      "dir": "CW",
+      "ij": [
+        10,
+        0
+      ]
+    },
+    {
+      "n": 8,
+      "type": "arc",
+      "spiral": 1,
+      "phase": "outward",
+      "from": [
+        -48,
+        80
+      ],
+      "to": [
+        -28,
+        80
+      ],
+      "center": [
+        -38,
+        80
+      ],
+      "r": 10,
+      "dir": "CCW",
+      "ij": [
+        10,
+        0
+      ]
+    },
+    {
+      "n": 9,
+      "type": "arc",
+      "spiral": 1,
+      "phase": "outward",
+      "from": [
+        -28,
+        80
+      ],
+      "to": [
+        -70,
+        80
+      ],
+      "center": [
+        -49,
+        80
+      ],
+      "r": 21,
+      "dir": "CCW",
+      "ij": [
+        -21,
+        0
+      ]
+    },
+    {
+      "n": 10,
+      "type": "arc",
+      "spiral": 1,
+      "phase": "outward",
+      "from": [
+        -70,
+        80
+      ],
+      "to": [
+        -24,
+        80
+      ],
+      "center": [
+        -47,
+        80
+      ],
+      "r": 23,
+      "dir": "CCW",
+      "ij": [
+        23,
+        0
+      ]
+    },
+    {
+      "n": 11,
+      "type": "arc",
+      "spiral": 1,
+      "phase": "outward",
+      "from": [
+        -24,
+        80
+      ],
+      "to": [
+        -74,
+        80
+      ],
+      "center": [
+        -49,
+        80
+      ],
+      "r": 25,
+      "dir": "CCW",
+      "ij": [
+        -25,
+        0
+      ]
+    },
+    {
+      "n": 12,
+      "type": "arc",
+      "spiral": 1,
+      "phase": "outward",
+      "from": [
+        -74,
+        80
+      ],
+      "to": [
+        -20,
+        80
+      ],
+      "center": [
+        -47,
+        80
+      ],
+      "r": 27,
+      "dir": "CCW",
+      "ij": [
+        27,
+        0
+      ]
+    },
+    {
+      "n": 13,
+      "type": "arc",
+      "spiral": 1,
+      "phase": "outward",
+      "from": [
+        -20,
+        80
+      ],
+      "to": [
+        -78,
+        80
+      ],
+      "center": [
+        -49,
+        80
+      ],
+      "r": 29,
+      "dir": "CCW",
+      "ij": [
+        -29,
+        0
+      ]
+    },
+    {
+      "n": 14,
+      "type": "arc",
+      "spiral": 1,
+      "phase": "outward",
+      "from": [
+        -78,
+        80
+      ],
+      "to": [
+        -16,
+        80
+      ],
+      "center": [
+        -47,
+        80
+      ],
+      "r": 31,
+      "dir": "CCW",
+      "ij": [
+        31,
+        0
+      ]
+    },
+    {
+      "n": 15,
+      "type": "arc",
+      "spiral": 2,
+      "phase": "inward",
+      "from": [
+        -16,
+        80
+      ],
+      "to": [
+        46,
+        80
+      ],
+      "center": [
+        15,
+        80
+      ],
+      "r": 31,
+      "dir": "CW",
+      "ij": [
+        31,
+        0
+      ]
+    },
+    {
+      "n": 16,
+      "type": "arc",
+      "spiral": 2,
+      "phase": "inward",
+      "from": [
+        46,
+        80
+      ],
+      "to": [
+        -12,
+        80
+      ],
+      "center": [
+        17,
+        80
+      ],
+      "r": 29,
+      "dir": "CW",
+      "ij": [
+        -29,
+        0
+      ]
+    },
+    {
+      "n": 17,
+      "type": "arc",
+      "spiral": 2,
+      "phase": "inward",
+      "from": [
+        -12,
+        80
+      ],
+      "to": [
+        42,
+        80
+      ],
+      "center": [
+        15,
+        80
+      ],
+      "r": 27,
+      "dir": "CW",
+      "ij": [
+        27,
+        0
+      ]
+    },
+    {
+      "n": 18,
+      "type": "arc",
+      "spiral": 2,
+      "phase": "inward",
+      "from": [
+        42,
+        80
+      ],
+      "to": [
+        -8,
+        80
+      ],
+      "center": [
+        17,
+        80
+      ],
+      "r": 25,
+      "dir": "CW",
+      "ij": [
+        -25,
+        0
+      ]
+    },
+    {
+      "n": 19,
+      "type": "arc",
+      "spiral": 2,
+      "phase": "inward",
+      "from": [
+        -8,
+        80
+      ],
+      "to": [
+        38,
+        80
+      ],
+      "center": [
+        15,
+        80
+      ],
+      "r": 23,
+      "dir": "CW",
+      "ij": [
+        23,
+        0
+      ]
+    },
+    {
+      "n": 20,
+      "type": "arc",
+      "spiral": 2,
+      "phase": "inward",
+      "from": [
+        38,
+        80
+      ],
+      "to": [
+        -4,
+        80
+      ],
+      "center": [
+        17,
+        80
+      ],
+      "r": 21,
+      "dir": "CW",
+      "ij": [
+        -21,
+        0
+      ]
+    },
+    {
+      "n": 21,
+      "type": "arc",
+      "spiral": 2,
+      "phase": "inward",
+      "from": [
+        -4,
+        80
+      ],
+      "to": [
+        16,
+        80
+      ],
+      "center": [
+        6,
+        80
+      ],
+      "r": 10,
+      "dir": "CW",
+      "ij": [
+        10,
+        0
+      ]
+    },
+    {
+      "n": 22,
+      "type": "arc",
+      "spiral": 2,
+      "phase": "outward",
+      "from": [
+        16,
+        80
+      ],
+      "to": [
+        36,
+        80
+      ],
+      "center": [
+        26,
+        80
+      ],
+      "r": 10,
+      "dir": "CCW",
+      "ij": [
+        10,
+        0
+      ]
+    },
+    {
+      "n": 23,
+      "type": "arc",
+      "spiral": 2,
+      "phase": "outward",
+      "from": [
+        36,
+        80
+      ],
+      "to": [
+        -6,
+        80
+      ],
+      "center": [
+        15,
+        80
+      ],
+      "r": 21,
+      "dir": "CCW",
+      "ij": [
+        -21,
+        0
+      ]
+    },
+    {
+      "n": 24,
+      "type": "arc",
+      "spiral": 2,
+      "phase": "outward",
+      "from": [
+        -6,
+        80
+      ],
+      "to": [
+        40,
+        80
+      ],
+      "center": [
+        17,
+        80
+      ],
+      "r": 23,
+      "dir": "CCW",
+      "ij": [
+        23,
+        0
+      ]
+    },
+    {
+      "n": 25,
+      "type": "arc",
+      "spiral": 2,
+      "phase": "outward",
+      "from": [
+        40,
+        80
+      ],
+      "to": [
+        -10,
+        80
+      ],
+      "center": [
+        15,
+        80
+      ],
+      "r": 25,
+      "dir": "CCW",
+      "ij": [
+        -25,
+        0
+      ]
+    },
+    {
+      "n": 26,
+      "type": "arc",
+      "spiral": 2,
+      "phase": "outward",
+      "from": [
+        -10,
+        80
+      ],
+      "to": [
+        44,
+        80
+      ],
+      "center": [
+        17,
+        80
+      ],
+      "r": 27,
+      "dir": "CCW",
+      "ij": [
+        27,
+        0
+      ]
+    },
+    {
+      "n": 27,
+      "type": "arc",
+      "spiral": 2,
+      "phase": "outward",
+      "from": [
+        44,
+        80
+      ],
+      "to": [
+        -14,
+        80
+      ],
+      "center": [
+        15,
+        80
+      ],
+      "r": 29,
+      "dir": "CCW",
+      "ij": [
+        -29,
+        0
+      ]
+    },
+    {
+      "n": 28,
+      "type": "arc",
+      "spiral": 2,
+      "phase": "outward",
+      "from": [
+        -14,
+        80
+      ],
+      "to": [
+        48,
+        80
+      ],
+      "center": [
+        17,
+        80
+      ],
+      "r": 31,
+      "dir": "CCW",
+      "ij": [
+        31,
+        0
+      ]
+    },
+    {
+      "n": 29,
+      "type": "arc",
+      "spiral": 3,
+      "phase": "inward",
+      "from": [
+        48,
+        80
+      ],
+      "to": [
+        110,
+        80
+      ],
+      "center": [
+        79,
+        80
+      ],
+      "r": 31,
+      "dir": "CW",
+      "ij": [
+        31,
+        0
+      ]
+    },
+    {
+      "n": 30,
+      "type": "arc",
+      "spiral": 3,
+      "phase": "inward",
+      "from": [
+        110,
+        80
+      ],
+      "to": [
+        52,
+        80
+      ],
+      "center": [
+        81,
+        80
+      ],
+      "r": 29,
+      "dir": "CW",
+      "ij": [
+        -29,
+        0
+      ]
+    },
+    {
+      "n": 31,
+      "type": "arc",
+      "spiral": 3,
+      "phase": "inward",
+      "from": [
+        52,
+        80
+      ],
+      "to": [
+        106,
+        80
+      ],
+      "center": [
+        79,
+        80
+      ],
+      "r": 27,
+      "dir": "CW",
+      "ij": [
+        27,
+        0
+      ]
+    },
+    {
+      "n": 32,
+      "type": "arc",
+      "spiral": 3,
+      "phase": "inward",
+      "from": [
+        106,
+        80
+      ],
+      "to": [
+        56,
+        80
+      ],
+      "center": [
+        81,
+        80
+      ],
+      "r": 25,
+      "dir": "CW",
+      "ij": [
+        -25,
+        0
+      ]
+    },
+    {
+      "n": 33,
+      "type": "arc",
+      "spiral": 3,
+      "phase": "inward",
+      "from": [
+        56,
+        80
+      ],
+      "to": [
+        102,
+        80
+      ],
+      "center": [
+        79,
+        80
+      ],
+      "r": 23,
+      "dir": "CW",
+      "ij": [
+        23,
+        0
+      ]
+    },
+    {
+      "n": 34,
+      "type": "arc",
+      "spiral": 3,
+      "phase": "inward",
+      "from": [
+        102,
+        80
+      ],
+      "to": [
+        60,
+        80
+      ],
+      "center": [
+        81,
+        80
+      ],
+      "r": 21,
+      "dir": "CW",
+      "ij": [
+        -21,
+        0
+      ]
+    },
+    {
+      "n": 35,
+      "type": "arc",
+      "spiral": 3,
+      "phase": "inward",
+      "from": [
+        60,
+        80
+      ],
+      "to": [
+        80,
+        80
+      ],
+      "center": [
+        70,
+        80
+      ],
+      "r": 10,
+      "dir": "CW",
+      "ij": [
+        10,
+        0
+      ]
+    },
+    {
+      "n": 36,
+      "type": "arc",
+      "spiral": 3,
+      "phase": "outward",
+      "from": [
+        80,
+        80
+      ],
+      "to": [
+        100,
+        80
+      ],
+      "center": [
+        90,
+        80
+      ],
+      "r": 10,
+      "dir": "CCW",
+      "ij": [
+        10,
+        0
+      ]
+    },
+    {
+      "n": 37,
+      "type": "arc",
+      "spiral": 3,
+      "phase": "outward",
+      "from": [
+        100,
+        80
+      ],
+      "to": [
+        58,
+        80
+      ],
+      "center": [
+        79,
+        80
+      ],
+      "r": 21,
+      "dir": "CCW",
+      "ij": [
+        -21,
+        0
+      ]
+    },
+    {
+      "n": 38,
+      "type": "arc",
+      "spiral": 3,
+      "phase": "outward",
+      "from": [
+        58,
+        80
+      ],
+      "to": [
+        104,
+        80
+      ],
+      "center": [
+        81,
+        80
+      ],
+      "r": 23,
+      "dir": "CCW",
+      "ij": [
+        23,
+        0
+      ]
+    },
+    {
+      "n": 39,
+      "type": "arc",
+      "spiral": 3,
+      "phase": "outward",
+      "from": [
+        104,
+        80
+      ],
+      "to": [
+        54,
+        80
+      ],
+      "center": [
+        79,
+        80
+      ],
+      "r": 25,
+      "dir": "CCW",
+      "ij": [
+        -25,
+        0
+      ]
+    },
+    {
+      "n": 40,
+      "type": "arc",
+      "spiral": 3,
+      "phase": "outward",
+      "from": [
+        54,
+        80
+      ],
+      "to": [
+        108,
+        80
+      ],
+      "center": [
+        81,
+        80
+      ],
+      "r": 27,
+      "dir": "CCW",
+      "ij": [
+        27,
+        0
+      ]
+    },
+    {
+      "n": 41,
+      "type": "arc",
+      "spiral": 3,
+      "phase": "outward",
+      "from": [
+        108,
+        80
+      ],
+      "to": [
+        50,
+        80
+      ],
+      "center": [
+        79,
+        80
+      ],
+      "r": 29,
+      "dir": "CCW",
+      "ij": [
+        -29,
+        0
+      ]
+    },
+    {
+      "n": 42,
+      "type": "arc",
+      "spiral": 3,
+      "phase": "outward",
+      "from": [
+        50,
+        80
+      ],
+      "to": [
+        112,
+        80
+      ],
+      "center": [
+        81,
+        80
+      ],
+      "r": 31,
+      "dir": "CCW",
+      "ij": [
+        31,
+        0
+      ]
+    },
+    {
+      "n": 43,
+      "type": "arc",
+      "spiral": 4,
+      "phase": "inward",
+      "from": [
+        112,
+        80
+      ],
+      "to": [
+        174,
+        80
+      ],
+      "center": [
+        143,
+        80
+      ],
+      "r": 31,
+      "dir": "CW",
+      "ij": [
+        31,
+        0
+      ]
+    },
+    {
+      "n": 44,
+      "type": "arc",
+      "spiral": 4,
+      "phase": "inward",
+      "from": [
+        174,
+        80
+      ],
+      "to": [
+        116,
+        80
+      ],
+      "center": [
+        145,
+        80
+      ],
+      "r": 29,
+      "dir": "CW",
+      "ij": [
+        -29,
+        0
+      ]
+    },
+    {
+      "n": 45,
+      "type": "arc",
+      "spiral": 4,
+      "phase": "inward",
+      "from": [
+        116,
+        80
+      ],
+      "to": [
+        170,
+        80
+      ],
+      "center": [
+        143,
+        80
+      ],
+      "r": 27,
+      "dir": "CW",
+      "ij": [
+        27,
+        0
+      ]
+    },
+    {
+      "n": 46,
+      "type": "arc",
+      "spiral": 4,
+      "phase": "inward",
+      "from": [
+        170,
+        80
+      ],
+      "to": [
+        120,
+        80
+      ],
+      "center": [
+        145,
+        80
+      ],
+      "r": 25,
+      "dir": "CW",
+      "ij": [
+        -25,
+        0
+      ]
+    },
+    {
+      "n": 47,
+      "type": "arc",
+      "spiral": 4,
+      "phase": "inward",
+      "from": [
+        120,
+        80
+      ],
+      "to": [
+        166,
+        80
+      ],
+      "center": [
+        143,
+        80
+      ],
+      "r": 23,
+      "dir": "CW",
+      "ij": [
+        23,
+        0
+      ]
+    },
+    {
+      "n": 48,
+      "type": "arc",
+      "spiral": 4,
+      "phase": "inward",
+      "from": [
+        166,
+        80
+      ],
+      "to": [
+        124,
+        80
+      ],
+      "center": [
+        145,
+        80
+      ],
+      "r": 21,
+      "dir": "CW",
+      "ij": [
+        -21,
+        0
+      ]
+    },
+    {
+      "n": 49,
+      "type": "arc",
+      "spiral": 4,
+      "phase": "inward",
+      "from": [
+        124,
+        80
+      ],
+      "to": [
+        144,
+        80
+      ],
+      "center": [
+        134,
+        80
+      ],
+      "r": 10,
+      "dir": "CW",
+      "ij": [
+        10,
+        0
+      ]
+    },
+    {
+      "n": 50,
+      "type": "arc",
+      "spiral": 4,
+      "phase": "outward",
+      "from": [
+        144,
+        80
+      ],
+      "to": [
+        164,
+        80
+      ],
+      "center": [
+        154,
+        80
+      ],
+      "r": 10,
+      "dir": "CCW",
+      "ij": [
+        10,
+        0
+      ]
+    },
+    {
+      "n": 51,
+      "type": "arc",
+      "spiral": 4,
+      "phase": "outward",
+      "from": [
+        164,
+        80
+      ],
+      "to": [
+        122,
+        80
+      ],
+      "center": [
+        143,
+        80
+      ],
+      "r": 21,
+      "dir": "CCW",
+      "ij": [
+        -21,
+        0
+      ]
+    },
+    {
+      "n": 52,
+      "type": "arc",
+      "spiral": 4,
+      "phase": "outward",
+      "from": [
+        122,
+        80
+      ],
+      "to": [
+        168,
+        80
+      ],
+      "center": [
+        145,
+        80
+      ],
+      "r": 23,
+      "dir": "CCW",
+      "ij": [
+        23,
+        0
+      ]
+    },
+    {
+      "n": 53,
+      "type": "arc",
+      "spiral": 4,
+      "phase": "outward",
+      "from": [
+        168,
+        80
+      ],
+      "to": [
+        118,
+        80
+      ],
+      "center": [
+        143,
+        80
+      ],
+      "r": 25,
+      "dir": "CCW",
+      "ij": [
+        -25,
+        0
+      ]
+    },
+    {
+      "n": 54,
+      "type": "arc",
+      "spiral": 4,
+      "phase": "outward",
+      "from": [
+        118,
+        80
+      ],
+      "to": [
+        172,
+        80
+      ],
+      "center": [
+        145,
+        80
+      ],
+      "r": 27,
+      "dir": "CCW",
+      "ij": [
+        27,
+        0
+      ]
+    },
+    {
+      "n": 55,
+      "type": "arc",
+      "spiral": 4,
+      "phase": "outward",
+      "from": [
+        172,
+        80
+      ],
+      "to": [
+        114,
+        80
+      ],
+      "center": [
+        143,
+        80
+      ],
+      "r": 29,
+      "dir": "CCW",
+      "ij": [
+        -29,
+        0
+      ]
+    },
+    {
+      "n": 56,
+      "type": "arc",
+      "spiral": 4,
+      "phase": "outward",
+      "from": [
+        114,
+        80
+      ],
+      "to": [
+        176,
+        80
+      ],
+      "center": [
+        145,
+        80
+      ],
+      "r": 31,
+      "dir": "CCW",
+      "ij": [
+        31,
+        0
+      ]
+    },
+    {
+      "n": 57,
+      "type": "arc",
+      "spiral": 5,
+      "phase": "inward",
+      "from": [
+        176,
+        80
+      ],
+      "to": [
+        238,
+        80
+      ],
+      "center": [
+        207,
+        80
+      ],
+      "r": 31,
+      "dir": "CW",
+      "ij": [
+        31,
+        0
+      ]
+    },
+    {
+      "n": 58,
+      "type": "arc",
+      "spiral": 5,
+      "phase": "inward",
+      "from": [
+        238,
+        80
+      ],
+      "to": [
+        180,
+        80
+      ],
+      "center": [
+        209,
+        80
+      ],
+      "r": 29,
+      "dir": "CW",
+      "ij": [
+        -29,
+        0
+      ]
+    },
+    {
+      "n": 59,
+      "type": "arc",
+      "spiral": 5,
+      "phase": "inward",
+      "from": [
+        180,
+        80
+      ],
+      "to": [
+        234,
+        80
+      ],
+      "center": [
+        207,
+        80
+      ],
+      "r": 27,
+      "dir": "CW",
+      "ij": [
+        27,
+        0
+      ]
+    },
+    {
+      "n": 60,
+      "type": "arc",
+      "spiral": 5,
+      "phase": "inward",
+      "from": [
+        234,
+        80
+      ],
+      "to": [
+        184,
+        80
+      ],
+      "center": [
+        209,
+        80
+      ],
+      "r": 25,
+      "dir": "CW",
+      "ij": [
+        -25,
+        0
+      ]
+    },
+    {
+      "n": 61,
+      "type": "arc",
+      "spiral": 5,
+      "phase": "inward",
+      "from": [
+        184,
+        80
+      ],
+      "to": [
+        230,
+        80
+      ],
+      "center": [
+        207,
+        80
+      ],
+      "r": 23,
+      "dir": "CW",
+      "ij": [
+        23,
+        0
+      ]
+    },
+    {
+      "n": 62,
+      "type": "arc",
+      "spiral": 5,
+      "phase": "inward",
+      "from": [
+        230,
+        80
+      ],
+      "to": [
+        188,
+        80
+      ],
+      "center": [
+        209,
+        80
+      ],
+      "r": 21,
+      "dir": "CW",
+      "ij": [
+        -21,
+        0
+      ]
+    },
+    {
+      "n": 63,
+      "type": "arc",
+      "spiral": 5,
+      "phase": "inward",
+      "from": [
+        188,
+        80
+      ],
+      "to": [
+        208,
+        80
+      ],
+      "center": [
+        198,
+        80
+      ],
+      "r": 10,
+      "dir": "CW",
+      "ij": [
+        10,
+        0
+      ]
+    },
+    {
+      "n": 64,
+      "type": "arc",
+      "spiral": 5,
+      "phase": "outward",
+      "from": [
+        208,
+        80
+      ],
+      "to": [
+        228,
+        80
+      ],
+      "center": [
+        218,
+        80
+      ],
+      "r": 10,
+      "dir": "CCW",
+      "ij": [
+        10,
+        0
+      ]
+    },
+    {
+      "n": 65,
+      "type": "arc",
+      "spiral": 5,
+      "phase": "outward",
+      "from": [
+        228,
+        80
+      ],
+      "to": [
+        186,
+        80
+      ],
+      "center": [
+        207,
+        80
+      ],
+      "r": 21,
+      "dir": "CCW",
+      "ij": [
+        -21,
+        0
+      ]
+    },
+    {
+      "n": 66,
+      "type": "arc",
+      "spiral": 5,
+      "phase": "outward",
+      "from": [
+        186,
+        80
+      ],
+      "to": [
+        232,
+        80
+      ],
+      "center": [
+        209,
+        80
+      ],
+      "r": 23,
+      "dir": "CCW",
+      "ij": [
+        23,
+        0
+      ]
+    },
+    {
+      "n": 67,
+      "type": "arc",
+      "spiral": 5,
+      "phase": "outward",
+      "from": [
+        232,
+        80
+      ],
+      "to": [
+        182,
+        80
+      ],
+      "center": [
+        207,
+        80
+      ],
+      "r": 25,
+      "dir": "CCW",
+      "ij": [
+        -25,
+        0
+      ]
+    },
+    {
+      "n": 68,
+      "type": "arc",
+      "spiral": 5,
+      "phase": "outward",
+      "from": [
+        182,
+        80
+      ],
+      "to": [
+        236,
+        80
+      ],
+      "center": [
+        209,
+        80
+      ],
+      "r": 27,
+      "dir": "CCW",
+      "ij": [
+        27,
+        0
+      ]
+    },
+    {
+      "n": 69,
+      "type": "arc",
+      "spiral": 5,
+      "phase": "outward",
+      "from": [
+        236,
+        80
+      ],
+      "to": [
+        178,
+        80
+      ],
+      "center": [
+        207,
+        80
+      ],
+      "r": 29,
+      "dir": "CCW",
+      "ij": [
+        -29,
+        0
+      ]
+    },
+    {
+      "n": 70,
+      "type": "arc",
+      "spiral": 5,
+      "phase": "outward",
+      "from": [
+        178,
+        80
+      ],
+      "to": [
+        240,
+        80
+      ],
+      "center": [
+        209,
+        80
+      ],
+      "r": 31,
+      "dir": "CCW",
+      "ij": [
+        31,
+        0
+      ]
+    }
+  ],
+  "stats": {
+    "length_mm": 5215.0438,
+    "arcs": 70,
+    "min_radius_mm": 10,
+    "bbox": {
+      "min": [
+        -80,
+        49
+      ],
+      "max": [
+        240,
+        111
+      ],
+      "size": [
+        320,
+        62
+      ]
+    },
+    "start": [
+      -80,
+      80
+    ],
+    "end": [
+      240,
+      80
+    ],
+    "volume_per_layer_mm3": 438.06368
+  },
+  "notes": [
+    "Путь непрерывный: конец сегмента n = начало сегмента n+1. Все дуги — ровно полуокружности (180°).",
+    "Спираль = ветвь inward (от внешнего конца диаметра к центру) + S-петля по центру (2 полуокружности радиуса core_x/2) + ветвь outward к противоположному концу диаметра.",
+    "core_x — расстояние от центра до точек входа/выхода S-петли (и расстояние между линиями в центре); расстояние между точками S = 2*core_x.",
+    "pitch — расстояние между соседними траекториями (inward/outward чередуются) вдоль диаметра; первые inner_levels уровней после S идут с pitch_inner, остальные с pitch; между соседними витками одной ветви — сумма двух соседних шагов.",
+    "Вход и выход спирали лежат на диаметре, вдоль оси ряда, на противоположных концах.",
+    "Хвосты крайних спиралей: ветвь короче на один полукруг; конец хвоста лежит на диаметре со стороны центра ряда, на pitch ближе к центру спирали, чем точка стыка.",
+    "Стык соседних спиралей: exit[i] = entry[i+1] (gap=0), касательные совпадают; при gap>0 между ними прямая перемычка вдоль оси (излом 90°).",
+    "Закрутка соседних спиралей подбирается так, чтобы стык был гладким; она может чередоваться при разной чётности числа полукругов."
+  ]
+}

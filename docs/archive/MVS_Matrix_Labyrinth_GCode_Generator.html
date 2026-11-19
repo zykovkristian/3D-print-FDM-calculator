@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MVS Matrix — Labyrinth G-code Generator</title>
+<style>
+:root{--bg:#101713;--panel:#18231d;--panel2:#202d25;--line:#34473a;--txt:#edf4ee;--muted:#aab9ad;--green:#9bd6a8;--gold:#e7c77a;--red:#ff9d8e}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#0c130f,#17221b);color:var(--txt);font:15px/1.5 system-ui,Segoe UI,Arial}main{max-width:1160px;margin:auto;padding:26px 16px 56px}h1{font-size:clamp(28px,4vw,42px);line-height:1.05;margin:0 0 8px}h2{font-size:18px;margin:0 0 12px}.muted,p{color:var(--muted)}p{margin:6px 0 13px}.tag{display:inline-block;background:var(--green);color:#102016;border-radius:99px;padding:4px 9px;font-size:11px;font-weight:800;margin-bottom:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:17px}.full{grid-column:1/-1}.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:5px}.field input,.field textarea,.field select{width:100%;min-width:0;border:1px solid var(--line);border-radius:8px;background:#0e1711;color:var(--txt);padding:10px;font:inherit}.field textarea{min-height:90px;resize:vertical}.hint{font-size:11px;color:var(--muted);margin-top:4px}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:13px}button{border:0;border-radius:9px;padding:11px 15px;background:var(--green);color:#102016;font-weight:800;cursor:pointer}button.secondary{background:var(--panel2);border:1px solid var(--line);color:var(--txt)}button:disabled{opacity:.4;cursor:not-allowed}.status{padding:12px;border:1px solid var(--line);border-radius:10px;background:#111c15;margin-top:12px}.warn{background:#292417;border-color:#76663c;color:#f4dfaa}.bad{background:#2b1b19;border-color:#875048;color:#ffc3b9}.good{color:#b8e8c1}.preview{border:1px solid var(--line);border-radius:12px;background:#0c140f;padding:8px}.preview svg{display:block;width:100%;height:auto}.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:13px}td,th{padding:8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}th{color:var(--muted)}pre{background:#0b120e;border:1px solid var(--line);border-radius:9px;padding:12px;max-height:260px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:11px;color:#cfe1d1}.small{font-size:11px;color:var(--muted)}.pill{display:inline-block;padding:2px 7px;border-radius:99px;background:#29382e;color:#cce7d0;font-size:11px}
+@media(max-width:760px){.grid,.fields{grid-template-columns:1fr}.full{grid-column:auto}main{padding:20px 12px 40px}}
+</style></head><body><main>
+<div class="tag">MVS MATRIX · LABYRINTH PATH · A1 MINI</div>
+<h1>Генератор G-code<br>для матрицы MVS</h1>
+<p>Шесть независимых цилиндрических ячеек с длинной спиральной траекторией-лабиринтом. Температура меняется по высотным зонам, VS — отдельно для каждого цилиндра.</p>
+<div class="status warn"><b>Экспериментальный режим.</b> Генератор создаёт только траекторию печати. Это не полный машинный файл Bambu: штатный start/end G-code, очистка сопла, парковка и служебные макросы не встроены. Добавьте проверенные команды из своего профиля Bambu Studio/OrcaSlicer для A1 mini и обязательно проверьте файл в симуляторе. Не отправляйте файл на принтер напрямую без проверки.</div>
+<div class="grid">
+<section class="panel"><h2>1. Геометрия ячеек</h2><div class="fields">
+<div class="field"><label>Количество цилиндров</label><input id="count" type="number" min="3" max="6" step="1" value="6"></div>
+<div class="field"><label>Диаметр зоны, мм</label><input id="diam" type="number" min="24" max="48" step="1" value="36"></div>
+<div class="field"><label>Шаг между центрами, мм</label><input id="pitch" type="number" min="28" max="55" step="1" value="40"></div>
+<div class="field"><label>Центр ряда X, мм</label><input id="cx" type="number" min="30" max="150" value="90"></div>
+<div class="field"><label>Центр ряда Y, мм</label><input id="cy" type="number" min="30" max="150" value="90"></div>
+<div class="field"><label>Высота модели, мм</label><input id="height" type="number" min="10" max="100" value="50"></div>
+<div class="field"><label>Высота слоя, мм</label><input id="lh" type="number" min="0.12" max="0.28" step="0.01" value="0.20"></div>
+<div class="field"><label>Ширина линии, мм</label><input id="lw" type="number" min="0.40" max="0.8" step="0.01" value="0.48"></div>
+<div class="field"><label>Диаметр филамента, мм</label><input id="fd" type="number" min="1.70" max="1.80" step="0.01" value="1.75"></div>
+<div class="field"><label>Внутренний радиус, мм</label><input id="rmin" type="number" min="1.5" max="6" step="0.5" value="2.5"></div>
+<div class="field"><label>Число витков лабиринта</label><input id="turns" type="number" min="2" max="12" step="0.5" value="7"></div>
+<div class="field"><label>Точек на виток</label><input id="samples" type="number" min="24" max="120" step="8" value="48"></div>
+</div><p class="hint">Траектория — архимедова спираль от внешнего радиуса к центру. Направление чередуется на каждом следующем слое: внутрь / наружу. Это одна непрерывная экструзионная линия по Z, а не шесть отдельных периметров.</p></section>
+<section class="panel"><h2>2. Температура и VS</h2><div class="fields">
+<div class="field"><label>Начальная температура, °C</label><input id="tmin" type="number" min="170" max="270" value="190"></div>
+<div class="field"><label>Конечная температура, °C</label><input id="tmax" type="number" min="170" max="280" value="230"></div>
+<div class="field"><label>Шаг температуры, °C</label><input id="tstep" type="number" min="5" max="20" value="10"></div>
+<div class="field"><label>Высота одной температурной зоны, мм</label><input id="band" type="number" min="5" max="20" value="10"></div>
+<div class="field"><label>Температура стола, °C</label><input id="bed" type="number" min="0" max="100" value="60"></div>
+<div class="field"><label>Обдув, %</label><input id="fan" type="number" min="0" max="100" value="30"></div>
+<div class="field"><label>Ускорение, мм/с²</label><input id="accel" type="number" min="100" max="5000" step="100" value="1000"></div>
+<div class="field"><label>Лимит скорости, мм/с</label><input id="maxfeed" type="number" min="30" max="500" value="300"></div>
+</div><div class="status" id="vsinputs"></div><p class="hint">Значения VS задаются для каждого цилиндра. При 6 ячейках значения: 5 / 8 / 11 / 14 / 17 / 20 мм³/с.</p></section>
+<section class="panel full"><h2>3. VS для цилиндров</h2><div class="fields" id="vsfields"></div></section>
+<section class="panel full"><h2>4. Предпросмотр и расчёт длины</h2><div class="preview"><svg id="preview" viewBox="0 0 700 230" role="img" aria-label="Схема цилиндрических ячеек"></svg></div><div id="report" class="status"></div></section>
+<section class="panel full"><h2>5. G-code и профиль принтера</h2><p>Вставьте штатные команды из профиля A1 mini. Генератор не подставляет выдуманные макросы Bambu.</p><div class="fields">
+<div class="field"><label>Start G-code из профиля</label><textarea id="start" placeholder="Вставьте machine_start_gcode..."></textarea></div>
+<div class="field"><label>End G-code из профиля</label><textarea id="end" placeholder="Вставьте machine_end_gcode..."></textarea></div>
+</div><div class="actions"><button id="build">Проверить и сгенерировать</button><button class="secondary" id="download" disabled>Скачать .gcode</button><button class="secondary" id="copy" disabled>Копировать</button></div><div id="result" class="status">G-code ещё не создан.</div><pre id="code">Предпросмотр появится после генерации.</pre></section>
+</div>
+<p class="small">Формула: VS = ширина линии × высота слоя × скорость. Экструзия E вычисляется по длине XY-траектории и площади сечения филамента. Генератор использует относительную экструзию (M83), абсолютные XYZ (G90) и стандартные команды G0/G1/M104/M109/M140/M106. Реальные лимиты и поведение прошивки должны быть проверены в слайсере/симуляторе.</p>
+</main>
+<script>
+const $=id=>document.getElementById(id);let finalCode='';
+const defaults=[5,8,11,14,17,20];
+function count(){return Math.max(3,Math.min(6,Math.round(+$('count').value||6)))}
+function buildVSFields(){let c=count(),html='';for(let i=0;i<c;i++)html+=`<div class="field"><label>Цилиндр ${i+1} · VS, мм³/с</label><input class="vsi" type="number" min="1" max="35" step="0.5" value="${defaults[i]}"></div>`;$('vsfields').innerHTML=html;document.querySelectorAll('.vsi').forEach(x=>x.addEventListener('input',render))}
+function vals(){let c=count(),v=[...document.querySelectorAll('.vsi')].slice(0,c).map(x=>+x.value);return {c,v,D:+$('diam').value,pitch:+$('pitch').value,cx:+$('cx').value,cy:+$('cy').value,H:+$('height').value,lh:+$('lh').value,lw:+$('lw').value,fd:+$('fd').value,rmin:+$('rmin').value,turns:+$('turns').value,samples:+$('samples').value,tmin:+$('tmin').value,tmax:+$('tmax').value,tstep:+$('tstep').value,band:+$('band').value,bed:+$('bed').value,fan:+$('fan').value,accel:+$('accel').value,maxfeed:+$('maxfeed').value}}
+function spiral(p){let R=p.D/2-p.lw/2,inner=p.rmin,N=Math.max(2,Math.round(p.turns*p.samples)),pts=[];for(let i=0;i<=N;i++){let u=i/N,theta=2*Math.PI*p.turns*u,r=R-(R-inner)*u;pts.push([r*Math.cos(theta),r*Math.sin(theta)])}return pts}
+function length(pts){let s=0;for(let i=1;i<pts.length;i++)s+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);return s}
+function temps(p){let a=[];if(p.tstep<=0)return a;for(let t=p.tmin;t<=p.tmax+0.0001&&a.length<20;t+=p.tstep)a.push(t);return a}
+function render(){let p=vals(),pts=spiral(p),L=length(pts),area=p.lw*p.lh,fil=Math.PI*(p.fd/2)**2,feed=p.v.map(v=>v/area*60),layersPer=Math.max(1,Math.round(p.band/p.lh)),ts=temps(p),totalLayers=layersPer*ts.length,actualH=totalLayers*p.lh;
+let svg=$('preview'),colors=['#54a9ff','#40c7b2','#8bd66f','#e6d65e','#f29a48','#ee5c4e'],s=Math.min(85,pitch*.0+75)/p.D;let positions=[];for(let i=0;i<p.c;i++)positions.push(p.cx+(i-(p.c-1)/2)*p.pitch);
+let xMin=Math.min(...positions)-p.D/2,xMax=Math.max(...positions)+p.D/2;let scale=640/(xMax-xMin),cy=112;
+let shapes='';for(let i=0;i<p.c;i++){let x=350+(positions[i]-p.cx)*scale,rad=p.D/2*scale;shapes+=`<circle cx="${x}" cy="${cy}" r="${rad}" fill="none" stroke="${colors[i]}" stroke-width="4"/><circle cx="${x}" cy="${cy}" r="${rad*.68}" fill="none" stroke="${colors[i]}" stroke-width="1.5" stroke-dasharray="3 3"/><text x="${x}" y="215" fill="#c9d8cc" font-size="12" text-anchor="middle">VS ${p.v[i]}</text>`}svg.innerHTML=shapes;
+let rows=p.v.map((v,i)=>`<tr><td>${i+1}</td><td>${v}</td><td>${feed[i].toFixed(1)}</td><td>${L.toFixed(0)} мм</td><td>${(L/(feed[i]/60)).toFixed(1)} с</td><td>${feed[i]>p.maxfeed?'ПРЕВЫШЕН':'OK'}</td></tr>`).join('');
+let errs=[];if(xMin-p.D*.0<0||xMax>180||p.cy-p.D/2<0||p.cy+p.D/2>180)errs.push('Габарит цилиндров выходит за пределы стола 180 × 180 мм.');if(actualH>180)errs.push('Высота превышает 180 мм.');if(actualH+0.01<p.H)errs.push(`Задано ${p.H} мм, но температурные зоны дают только ${actualH.toFixed(1)} мм высоты.`);if(p.v.some((v,i)=>v<=0||feed[i]>p.maxfeed))errs.push('Есть недопустимый VS или линейная скорость выше установленного лимита.');if(p.D<=2*p.rmin+2*p.lw)errs.push('Недостаточный внутренний диаметр для спирали.');if(ts.length<1)errs.push('Проверьте температурный диапазон.');
+$('report').className='status '+(errs.length?'bad':'warn');$('report').innerHTML=`<b>Расчётная длина одной спиральной трассы: ${L.toFixed(1)} мм.</b><div class="tablewrap"><table><tr><th>Ячейка</th><th>VS</th><th>Скорость XY</th><th>Длина</th><th>Время прохода</th><th>Лимит</th></tr>${rows}</table></div><p>Температурных зон: ${ts.length} (${ts.join(' / ')} °C). Слоёв на зону: ${layersPer}. Расчётная высота: ${actualH.toFixed(2)} мм. Полных проходов спирали на одну ячейку и зону: ${layersPer}.</p>${errs.length?'<b>'+errs.join('<br>')+'</b>':'<b>Геометрические ограничения базовой проверки пройдены.</b>'}<p class="small">Время — оценка по номинальной XY-скорости без учёта ускорений, углов, пауз и температурной стабилизации.</p>`}
+function makeGcode(){let p=vals(),ts=temps(p),pts=spiral(p),L=length(pts),area=p.lw*p.lh,fil=Math.PI*(p.fd/2)**2,layersPer=Math.max(1,Math.round(p.band/p.lh)),total=layersPer*ts.length,actual=total*p.lh;
+let positions=[];for(let i=0;i<p.c;i++)positions.push(p.cx+(i-(p.c-1)/2)*p.pitch);
+let minX=Math.min(...positions)-p.D/2,maxX=Math.max(...positions)+p.D/2;
+if(minX<0||maxX>180||p.cy-p.D/2<0||p.cy+p.D/2>180||actual>180||actual+0.001<p.H||p.v.some(v=>v/area*60>p.maxfeed)||!ts.length){$('result').className='status bad';$('result').textContent='Исправьте ошибки геометрии, высоты или скорости в отчёте перед генерацией.';return}
+let g=`; MVS MATRIX LABYRINTH — experimental toolpath for Bambu Lab A1 mini\n; Not a complete machine file. Use verified machine start/end from your printer profile.\n; Cells: ${p.c}; diameter ${p.D} mm; pitch ${p.pitch} mm\n; Single continuous spiral path; direction alternates on successive layers.\n; Spiral path length per layer: ${L.toFixed(2)} mm\n; VS: ${p.v.join(' / ')} mm3/s\n; Temperatures: ${ts.join(' / ')} C\n; Layer height: ${p.lh}; line width: ${p.lw}; filament: ${p.fd}\n`;
+if($('start').value.trim())g+='\n; --- USER MACHINE START ---\n'+$('start').value+'\n';
+g+=`\n; --- TOOLPATH SETUP ---\nG90 ; absolute XYZ\nM83 ; relative extrusion\nM220 S100\nM221 S100\nM204 S${Math.round(p.accel)}\nM140 S${p.bed}\nM104 S${ts[0]}\nM106 S${Math.round(p.fan*2.55)}\nG92 E0\n`;
+let z0=p.lh,first=pts[0];g+=`G0 X${(positions[0]+first[0]).toFixed(3)} Y${(p.cy+first[1]).toFixed(3)} Z${z0.toFixed(3)} F6000\n`;
+for(let bi=0;bi<ts.length;bi++){
+ if(bi>0){g+=`\n; === TEMPERATURE ZONE ${bi+1}: ${ts[bi]} C ===\nM104 S${ts[bi]}\nM109 S${ts[bi]} ; wait for target temperature at band boundary\n`;}
+ else g+=`\n; === TEMPERATURE ZONE 1: ${ts[bi]} C ===\nM109 S${ts[bi]}\n`;
+ for(let ci=0;ci<p.c;ci++){
+  let v=p.v[ci],f=v/area*60;
+  g+=`\n; --- CELL ${ci+1} / VS ${v} mm3/s ---\n`;
+  if(bi>0||ci>0){let baseZ=(bi*layersPer+1)*p.lh,topZ=((bi+1)*layersPer+1)*p.lh,safeZ=topZ+2;g+=`G1 E-0.8 F1800 ; retract before inter-cell travel\nG0 Z${safeZ.toFixed(3)} F1200\nG0 X${(positions[ci]+first[0]).toFixed(3)} Y${(p.cy+first[1]).toFixed(3)} F6000\nG0 Z${baseZ.toFixed(3)} F1200\nG1 E0.8 F1800 ; unretract\n`;}
+  for(let k=0;k<layersPer;k++){
+   let globalLayer=bi*layersPer+k,rev=globalLayer%2===1,arr=rev?[...pts].reverse():pts;
+   let zBase=(globalLayer+1)*p.lh;
+   for(let j=1;j<arr.length;j++){
+    let a=arr[j-1],b=arr[j],dist=Math.hypot(b[0]-a[0],b[1]-a[1]),e=dist*area/fil;
+    let z=zBase+(j/(arr.length-1))*p.lh;
+    g+=`G1 X${(positions[ci]+b[0]).toFixed(3)} Y${(p.cy+b[1]).toFixed(3)} Z${z.toFixed(3)} E${e.toFixed(5)} F${Math.round(f)} ; VS ${v}\n`;
+   }
+  }
+ }
+}
+g+=`\n; --- END TOOLPATH ---\nM400\nM104 S0\nM140 S0\nM106 S0\n`;
+if($('end').value.trim())g+='\n; --- USER MACHINE END ---\n'+$('end').value+'\n';else g+='; Add verified machine end G-code from the A1 mini profile before printing.\n';
+finalCode=g;$('result').className='status warn';$('result').innerHTML=`<b>G-code сформирован.</b><br>Температурных зон: ${ts.length}; цилиндров: ${p.c}; расчётная высота: ${actual.toFixed(2)} мм; строк: ${g.split('\\n').length.toLocaleString('ru-RU')}.<br><br><b>Критично:</b> это экспериментальный toolpath. Проверьте travel, Z-переходы, лимиты скорости, температуру и старт/финиш в симуляторе Bambu Studio/OrcaSlicer. Вставленный start/end G-code не проверяется генератором.`;
+$('code').textContent=g.slice(0,11000)+(g.length>11000?'\n... [preview truncated; full file is in the download]':'');$('download').disabled=false;$('copy').disabled=false}
+$('build').addEventListener('click',makeGcode);
+$('download').addEventListener('click',()=>{if(!finalCode)return;let u=URL.createObjectURL(new Blob([finalCode],{type:'text/plain'})),a=document.createElement('a');a.href=u;a.download='MVS_Matrix_Labyrinth_A1mini_experimental.gcode';a.click();URL.revokeObjectURL(u)});
+$('copy').addEventListener('click',async()=>{if(finalCode){await navigator.clipboard.writeText(finalCode);$('result').innerHTML+=' <span class="good">Скопировано.</span>'}});
+$('count').addEventListener('change',()=>{buildVSFields();render()});document.querySelectorAll('input').forEach(x=>x.addEventListener('input',render));buildVSFields();render();
+</script></body></html>

@@ -1,0 +1,77 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><title>Двойная спираль MVS — S-переход</title>
+<style>
+body{margin:0;background:#0e1218;color:#e6edf3;font:14px system-ui,sans-serif}
+.wrap{display:flex;gap:18px;padding:18px;flex-wrap:wrap}
+.card{background:#121821;border:1px solid #26303d;border-radius:10px;padding:14px}
+h2{font-size:15px;margin:0 0 10px}
+label{display:block;margin:8px 0 2px;color:#9fb0c0;font-size:12px}
+input[type=range]{width:220px}
+svg{display:block;background:#0e1218;border-radius:8px}
+#info{font-family:ui-monospace,monospace;font-size:12px;line-height:1.7;color:#9fb0c0}
+b{color:#e6edf3}
+</style>
+<div class="wrap">
+<div class="card">
+<h2>Параметры</h2>
+<label>R, мм: <span id="vR"></span></label><input id="R" type="range" min="8" max="24" step="0.5" value="18">
+<label>r_c, мм: <span id="vrc"></span></label><input id="rc" type="range" min="0.6" max="8" step="0.1" value="2.5">
+<label>N, витков: <span id="vN"></span></label><input id="N" type="range" min="2" max="10" step="0.1" value="6.5">
+<label>L, мм: <span id="vL"></span></label><input id="L" type="range" min="0.5" max="12" step="0.1" value="2.5">
+<div id="info"></div>
+</div>
+<div class="card"><div id="pic"></div></div>
+</div>
+<script>
+const TAU = Math.PI*2;
+function part1(P,n){const o=[];for(let i=0;i<=n;i++){const t=i/n,r=P.R-P.d*t,a=P.w*t;o.push({x:r*Math.cos(a),y:r*Math.sin(a)});}return o;}
+function part3(P,n){const o=[];for(let i=0;i<=n;i++){const t=i/n,r=P.rc+P.d*t,a=P.w+Math.PI+P.w*t;o.push({x:r*Math.cos(a),y:r*Math.sin(a)});}return o;}
+function sCurve(P,n){const w=P.w,rc=P.rc;
+ const P0x=rc*Math.cos(w),P0y=rc*Math.sin(w),P3x=rc*Math.cos(w+Math.PI),P3y=rc*Math.sin(w+Math.PI);
+ const Ax=-P.d*Math.cos(w)-rc*w*Math.sin(w),Ay=-P.d*Math.sin(w)+rc*w*Math.cos(w);
+ const Bx=P.d*Math.cos(w+Math.PI)-rc*w*Math.sin(w+Math.PI),By=P.d*Math.sin(w+Math.PI)+rc*w*Math.cos(w+Math.PI);
+ const An=Math.hypot(Ax,Ay),Bn=Math.hypot(Bx,By);
+ const P1x=P0x+P.L*Ax/An,P1y=P0y+P.L*Ay/An,P2x=P3x-P.L*Bx/Bn,P2y=P3y-P.L*By/Bn;
+ const o=[];for(let i=0;i<=n;i++){const t=i/n,mt=1-t;
+  o.push({x:mt*mt*mt*P0x+3*mt*mt*t*P1x+3*mt*t*t*P2x+t*t*t*P3x,
+          y:mt*mt*mt*P0y+3*mt*mt*t*P1y+3*mt*t*t*P2y+t*t*t*P3y});}
+ return {pts:o,ctrl:{P0:[P0x,P0y],P1:[P1x,P1y],P2:[P2x,P2y],P3:[P3x,P3y]}};}
+function curv(p,i){if(i<=0||i>=p.length-1)return Infinity;const a=p[i-1],b=p[i],c=p[i+1];
+ const ab=Math.hypot(b.x-a.x,b.y-a.y),bc=Math.hypot(c.x-b.x,c.y-b.y),ca=Math.hypot(a.x-c.x,a.y-c.y);
+ if(ab<1e-12||bc<1e-12||ca<1e-12)return Infinity;const s=(ab+bc+ca)/2;
+ const ar=Math.sqrt(Math.max(0,s*(s-ab)*(s-bc)*(s-ca)));if(ar<1e-12)return Infinity;return ab*bc*ca/(4*ar);}
+function dSeg(p,a,b){const vx=b.x-a.x,vy=b.y-a.y,L2=vx*vx+vy*vy;if(L2<1e-12)return Math.hypot(p.x-a.x,p.y-a.y);
+ let t=((p.x-a.x)*vx+(p.y-a.y)*vy)/L2;t=Math.max(0,Math.min(1,t));return Math.hypot(p.x-(a.x+t*vx),p.y-(a.y+t*vy));}
+function metrics(path){let Rmin=Infinity;for(let i=1;i<path.length-1;i++){const R=curv(path,i);if(R<Rmin)Rmin=R;}
+ let mt=0;for(let i=1;i<path.length-1;i++){const v1=[path[i].x-path[i-1].x,path[i].y-path[i-1].y],v2=[path[i+1].x-path[i].x,path[i+1].y-path[i].y];
+  const n1=Math.hypot(...v1),n2=Math.hypot(...v2);if(n1<1e-9||n2<1e-9)continue;
+  const c=Math.max(-1,Math.min(1,(v1[0]*v2[0]+v1[1]*v2[1])/(n1*n2)));const d=Math.acos(c)*180/Math.PI;if(d>mt)mt=d;}
+ const cell=0.25,grid=new Map();
+ for(let i=0;i<path.length;i++){const k=Math.floor(path[i].x/cell)+','+Math.floor(path[i].y/cell);if(!grid.has(k))grid.set(k,[]);grid.get(k).push(i);}
+ let gap=Infinity;
+ for(const b of grid.values())for(const i of b){const ix=Math.floor(path[i].x/cell),iy=Math.floor(path[i].y/cell);
+  for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){const o=grid.get((ix+dx)+','+(iy+dy));if(!o)continue;
+   for(const j of o){if(j<=i+4||j===0||i===0)continue;const d=Math.min(dSeg(path[i],path[j-1],path[j]),dSeg(path[j],path[i-1],path[i]));if(d<gap)gap=d;}}}
+ let len=0;for(let i=1;i<path.length;i++)len+=Math.hypot(path[i].x-path[i-1].x,path[i].y-path[i-1].y);
+ const ro=Math.min(...path.map(q=>Math.hypot(q.x,q.y)));
+ return {Rmin,maxTurn:mt,minGap:gap,len,rMinOrigin:ro};}
+function render(){const P={R:+R.value,rc:+rc.value,N:+N.value,L:+L.value};P.d=P.R-P.rc;P.w=TAU*P.N;
+ vR.textContent=P.R;vrc.textContent=P.rc;vN.textContent=P.N;vL.textContent=P.L;
+ const a=part1(P,1200),s=sCurve(P,400),b=part3(P,1200);
+ const path=[...a,...s.pts.slice(1,-1),...b.slice(1)];
+ const st=metrics(path);
+ const S=620,pad=3,size=2*(P.R+pad);
+ const X=x=>(S/2+x*(S/size)).toFixed(2),Y=y=>(S/2-y*(S/size)).toFixed(2);
+ const pathOf=arr=>arr.map((q,i)=>(i?'L':'M')+' '+X(q.x)+' '+Y(q.y)).join(' ');
+ const col={in:'#4d8dff',s:'#f2a03c',out:'#33c6bd'};
+ let g='<circle cx="'+S/2+'" cy="'+S/2+'" r="'+(P.R*(S/size)).toFixed(2)+'" fill="none" stroke="#26303d" stroke-dasharray="4 4"/>';
+ g+='<circle cx="'+S/2+'" cy="'+S/2+'" r="'+(P.rc*(S/size)).toFixed(2)+'" fill="none" stroke="#26303d" stroke-dasharray="2 3"/>';
+ for(const k of ['in','s','out'])g+='<path d="'+pathOf(k==='in'?a:k==='s'?s.pts:b)+'" fill="none" stroke="'+col[k]+'" stroke-width="2" stroke-linejoin="round"/>';
+ const c=s.ctrl;
+ g+='<path d="M '+X(c.P0[0])+' '+Y(c.P0[1])+' L '+X(c.P1[0])+' '+Y(c.P1[1])+' L '+X(c.P2[0])+' '+Y(c.P2[1])+' L '+X(c.P3[0])+' '+Y(c.P3[1])+'" fill="none" stroke="#ff5fa2" stroke-width="1" stroke-dasharray="4 3"/>';
+ for(const [nm,p] of [['P0',c.P0],['P1',c.P1],['P2',c.P2],['P3',c.P3]])g+='<circle cx="'+X(p[0])+'" cy="'+Y(p[1])+'" r="3" fill="#ff5fa2"/>';
+ pic.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="'+S+'" height="'+S+'" viewBox="0 0 '+S+' '+S+'">'+g+'</svg>';
+ const vcap=Math.sqrt(8000*st.Rmin);
+ info.innerHTML='<b>R_кривизны</b> '+st.Rmin.toFixed(2)+' мм<br><b>излом</b> '+st.maxTurn.toFixed(1)+'°<br><b>мин. зазор</b> '+st.minGap.toFixed(2)+' мм<br><b>ближе к центру</b> '+st.rMinOrigin.toFixed(2)+' мм<br><b>предел скорости</b> '+vcap.toFixed(0)+' мм/с<br><b>длина</b> '+st.len.toFixed(0)+' мм';}
+['R','rc','N','L'].forEach(id=>document.getElementById(id).addEventListener('input',render));
+render();
+</script></html>

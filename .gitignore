@@ -1,0 +1,38 @@
+# --- секреты: не попадают в историю ни при каких условиях ---
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+credentials*
+auth.json
+token.json
+
+# --- локальные настройки инструмента ---
+# .kilo/ — машинное состояние Kilo (agent-manager.json, plans/, воркдеревья).
+# Долговечный файл под .kilo/ открывать отдельным отрицанием (!).
+.kilo/*
+
+# --- система и редакторы ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+
+# --- логи и временное ---
+*.log
+tmp/
+temp/
+
+# --- Node: тесты и CI (tests/, .github/workflows) ---
+node_modules/
+
+# --- временные и резервные копии ---
+*.tmp
+*.bak
+*.orig
+*~
+*.swp
+*.swo

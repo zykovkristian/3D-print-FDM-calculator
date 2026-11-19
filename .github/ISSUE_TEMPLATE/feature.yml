@@ -1,0 +1,23 @@
+---
+name: Предложение
+about: Идея улучшения, новый тест или поддержка другого принтера
+title: "[Предложение] "
+labels: enhancement
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: Что предлагаете
+      description: Опишите идею и ожидаемую пользу.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Что входит в область
+      description: Нужны ли изменения в модели, протоколе, документации или только в интерфейсе.
+  - type: textarea
+    id: alt
+    attributes:
+      label: Альтернативы
+      description: Какие способы вы уже рассматривали.

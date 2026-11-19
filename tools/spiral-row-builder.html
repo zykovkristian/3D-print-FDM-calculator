@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Конструктор спирального ряда</title>
+<style>
+:root{--bg:#f4f6f9;--card:#fff;--ink:#1b2230;--mut:#667085;--bd:#dfe3ea;--acc:#1d4ed8;--warn:#92400e;--warnbg:#fffbeb;--warnbd:#fcd34d;--ok:#067647}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+header{padding:16px 20px 4px}
+h1{font-size:18px;margin:0 0 2px}
+header p{margin:0;color:var(--mut);font-size:13px}
+.app{display:grid;grid-template-columns:330px minmax(0,1fr);gap:16px;padding:12px 20px 24px;align-items:start}
+@media(max-width:900px){.app{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px}
+.card h2{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--mut);margin:16px 0 8px;font-weight:600}
+.card h2:first-child{margin-top:0}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+label{display:block;font-size:12px;color:var(--mut)}
+label input,label select{display:block;width:100%;margin-top:3px;padding:6px 8px;font:inherit;color:var(--ink);border:1px solid var(--bd);border-radius:6px;background:#fff}
+label input:focus,label select:focus,.mini input:focus{outline:2px solid #bfd0ff;border-color:var(--acc)}
+label.chk{display:flex;gap:8px;align-items:center;color:var(--ink);font-size:13px;margin:8px 0 0}
+label.chk input{width:auto;margin:0}
+.hint{font-size:12px;color:var(--mut);margin-top:6px}
+.mini{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px}
+.mini th{text-align:left;color:var(--mut);font-weight:500;padding:2px 4px}
+.mini td{padding:2px 4px}
+.mini input{width:100%;padding:4px 6px;font:inherit;border:1px solid var(--bd);border-radius:5px}
+#view{background:#fff;border:1px solid var(--bd);border-radius:10px;overflow:hidden}
+#view svg{display:block;width:100%;height:auto;max-height:70vh}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:12px}
+.stat{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:8px 10px}
+.stat b{display:block;font-size:15px;font-variant-numeric:tabular-nums}
+.stat span{font-size:11px;color:var(--mut)}
+.warns{margin-top:12px;display:grid;gap:6px}
+.warn{background:var(--warnbg);border:1px solid var(--warnbd);color:var(--warn);border-radius:8px;padding:7px 10px;font-size:13px}
+.info{background:#eef4ff;border:1px solid #c7d7fe;color:#1e3a8a;border-radius:8px;padding:7px 10px;font-size:13px}
+table.sp{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px;background:var(--card);border:1px solid var(--bd);border-radius:8px;overflow:hidden}
+table.sp th,table.sp td{padding:6px 8px;text-align:left;border-bottom:1px solid var(--bd);font-variant-numeric:tabular-nums}
+table.sp th{color:var(--mut);font-weight:500;background:#fafbfc}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+button{font:inherit;padding:7px 12px;border-radius:7px;border:1px solid var(--bd);background:#fff;color:var(--ink);cursor:pointer}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+button:hover{filter:brightness(.97)}
+details{margin-top:12px;font-size:13px}
+summary{cursor:pointer;color:var(--mut)}
+details ul{margin:6px 0 0;padding-left:18px}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#1b2230;color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.on{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <h1>Конструктор спирального ряда</h1>
+  <p>Траектория сопла: ряд двойных спиралей из полукругов. Одна спираль — один столбец печати.</p>
+</header>
+
+<div class="app">
+  <aside class="card panel">
+    <h2>Ряд</h2>
+    <div class="g2">
+      <label>Спиралей в ряду<input id="count" type="number" min="1" max="12" step="1" value="3"></label>
+      <label>Угол оси ряда, °<input id="angle" type="number" step="1" value="-45"></label>
+      <label>Центр ряда X, мм<input id="cx" type="number" step="1" value="128"></label>
+      <label>Центр ряда Y, мм<input id="cy" type="number" step="1" value="128"></label>
+      <label>Зазор между спиралями, мм<input id="gap" type="number" min="0" step="0.1" value="0"></label>
+      <label>Закрутка наружу (1-я спираль)
+        <select id="rot"><option value="1">против часовой</option><option value="-1">по часовой</option></select>
+      </label>
+    </div>
+    <label class="chk"><input id="tails" type="checkbox" checked> Хвосты краёв закрывать к центру ряда</label>
+    <label class="chk"><input id="reverse" type="checkbox"> Обратный порядок обхода</label>
+    <div class="hint">Зазор &gt; 0 добавляет прямую перемычку вдоль оси (излом 90°). Зазор 0 — плавный S-стык.</div>
+
+    <h2>Спираль (общие)</h2>
+    <div class="g2">
+      <label>Витки на ветвь<input id="turns" type="number" min="0.5" step="0.5" value="3"></label>
+      <label>Шаг траекторий, мм<input id="pitch" type="number" min="0.05" step="0.05" value="2"></label>
+      <label>Ширина линии, мм<input id="lw" type="number" min="0.05" step="0.01" value="0.42"></label>
+      <label>Высота слоя, мм<input id="lh" type="number" min="0.01" step="0.01" value="0.2"></label>
+    </div>
+
+    <h2>Центр спирали</h2>
+    <div class="g2">
+      <label>Шаг внутренних витков, мм<input id="pitchIn" type="number" min="0.05" step="0.05" value="" placeholder="= внешний"></label>
+      <label>Внутренних уровней<input id="innerLevels" type="number" min="0" max="20" step="1" value="2"></label>
+      <label>Центр → вход/выход S, мм<input id="coreX" type="number" min="0.1" step="0.1" value="" placeholder="авто = шаг внутр."></label>
+    </div>
+    <div class="hint">X — расстояние от центра до точек входа/выхода S. Радиус S-петли = X/2, между точками S = 2X. Чтобы убрать 1–2 внутренних полукруга и сгладить S, задайте X ≈ 2–3 внутренних шага. Внутренний шаг действует на первые «внутренние уровни» после S, дальше — внешний шаг.</div>
+
+    <label class="chk"><input id="perSpiral" type="checkbox"> Задать каждую спираль отдельно</label>
+    <div id="perTable"></div>
+
+    <h2>Стол</h2>
+    <div class="g2">
+      <label>Ширина, мм<input id="bw" type="number" min="1" step="1" value="256"></label>
+      <label>Глубина, мм<input id="bh" type="number" min="1" step="1" value="256"></label>
+    </div>
+
+    <h2>Показ</h2>
+    <label class="chk"><input id="shAxis" type="checkbox" checked> Ось ряда</label>
+    <label class="chk"><input id="shCenters" type="checkbox" checked> Центры и номера</label>
+    <label class="chk"><input id="shEnds" type="checkbox" checked> Старт / финиш</label>
+    <label class="chk"><input id="shArrows" type="checkbox"> Стрелки направления</label>
+    <label class="chk"><input id="shReal" type="checkbox" checked> Реальная ширина линии</label>
+    <label class="chk"><input id="shBed" type="checkbox"> Вид по столу</label>
+  </aside>
+
+  <main>
+    <div id="view"></div>
+    <div class="warns" id="warns"></div>
+    <div class="stats" id="stats"></div>
+    <div id="spTable"></div>
+    <div class="btns">
+      <button class="pri" id="bCopy">Копировать JSON</button>
+      <button id="bJson">Скачать JSON</button>
+      <button id="bSvg">Скачать SVG</button>
+      <button id="bReset">Сбросить</button>
+    </div>
+    <details>
+      <summary>Как построена геометрия</summary>
+      <ul>
+        <li>Все дуги — ровно полуокружности с центрами на оси диаметра. Радиусы растут на шаг траекторий при каждом полукруге.</li>
+        <li>Спираль = ветвь «внутрь» (от внешнего конца диаметра к центру) + S-петля по центру (две полуокружности радиуса X/2) + ветвь «наружу» к противоположному концу диаметра.</li>
+        <li>Шаг — расстояние между соседними траекториями (внутрь / наружу чередуются). Первые «внутренние уровни» идут с внутренним шагом, остальные — с внешним. Между соседними витками одной ветви — сумма двух соседних шагов.</li>
+        <li>X — расстояние от центра до точек входа/выхода S и одновременно расстояние между линиями в самом центре. X = (1 + число убранных внутренних уровней) × шаг даёт тот же эффект, что удаление этих полукругов, но плавно подбирается в мм.</li>
+        <li>Выход спирали i совпадает со входом спирали i+1, касательные совпадают. Закрутка соседних спиралей подбирается автоматически для плавного стыка.</li>
+        <li>Хвосты: у первой спирали ветвь «внутрь», у последней ветвь «наружу» короче на один полукруг. Конец хвоста лежит на диаметре с той же стороны, что и стык, на один шаг ближе к центру спирали.</li>
+      </ul>
+    </details>
+  </main>
+</div>
+<div id="toast"></div>
+
+<script id="core">
+/* ===== CORE: геометрия без DOM ===== */
+const TAU = Math.PI * 2;
+
+// Локальные полукруги спирали (координата t вдоль диаметра от центра, side = сторона нормали ±1)
+// Модули пересечений ветви с осью диаметра: u[0]=0, u[1]=X (центр → вход/выход S-петли),
+// далее u[k+1]=u[k]+шаг, где первые nIn уровней идут с внутренним шагом sIn, остальные — с внешним s.
+function lanes(q, K) {
+  const u = [0];
+  if (K >= 1) u[1] = q.X;
+  for (let k = 1; k < K; k++) u[k + 1] = u[k] + (k <= q.nIn ? q.sIn : q.s);
+  return u;
+}
+
+function localArcs(q) {
+  const a = q.a, b = q.b, h = q.h, chi = q.chi, u = q.u, arcs = [];
+  const st = k => (k % 2 === 0 ? 1 : -1) * u[k];        // (-1)^k * u[k]
+  const en = k => (k % 2 === 0 ? -1 : 1) * u[k + 1];    // (-1)^(k+1) * u[k+1]
+  const sd = k => (k % 2 === 0 ? 1 : -1) * chi;
+  for (let j = a - 1; j >= 0; j--) arcs.push({ t0: -en(j) * h, t1: -st(j) * h, side: -sd(j), phase: 'inward', idx: j });
+  for (let k = 0; k < b; k++) arcs.push({ t0: st(k) * h, t1: en(k) * h, side: sd(k), phase: 'outward', idx: k });
+  return arcs;
+}
+
+function arcBBox(s, bb) {
+  const cx = s.center[0], cy = s.center[1], r = s.r;
+  const a0 = Math.atan2(s.from[1] - cy, s.from[0] - cx);
+  const add = (x, y) => { bb.minX = Math.min(bb.minX, x); bb.maxX = Math.max(bb.maxX, x); bb.minY = Math.min(bb.minY, y); bb.maxY = Math.max(bb.maxY, y); };
+  add(s.from[0], s.from[1]); add(s.to[0], s.to[1]);
+  [0, Math.PI / 2, Math.PI, 3 * Math.PI / 2].forEach(ang => {
+    let d = s.ccw ? ang - a0 : a0 - ang;
+    d = ((d % TAU) + TAU) % TAU;
+    if (d <= Math.PI + 1e-9) add(cx + r * Math.cos(ang), cy + r * Math.sin(ang));
+  });
+}
+
+function buildRow(p) {
+  const M = Math.max(1, Math.floor(p.count));
+  const th = p.angle * Math.PI / 180, ux = Math.cos(th), uy = Math.sin(th), nx = -uy, ny = ux;
+  const sp = [];
+  for (let i = 0; i < M; i++) {
+    const it = (p.items && p.items[i]) || {};
+    const turns = (it.turns != null && isFinite(it.turns)) ? it.turns : p.turns;
+    const s = (it.pitch != null && isFinite(it.pitch)) ? it.pitch : p.pitch;
+    const N = Math.max(1, Math.round(turns * 2));
+    const role = M === 1 ? 'single' : (i === 0 ? 'first' : (i === M - 1 ? 'last' : 'middle'));
+    let a = N, b = N;
+    if (p.tails && M > 1) { if (role === 'first') a = N - 1; if (role === 'last') b = N - 1; }
+    const pos = v => (v != null && isFinite(v) && v > 0);
+    const sIn = pos(it.pitchIn) ? it.pitchIn : (pos(p.pitchIn) ? p.pitchIn : s);
+    const X = pos(it.coreX) ? it.coreX : (pos(p.coreX) ? p.coreX : sIn);
+    const nIn = Math.max(0, Math.round(p.innerLevels != null ? p.innerLevels : 2));
+    sp.push({ index: i + 1, N, s, sIn, X, nIn, role, a, b, h: N % 2 === 0 ? 1 : -1 });
+  }
+  sp.forEach(q => { q.u = lanes(q, Math.max(q.a, q.b)); });
+  // Закрутка: для плавного стыка chi[i+1] = chi[i] * (-1)^(b[i] + a[i+1])
+  sp[0].chi = (p.rot >= 0 ? 1 : -1) * sp[0].h;
+  for (let i = 1; i < M; i++) sp[i].chi = sp[i - 1].chi * (((sp[i - 1].b + sp[i].a) % 2 === 0) ? 1 : -1);
+  // Позиции центров вдоль оси
+  sp[0].tc = 0;
+  for (let i = 1; i < M; i++) sp[i].tc = sp[i - 1].tc + sp[i - 1].u[sp[i - 1].b] + p.gap + sp[i].u[sp[i].a];
+  const shift = (sp[0].tc + sp[M - 1].tc) / 2;
+  sp.forEach(q => { q.tc -= shift; });
+
+  const G = (t, n) => [p.cx + t * ux + n * nx, p.cy + t * uy + n * ny];
+  let path = [];
+  sp.forEach((q, i) => {
+    const segs = localArcs(q).map(l => {
+      const T0 = q.tc + l.t0, T1 = q.tc + l.t1;
+      return {
+        type: 'arc', spiral: q.index, phase: l.phase,
+        from: G(T0, 0), to: G(T1, 0), center: G((T0 + T1) / 2, 0),
+        r: Math.abs(l.t1 - l.t0) / 2, ccw: l.side * (l.t1 - l.t0) < 0
+      };
+    });
+    q.center = G(q.tc, 0);
+    q.entry = segs.length ? segs[0].from : q.center;
+    q.exit = segs.length ? segs[segs.length - 1].to : q.center;
+    q.outCCW = q.chi * q.h > 0;
+    if (i > 0 && p.gap > 0) path.push({ type: 'line', spiral: i, phase: 'link', from: sp[i - 1].exit, to: q.entry });
+    path = path.concat(segs);
+  });
+
+  if (p.reverse) {
+    path = path.reverse().map(s => {
+      const o = { type: s.type, spiral: s.spiral, from: s.to, to: s.from,
+        phase: s.phase === 'inward' ? 'outward' : (s.phase === 'outward' ? 'inward' : s.phase) };
+      if (s.type === 'arc') { o.center = s.center; o.r = s.r; o.ccw = !s.ccw; }
+      return o;
+    });
+    sp.forEach(q => { const e = q.entry; q.entry = q.exit; q.exit = e; });
+  }
+
+  let length = 0, arcs = 0, rmin = Infinity;
+  const bb = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+  path.forEach(s => {
+    if (s.type === 'arc') { length += Math.PI * s.r; arcs++; rmin = Math.min(rmin, s.r); arcBBox(s, bb); }
+    else {
+      length += Math.hypot(s.to[0] - s.from[0], s.to[1] - s.from[1]);
+      [s.from, s.to].forEach(pt => { bb.minX = Math.min(bb.minX, pt[0]); bb.maxX = Math.max(bb.maxX, pt[0]); bb.minY = Math.min(bb.minY, pt[1]); bb.maxY = Math.max(bb.maxY, pt[1]); });
+    }
+  });
+  bb.w = bb.maxX - bb.minX; bb.h = bb.maxY - bb.minY;
+  return { params: p, spirals: sp, path, stats: { length, arcs, rmin, bbox: bb, start: path[0].from, end: path[path.length - 1].to } };
+}
+
+function toJSON(res) {
+  const r5 = v => Math.round(v * 1e5) / 1e5, P = a => [r5(a[0]), r5(a[1])];
+  const p = res.params, st = res.stats;
+  return {
+    schema: 'spiral-row/v1',
+    units: 'mm',
+    frame: 'Стол XY, X вправо, Y вверх; CCW = G3, CW = G2; ij = центр дуги минус начало дуги',
+    params: {
+      count: p.count, angle_deg: p.angle, row_center: [p.cx, p.cy], gap_mm: p.gap,
+      outward_rotation_first: p.rot >= 0 ? 'CCW' : 'CW', close_edge_tails: p.tails, reverse: p.reverse,
+      turns_per_branch: p.turns, pitch_mm: p.pitch, line_width_mm: p.lw, layer_height_mm: p.lh,
+      pitch_inner_mm: p.pitchIn == null ? null : p.pitchIn, inner_levels: p.innerLevels, core_x_mm: p.coreX == null ? null : p.coreX,
+      per_spiral_overrides: (p.items || []).map(it => it ? {
+        turns: it.turns == null ? null : it.turns, pitch: it.pitch == null ? null : it.pitch,
+        pitch_inner: it.pitchIn == null ? null : it.pitchIn, core_x: it.coreX == null ? null : it.coreX } : null),
+      bed_mm: [p.bed.w, p.bed.h]
+    },
+    spirals: res.spirals.map(q => ({
+      index: q.index, role: q.role, center: P(q.center), pitch_mm: q.s,
+      pitch_inner_mm: q.sIn, inner_levels: q.nIn, core_x_mm: q.X, s_loop_radius_mm: q.X / 2, s_points_distance_mm: 2 * q.X,
+      semicircles_inward: q.a, semicircles_outward: q.b, turns_inward: q.a / 2, turns_outward: q.b / 2,
+      entry: P(q.entry), exit: P(q.exit), outward_rotation: q.outCCW ? 'CCW' : 'CW'
+    })),
+    path: res.path.map((s, k) => s.type === 'arc'
+      ? { n: k + 1, type: 'arc', spiral: s.spiral, phase: s.phase, from: P(s.from), to: P(s.to), center: P(s.center),
+          r: r5(s.r), dir: s.ccw ? 'CCW' : 'CW', ij: [r5(s.center[0] - s.from[0]), r5(s.center[1] - s.from[1])] }
+      : { n: k + 1, type: 'line', link_after_spiral: s.spiral, phase: s.phase, from: P(s.from), to: P(s.to) }),
+    stats: {
+      length_mm: r5(st.length), arcs: st.arcs, min_radius_mm: r5(st.rmin),
+      bbox: { min: [r5(st.bbox.minX), r5(st.bbox.minY)], max: [r5(st.bbox.maxX), r5(st.bbox.maxY)], size: [r5(st.bbox.w), r5(st.bbox.h)] },
+      start: P(st.start), end: P(st.end), volume_per_layer_mm3: r5(st.length * p.lw * p.lh)
+    },
+    notes: [
+      'Путь непрерывный: конец сегмента n = начало сегмента n+1. Все дуги — ровно полуокружности (180°).',
+      'Спираль = ветвь inward (от внешнего конца диаметра к центру) + S-петля по центру (2 полуокружности радиуса core_x/2) + ветвь outward к противоположному концу диаметра.',
+      'core_x — расстояние от центра до точек входа/выхода S-петли (и расстояние между линиями в центре); расстояние между точками S = 2*core_x.',
+      'pitch — расстояние между соседними траекториями (inward/outward чередуются) вдоль диаметра; первые inner_levels уровней после S идут с pitch_inner, остальные с pitch; между соседними витками одной ветви — сумма двух соседних шагов.',
+      'Вход и выход спирали лежат на диаметре, вдоль оси ряда, на противоположных концах.',
+      'Хвосты крайних спиралей: ветвь короче на один полукруг; конец хвоста лежит на диаметре со стороны центра ряда, на pitch ближе к центру спирали, чем точка стыка.',
+      'Стык соседних спиралей: exit[i] = entry[i+1] (gap=0), касательные совпадают; при gap>0 между ними прямая перемычка вдоль оси (излом 90°).',
+      'Закрутка соседних спиралей подбирается так, чтобы стык был гладким; она может чередоваться при разной чётности числа полукругов.'
+    ]
+  };
+}
+</script>
+
+<script>
+/* ===== UI ===== */
+const $ = id => document.getElementById(id);
+const num = (id, def) => { const v = parseFloat($(id).value); return isFinite(v) ? v : def; };
+const optNum = id => { const v = parseFloat($(id).value); return (isFinite(v) && v > 0) ? v : null; };
+let items = [];
+const DEFAULTS = {};
+document.querySelectorAll('.panel input, .panel select').forEach(el => { DEFAULTS[el.id] = el.type === 'checkbox' ? el.checked : el.value; });
+
+function readParams() {
+  const count = Math.min(12, Math.max(1, Math.round(num('count', 3))));
+  return {
+    count, angle: num('angle', -45), cx: num('cx', 128), cy: num('cy', 128), gap: Math.max(0, num('gap', 0)),
+    rot: parseInt($('rot').value, 10), tails: $('tails').checked, reverse: $('reverse').checked,
+    turns: Math.max(0.5, num('turns', 3)), pitch: Math.max(0.05, num('pitch', 2)),
+    pitchIn: optNum('pitchIn'), coreX: optNum('coreX'), innerLevels: Math.max(0, Math.round(num('innerLevels', 2))),
+    lw: Math.max(0.05, num('lw', 0.42)), lh: Math.max(0.01, num('lh', 0.2)),
+    bed: { w: Math.max(1, num('bw', 256)), h: Math.max(1, num('bh', 256)) },
+    items: $('perSpiral').checked ? items.slice(0, count) : []
+  };
+}
+
+function niceStep(x) {
+  const e = Math.pow(10, Math.floor(Math.log10(x))), f = x / e;
+  return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * e;
+}
+const f4 = v => (Math.round(v * 1e4) / 1e4).toString();
+const f2 = v => (Math.round(v * 100) / 100).toLocaleString('ru-RU');
+
+function drawSVG(res) {
+  const p = res.params, bb = Object.assign({}, res.stats.bbox);
+  if ($('shBed').checked) { bb.minX = Math.min(bb.minX, 0); bb.minY = Math.min(bb.minY, 0); bb.maxX = Math.max(bb.maxX, p.bed.w); bb.maxY = Math.max(bb.maxY, p.bed.h); }
+  const W = bb.maxX - bb.minX, H = bb.maxY - bb.minY, span = Math.max(W, H, 1), m = span * 0.07;
+  const vx = bb.minX - m, vy = -(bb.maxY + m), vw = W + 2 * m, vh = H + 2 * m;
+  const sw = $('shReal').checked ? p.lw : span / 300;
+  const step = niceStep(span / 14), dotR = span / 700, mr = span / 85, fs = span / 38;
+  let d = '';
+  res.path.forEach((s, i) => {
+    if (i === 0) d += `M${f4(s.from[0])} ${f4(-s.from[1])}`;
+    if (s.type === 'arc') d += `A${f4(s.r)} ${f4(s.r)} 0 0 ${s.ccw ? 0 : 1} ${f4(s.to[0])} ${f4(-s.to[1])}`;
+    else d += `L${f4(s.to[0])} ${f4(-s.to[1])}`;
+  });
+  let o = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${f4(vx)} ${f4(vy)} ${f4(vw)} ${f4(vh)}" font-family="system-ui,Segoe UI,sans-serif">`;
+  o += `<defs><pattern id="dots" width="${step}" height="${step}" patternUnits="userSpaceOnUse"><circle cx="0" cy="0" r="${dotR}" fill="#c3cad6"/></pattern></defs>`;
+  o += `<rect x="${f4(vx)}" y="${f4(vy)}" width="${f4(vw)}" height="${f4(vh)}" fill="#fff"/>`;
+  o += `<rect x="${f4(vx)}" y="${f4(vy)}" width="${f4(vw)}" height="${f4(vh)}" fill="url(#dots)"/>`;
+  if ($('shBed').checked) {
+    o += `<rect x="0" y="${f4(-p.bed.h)}" width="${f4(p.bed.w)}" height="${f4(p.bed.h)}" fill="none" stroke="#98a2b3" stroke-width="${span / 400}" stroke-dasharray="${span / 60} ${span / 90}"/>`;
+  }
+  const sp = res.spirals, th = p.angle * Math.PI / 180, ux = Math.cos(th), uy = Math.sin(th);
+  if ($('shAxis').checked) {
+    const maxR = Math.max(...sp.map(q => q.u[q.u.length - 1])), half = (sp[sp.length - 1].tc - sp[0].tc) / 2 + maxR * 1.15 + 1;
+    o += `<line x1="${f4(p.cx - ux * half)}" y1="${f4(-(p.cy - uy * half))}" x2="${f4(p.cx + ux * half)}" y2="${f4(-(p.cy + uy * half))}" stroke="#94a3b8" stroke-width="${span / 450}" stroke-dasharray="${span / 70} ${span / 100}"/>`;
+  }
+  o += `<path d="${d}" fill="none" stroke="#1d4ed8" stroke-width="${f4(sw)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  if ($('shArrows').checked) {
+    const z = Math.max(p.lw * 1.6, span / 110);
+    res.path.forEach(s => {
+      if (s.type !== 'arc') return;
+      const a0 = Math.atan2(s.from[1] - s.center[1], s.from[0] - s.center[0]), am = a0 + (s.ccw ? 1 : -1) * Math.PI / 2;
+      const mx = s.center[0] + s.r * Math.cos(am), my = s.center[1] + s.r * Math.sin(am);
+      const tx = s.ccw ? -Math.sin(am) : Math.sin(am), ty = s.ccw ? Math.cos(am) : -Math.cos(am);
+      const px = -ty, py = tx;
+      const pts = [[mx + tx * z, my + ty * z], [mx - tx * z * .6 + px * z * .7, my - ty * z * .6 + py * z * .7], [mx - tx * z * .6 - px * z * .7, my - ty * z * .6 - py * z * .7]];
+      o += `<polygon points="${pts.map(q => f4(q[0]) + ',' + f4(-q[1])).join(' ')}" fill="#0b2a8a"/>`;
+    });
+  }
+  if ($('shCenters').checked) {
+    sp.forEach(q => {
+      o += `<circle cx="${f4(q.center[0])}" cy="${f4(-q.center[1])}" r="${mr * 0.45}" fill="#475467"/>`;
+      o += `<text x="${f4(q.center[0] + mr)}" y="${f4(-q.center[1] - mr)}" font-size="${fs}" fill="#475467">${q.index}</text>`;
+    });
+  }
+  if ($('shEnds').checked) {
+    const s0 = res.stats.start, s1 = res.stats.end;
+    o += `<circle cx="${f4(s0[0])}" cy="${f4(-s0[1])}" r="${mr}" fill="#12b76a" stroke="#fff" stroke-width="${span / 500}"/>`;
+    o += `<circle cx="${f4(s1[0])}" cy="${f4(-s1[1])}" r="${mr}" fill="#f04438" stroke="#fff" stroke-width="${span / 500}"/>`;
+  }
+  return o + '</svg>';
+}
+
+function renderInfo(res) {
+  const p = res.params, st = res.stats, bb = st.bbox;
+  const Xs = res.spirals.map(q => q.X), xMin = Math.min(...Xs), xMax = Math.max(...Xs);
+  const sTxt = xMin === xMax ? `${f2(xMin / 2)} / ${f2(2 * xMin)} мм` : `${f2(xMin / 2)}–${f2(xMax / 2)} / ${f2(2 * xMin)}–${f2(2 * xMax)} мм`;
+  const stats = [
+    ['Длина пути', f2(st.length) + ' мм'],
+    ['Полукругов', st.arcs],
+    ['Габарит', f2(bb.w) + ' × ' + f2(bb.h) + ' мм'],
+    ['Мин. радиус', f2(st.rmin) + ' мм'],
+    ['S-петля: радиус / между точками', sTxt],
+    ['Объём на слой', f2(st.length * p.lw * p.lh) + ' мм³'],
+    ['Старт', f2(st.start[0]) + '; ' + f2(st.start[1])],
+    ['Финиш', f2(st.end[0]) + '; ' + f2(st.end[1])]
+  ];
+  $('stats').innerHTML = stats.map(s => `<div class="stat"><span>${s[0]}</span><b>${s[1]}</b></div>`).join('');
+
+  const w = [];
+  res.spirals.forEach(q => {
+    const lowOverlap = (v, what) => w.push(['warn', `Спираль ${q.index}: ${what} ${f2(v)} мм меньше ширины линии ${f2(p.lw)} мм — траектории перекрываются на ${Math.round((1 - v / p.lw) * 100)}%.`]);
+    if (q.s < p.lw) lowOverlap(q.s, 'внешний шаг');
+    if (q.nIn > 0 && q.N > 2 && q.sIn < p.lw) lowOverlap(q.sIn, 'внутренний шаг');
+    if (q.X < p.lw) lowOverlap(q.X, 'расстояние между линиями в центре (X)');
+    else if (q.X / 2 < p.lw) w.push(['warn', `Спираль ${q.index}: радиус S-петли ${f2(q.X / 2)} мм меньше ширины линии — центр сольётся, а на кинематику ляжет резкий поворот. Увеличьте X.`]);
+  });
+  if (bb.minX < 0 || bb.minY < 0 || bb.maxX > p.bed.w || bb.maxY > p.bed.h) w.push(['warn', 'Фигура выходит за границы стола. Сдвиньте центр ряда или уменьшите размеры.']);
+  if (p.tails && p.count === 1) w.push(['info', 'Хвосты применяются при двух и более спиралях. Для одной спирали вход и выход симметричны.']);
+  const flips = res.spirals.filter((q, i) => i > 0 && q.outCCW !== res.spirals[i - 1].outCCW).map(q => q.index);
+  if (flips.length) w.push(['info', `Закрутка меняется у спиралей: ${flips.join(', ')}. Так стык остаётся гладким при разной чётности числа полукругов.`]);
+  if (p.gap > 0 && p.count > 1) w.push(['info', 'Между спиралями есть прямые перемычки с изломом 90°. Агенту стоит заложить замедление на углах.']);
+  $('warns').innerHTML = w.map(x => `<div class="${x[0]}">${x[1]}</div>`).join('');
+
+  let t = '<table class="sp"><tr><th>#</th><th>Роль</th><th>Витки (внутрь / наружу)</th><th>Шаг / внутр.</th><th>X (центр → S)</th><th>Вход X; Y</th><th>Выход X; Y</th><th>Наружу</th></tr>';
+  res.spirals.forEach(q => {
+    t += `<tr><td>${q.index}</td><td>${q.role}</td><td>${q.a / 2} / ${q.b / 2}</td><td>${f2(q.s)} / ${f2(q.sIn)}</td><td>${f2(q.X)}</td><td>${f2(q.entry[0])}; ${f2(q.entry[1])}</td><td>${f2(q.exit[0])}; ${f2(q.exit[1])}</td><td>${q.outCCW ? 'CCW' : 'CW'}</td></tr>`;
+  });
+  $('spTable').innerHTML = t + '</table>';
+}
+
+function render() {
+  const res = buildRow(readParams());
+  window.__res = res;
+  $('view').innerHTML = drawSVG(res);
+  renderInfo(res);
+}
+
+function renderTable() {
+  const box = $('perTable');
+  if (!$('perSpiral').checked) { box.innerHTML = ''; return; }
+  const n = Math.min(12, Math.max(1, Math.round(num('count', 3))));
+  let h = '<table class="mini"><tr><th>#</th><th>Витки</th><th>Шаг</th><th>Шаг вн.</th><th>X, мм</th></tr>';
+  const cell = (i, k, min, step, v) => `<td><input type="number" min="${min}" step="${step}" data-i="${i}" data-k="${k}" value="${v == null ? '' : v}"></td>`;
+  for (let i = 0; i < n; i++) {
+    const it = items[i] || {};
+    h += `<tr><td>${i + 1}</td>${cell(i, 'turns', 0.5, 0.5, it.turns)}${cell(i, 'pitch', 0.05, 0.05, it.pitch)}${cell(i, 'pitchIn', 0.05, 0.05, it.pitchIn)}${cell(i, 'coreX', 0.1, 0.1, it.coreX)}</tr>`;
+  }
+  box.innerHTML = h + '</table><div class="hint">Пустое поле — значение из общих настроек.</div>';
+  updatePH();
+}
+function updatePH() {
+  const ph = { turns: $('turns').value, pitch: $('pitch').value, pitchIn: $('pitchIn').value || 'внеш.', coreX: $('coreX').value || 'авто' };
+  $('perTable').querySelectorAll('input').forEach(inp => { inp.placeholder = ph[inp.dataset.k]; });
+}
+
+$('perTable').addEventListener('input', e => {
+  const t = e.target; if (!t.dataset.k) return;
+  const i = +t.dataset.i; items[i] = items[i] || { turns: null, pitch: null };
+  const v = parseFloat(t.value); items[i][t.dataset.k] = isFinite(v) ? v : null;
+});
+document.querySelector('.panel').addEventListener('input', e => {
+  const id = e.target.id;
+  if (id === 'count' || id === 'perSpiral') renderTable();
+  if (id === 'turns' || id === 'pitch' || id === 'pitchIn' || id === 'coreX') updatePH();
+  render();
+});
+
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); setTimeout(() => t.classList.remove('on'), 1600); }
+function download(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+const jsonText = () => JSON.stringify(toJSON(window.__res), null, 2);
+$('bCopy').onclick = async () => {
+  try { await navigator.clipboard.writeText(jsonText()); }
+  catch (e) { const ta = document.createElement('textarea'); ta.value = jsonText(); document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+  toast('JSON скопирован');
+};
+$('bJson').onclick = () => download('spiral-row.json', jsonText(), 'application/json');
+$('bSvg').onclick = () => {
+  const svg = $('view').querySelector('svg').cloneNode(true), vb = svg.getAttribute('viewBox').split(' ').map(Number);
+  svg.setAttribute('width', 1000); svg.setAttribute('height', Math.round(1000 * vb[3] / vb[2]));
+  download('spiral-row.svg', '<?xml version="1.0" encoding="UTF-8"?>\n' + svg.outerHTML, 'image/svg+xml');
+};
+$('bReset').onclick = () => {
+  document.querySelectorAll('.panel input, .panel select').forEach(el => { if (!(el.id in DEFAULTS)) return; if (el.type === 'checkbox') el.checked = DEFAULTS[el.id]; else el.value = DEFAULTS[el.id]; });
+  items = []; renderTable(); render();
+};
+
+renderTable();
+render();
+</script>
+</body>
+</html>

@@ -254,7 +254,7 @@ pre.code .g{color:#7fb2e5}
           <div class="field"><label for="band" data-i18n="fBand">Высота зоны, мм</label>
             <input id="band" type="number" min="0.4" max="60" step="0.2" value="10">
             <div class="hint" id="bandHint"></div></div>
-          <label class="check"><input id="tempReverse" type="checkbox"><span><span data-i18n="fTempReverse">Обратный порядок температур (горячая снизу)</span></span></label>
+          <label class="check"><input id="tempHotBottom" type="checkbox" checked><span><span data-i18n="fTempHotBottom">Горячая зона снизу</span><small data-i18n="hTempHotBottom">холодная — сверху (по умолчанию)</small></span></label>
         </div>
       </div>
     </section>
@@ -529,7 +529,7 @@ const I18N = {
     fRowCenterX: 'Центр ряда X, мм', fRowCenterY: 'Центр ряда Y, мм',
     bTraj: 'Траектория ряда', sTraj: 'Спираль: ветвь внутрь → S-петля в центре → ветвь наружу',
     fTStart: 'Температура от, °C', fTEnd: 'Температура до, °C',
-    fTStep: 'Шаг температуры, °C', fBand: 'Высота зоны, мм', fTempReverse: 'Обратный порядок T (горячая снизу)',
+    fTStep: 'Шаг температуры, °C', fBand: 'Высота зоны, мм', fTempHotBottom: 'Горячая зона снизу', hTempHotBottom: 'холодная — сверху (по умолчанию)',
     fLw: 'Ширина линии, мм', fLh: 'Высота слоя, мм',
     fQuality: 'Плотность точек, мм',
     sBrim: 'Brim (кайма)', fBrimOn: 'Включить brim', hBrimOn: 'общий контур вокруг всех ячеек',
@@ -579,7 +579,7 @@ const I18N = {
     fRowCenterX: 'Row Center X, mm', fRowCenterY: 'Row Center Y, mm',
     bTraj: 'Row Trajectory', sTraj: 'Spiral: inward branch → S-loop at center → outward branch',
     fTStart: 'Temp From, °C', fTEnd: 'Temp To, °C',
-    fTStep: 'Temp Step, °C', fBand: 'Band Height, mm', fTempReverse: 'Reverse T order (hot at bottom)',
+    fTStep: 'Temp Step, °C', fBand: 'Band Height, mm', fTempHotBottom: 'Hot zone at bottom', hTempHotBottom: 'cold zone on top (default)',
     fLw: 'Line Width, mm', fLh: 'Layer Height, mm',
     fQuality: 'Point chord, mm',
     sBrim: 'Brim', fBrimOn: 'Enable brim', hBrimOn: 'continuous brim around all cells',
@@ -618,7 +618,7 @@ function defaults() {
     spiralPitch: 1.2, spiralPitchInner: null, coreX: 12, autoCore: true, turnsPerBranch: 2.5,
     innerLevels: 0, spiralGap: 0, rowAngle: 0, rowCenterX: null, rowCenterY: null,
     rotFirst: 'CCW', closeTails: false, reversePath: true,
-    tStart: 190, tEnd: 220, tStep: 10, band: 10, tempReverse: false,
+    tStart: 190, tEnd: 220, tStep: 10, band: 10, tempHotBottom: true,
     lw: 0.42, lh: 0.20,
     quality: 1.2,
     brimOn: true, brimLoops: 3, brimLayers: 3, brimGap: 0.3, raftOn: false, raftLayers: 3, raftGap: 1.5, raftSpeed: 60, raftTemp: 0,
@@ -653,7 +653,8 @@ function parseTemps(p) {
   const t0 = Math.min(p.tStart, p.tEnd), t1 = Math.max(p.tStart, p.tEnd), step = Math.max(1, p.tStep);
   const arr = [];
   for (let t = t0; t <= t1 + 1e-4 && arr.length < 25; t += step) arr.push(Math.round(t));
-  if (p.tempReverse) arr.reverse();
+  // По умолчанию горячая зона снизу: массив температур по слоям снизу вверх.
+  if (p.tempHotBottom) arr.reverse();
   return arr;
 }
 
@@ -1768,7 +1769,7 @@ if (typeof module !== 'undefined') {
       tEnd: +$('tEnd').value || 220,
       tStep: +$('tStep').value || 10,
       band: +$('band').value || 10,
-      tempReverse: $('tempReverse').checked,
+      tempHotBottom: $('tempHotBottom').checked,
       cells: +$('cells').value || 5,
       vsMode: $('vsMode').value,
       spiralPitch: +$('spiralPitch').value || 1.2,
@@ -1838,7 +1839,7 @@ if (typeof module !== 'undefined') {
     $('tEnd').value = p.tEnd ?? 220;
     $('tStep').value = p.tStep ?? 10;
     $('band').value = p.band ?? 10;
-    $('tempReverse').checked = !!p.tempReverse;
+    $('tempHotBottom').checked = p.tempHotBottom !== false;
     $('cells').value = p.cells ?? 5;
     $('spiralPitch').value = p.spiralPitch ?? 1.2;
     $('spiralPitchInner').value = p.spiralPitchInner ?? 0;
@@ -1929,7 +1930,7 @@ if (typeof module !== 'undefined') {
       <div class="kpi"><span class="k">${dict.kpiDim}:</span><span class="v">${d.bbox.width.toFixed(1)}×${d.bbox.depth.toFixed(1)} мм</span></div>
       <div class="kpi"><span class="k">${dict.kpiHeight}:</span><span class="v">${d.totalHeight.toFixed(1)} мм</span></div>
       <div class="kpi"><span class="k">${dict.kpiLayers}:</span><span class="v">${d.totalLayers}</span></div>
-      <div class="kpi"><span class="k">Зон T:</span><span class="v">${d.zones} (${d.ts[0]}–${d.ts[d.ts.length - 1]}°C)</span></div>
+      <div class="kpi"><span class="k">Зон T:</span><span class="v">${d.zones} (${Math.min(...d.ts)}–${Math.max(...d.ts)}°C${d.ts[0] > d.ts[d.ts.length - 1] ? ', снизу горячее' : ''})</span></div>
       <div class="badge ${isDirty ? 'dirty' : ''}">${isDirty ? 'Не сохранено' : 'Актуально'}</div>
     `;
   }
@@ -2248,7 +2249,12 @@ if (typeof module !== 'undefined') {
 
         let color = vsColors[ci % vsColors.length];
         if (isoMode === 't') {
-          const uT = zIdx / Math.max(1, d.zones - 1);
+          // Цвет по фактической температуре зоны: холодная — синяя, горячая —
+          // красная. Не по индексу зоны: при «горячая снизу» индексы идут от
+          // горячей зоны к холодной, и цвет обязан следовать за температурой.
+          const tMin = d.ts.length ? Math.min(...d.ts) : 0;
+          const tMax = d.ts.length ? Math.max(...d.ts) : 1;
+          const uT = (tMax > tMin) ? (d.ts[zIdx] - tMin) / (tMax - tMin) : 0;
           color = `hsl(${Math.round(220 - uT * 220)}, 85%, 60%)`;
         }
 

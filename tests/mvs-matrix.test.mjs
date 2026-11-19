@@ -434,16 +434,23 @@ test('Z экструзии не убывает на пресете с brim', () 
   }
 });
 
-test('tempReverse: реверс температур', () => {
-  const C = loadCore();
-  const d = C.derive({ ...C.defaults(), tempReverse: true });
-  assert.deepEqual(Array.from(d.ts), [220, 210, 200, 190], 'tempReverse должен реверсировать массив температур');
-});
-
-test('tempReverse: по умолчанию порядок от холодной к горячей', () => {
+test('температуры по умолчанию: горячая зона снизу', () => {
   const C = loadCore();
   const d = C.derive(C.defaults());
-  assert.deepEqual(Array.from(d.ts), [190, 200, 210, 220], 'по умолчанию температуры от min к max');
+  assert.deepEqual(Array.from(d.ts), [220, 210, 200, 190], 'по умолчанию снизу горячая зона');
+});
+
+test('tempHotBottom: выключенная опция даёт холодную зону снизу', () => {
+  const C = loadCore();
+  const d = C.derive({ ...C.defaults(), tempHotBottom: false });
+  assert.deepEqual(Array.from(d.ts), [190, 200, 210, 220], 'при выключенной опции снизу холодная зона');
+});
+
+test('tempHotBottom: инверсия меняет только порядок, не набор температур', () => {
+  const C = loadCore();
+  const hot = C.derive({ ...C.defaults(), tempHotBottom: true });
+  const cold = C.derive({ ...C.defaults(), tempHotBottom: false });
+  assert.deepEqual(Array.from(hot.ts).slice().sort((a, b) => a - b), Array.from(cold.ts).slice().sort((a, b) => a - b));
 });
 
 test('fan=0: команда M106 с ненулевым обдувом отсутствует в G-code', () => {

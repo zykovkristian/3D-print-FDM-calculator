@@ -4,14 +4,14 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
-const html = readFileSync(fileURLToPath(new URL('../index.html', import.meta.url)), 'utf8');
+const html = readFileSync(fileURLToPath(new URL('../tools/filament_test_protocol.html', import.meta.url)), 'utf8');
 const MARKER = '/* ============ ИНТЕРФЕЙС ============ */';
 
 function loadModel() {
   const cut = html.indexOf(MARKER);
-  assert.ok(cut > 0, 'в index.html не найден маркер интерфейса');
+  assert.ok(cut > 0, 'в tools/filament_test_protocol.html не найден маркер интерфейса');
   const start = html.indexOf('<script>');
-  assert.ok(start > 0, 'в index.html не найден тег <script>');
+  assert.ok(start > 0, 'в tools/filament_test_protocol.html не найден тег <script>');
   const ctx = { module: { exports: {} } };
   vm.createContext(ctx);
   vm.runInContext(html.slice(start + '<script>'.length, cut), ctx, { filename: 'index.model.js' });

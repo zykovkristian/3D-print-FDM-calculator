@@ -1,6 +1,6 @@
 # 3D-print-FDM-calculator — указатель
 
-Проект: интерактивный калькулятор пределов FDM-печати — что ограничивает скорость и качество и какие настройки дать в Bambu Studio. Один `index.html`, vanilla JS + SVG, без сборки и бэкенда.
+Проект: интерактивный калькулятор пределов FDM-печати — что ограничивает скорость и качество и какие настройки дать в Bambu Studio. Один `tools/filament_test_protocol.html`, vanilla JS + SVG, без сборки и бэкенда.
 
 Порядок чтения:
 1. Правила процесса — глобальный слой (`C:\Users\Christian\.config\kilo\AGENTS.md`, `rules/core.md`), загружаются автоматически.
@@ -19,7 +19,7 @@
 - `docs/mvs/mvs-matrix-risks.md` — анализ рисков матрицы MVS: пороги плавности, механики по каждому VS, температурные границы, пределы принтера, пограничные значения.
 - `docs/plans/plan-vs-scaled-diameters.md` — прогрессивный диаметр секций по VS (реализовано как опция «Автопрогрессия диаметра» в генераторе): как снимается срез F без выхода за стол, цена для объективности сравнения и контрольные опыты. Схема: `docs/generated/plan-vs-scaled-diameters.svg` (строится `tools/stand-vs-diameters.mjs`).
 - `tools/stand-vs-diameters.mjs` — стенд сравнения трёх вариантов прогрессии диаметра (без автопрогрессии / с ней / одинаковый под максимум) с габаритами и радиусами S-петли; `docs/plan-vs-scaled-diameters.svg` — его вывод.
-- `tools/spiral-row-builder.html` — исходный генератор ряда спиралей (ядро, перенесённое в `tools/mvs-matrix.html`).
+- `tools/spiral-row-builder.html` — исходный генератор ряда спиралей (ядро, перенесённое в `index.html`).
 - `tools/stand-centers.mjs` — стенд сравнения центрального участка спирали (hairpin против завитка) с замерами; `docs/generated/stand-centers.svg` — его вывод.
 - `tools/check-curl-topology.mjs` — проверка совместимости завитка с бесшовной цепочкой ячеек.
 - `tools/compare-turn-variants.mjs` — метрики вариантов разворота (R_min, излом, зазор, длина).
@@ -32,10 +32,10 @@
 - `docs/project-presentation.md` — презентация проекта (RU); `docs/project-presentation.en.md` — сокращённая версия (EN).
 - `docs/internal/publication-plan.md` — порядок подготовки публичного снимка: что исключить, что проверить перед запуском, как опубликовать позже.
 - `LICENSE` — PolyForm Noncommercial 1.0.0 (личное и некоммерческое использование бесплатно); `COMMERCIAL-LICENSE.md` — порядок запроса корпоративной лицензии.
-- `tools/spiral-row-builder.html` — исходный генератор ряда спиралей (чистая функция без DOM, ядро перенесено в `tools/mvs-matrix.html`).
+- `tools/spiral-row-builder.html` — исходный генератор ряда спиралей (чистая функция без DOM, ядро перенесено в `index.html`).
 - `tools/defect-matrix.html` — визуализация матрицы дефектов.
-- `tools/mvs-matrix.html` — автономный генератор G-code для матрицы MVS (T × Q): слой одной непрерывной траекторией.
-- `docs/archive/MVS_Matrix_Labyrinth_GCode_Generator.html` — первая версия генератора (архив, заменена `tools/mvs-matrix.html`).
+- `index.html` — автономный генератор G-code для матрицы MVS (T × Q): слой одной непрерывной траекторией.
+- `docs/archive/MVS_Matrix_Labyrinth_GCode_Generator.html` — первая версия генератора (архив, заменена `index.html`).
 - `docs/MVS_dialoge.md` — переписка по разработке матрицы MVS (исходное задание).
 - `docs/assets/image1.png`, `docs/assets/image2.png`, `docs/assets/image.png` — референсы формы матрицы (ряд цилиндров, вид сверху двойной спирали).
 - `tests/model.test.mjs` — проверки расчётной модели, запуск `node --test`.

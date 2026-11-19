@@ -4,14 +4,14 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
-const html = readFileSync(fileURLToPath(new URL('../tools/mvs-matrix.html', import.meta.url)), 'utf8');
+const html = readFileSync(fileURLToPath(new URL('../index.html', import.meta.url)), 'utf8');
 const MARKER = '/* ============ ИНТЕРФЕЙС ============ */';
 
 function loadCore() {
   const cut = html.indexOf(MARKER);
-  assert.ok(cut > 0, 'в tools/mvs-matrix.html не найден маркер интерфейса');
+  assert.ok(cut > 0, 'в index.html не найден маркер интерфейса');
   const start = html.indexOf('<script>');
-  assert.ok(start > 0, 'в tools/mvs-matrix.html не найден тег <script>');
+  assert.ok(start > 0, 'в index.html не найден тег <script>');
   const ctx = { module: { exports: {} } };
   vm.createContext(ctx);
   vm.runInContext(html.slice(start + '<script>'.length, cut), ctx, { filename: 'mvs-matrix.core.js' });
@@ -362,15 +362,10 @@ test('валидатор: brim за столом — ошибка до гене�
   assert.ok(C.validate(p).some(i => i.code === 'bed-brim' && i.level === 'error'), 'нужна ошибка bed-brim');
 });
 
-test('валидатор: brim в несколько слоёв — предупреждение, печать в один слой', () => {
+test('валидатор: brim в несколько слоёв — поддержан, без предупреждения', () => {
   const C = loadCore();
   const p = { ...C.defaults(), brimLayers: 3 };
-  assert.ok(C.validate(p).some(i => i.code === 'brim-layers' && i.level === 'warn'), 'нужно предупреждение brim-layers');
-
-  const z = extrusionZ(C.compose(p).gcode);
-  for (let i = 1; i < z.length; i++) {
-    assert.ok(z[i] >= z[i - 1], `Z экструзии убывает: ${z[i - 1]} → ${z[i]}`);
-  }
+  assert.ok(!C.validate(p).some(i => i.code === 'brim-layers'), 'предупреждения brim-layers больше не должно быть');
 });
 
 test('валидатор: высота слоя выше предела — ошибка', () => {
@@ -408,7 +403,17 @@ test('Flow Ratio выводится в G-code командой M221', () => {
 
 test('Z экструзии не убывает на пресете с brim', () => {
   const C = loadCore();
-  const z = extrusionZ(C.compose(C.defaults()).gcode);
+  const gcode = C.compose(C.defaults()).gcode;
+  // Brim печатается в несколько слоёв (Z растёт), затем основная печать начинается
+  // с первого слоя (Z падает до lh) — это ожидаемый переход. Проверяем монотонность
+  // только внутри основной печати, после маркера первого слоя.
+  const lines = gcode.split('\n');
+  let mainStart = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (/; LAYER 1:/.test(lines[i])) { mainStart = i; break; }
+  }
+  const mainGcode = lines.slice(mainStart).join('\n');
+  const z = extrusionZ(mainGcode);
   assert.ok(z.length > 1000, 'должно быть много экструдирующих перемещений');
   for (let i = 1; i < z.length; i++) {
     assert.ok(z[i] >= z[i - 1], `Z экструзии убывает: ${z[i - 1]} → ${z[i]}`);

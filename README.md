@@ -15,18 +15,18 @@
 ### Сценарий 1. Калькулятор пределов
 
 1. Где: файловый менеджер или терминал, папка репозитория.
-2. Откройте `index.html` двойным щелчком или выполните в терминале `open index.html` (macOS/Linux) или `Start-Process index.html` (PowerShell).
+2. Откройте `tools/filament_test_protocol.html` двойным щелчком или выполните в терминале `open tools/filament_test_protocol.html` (macOS/Linux) или `Start-Process tools/filament_test_protocol.html` (PowerShell).
 3. Должно открыться окно браузера с заголовком «Предел печати» и вкладками «Результат», «Протокол тестов», «Отчёт», «Графики», «Что влияет», «Карта связей», «Расчёт по шагам», «Bambu Studio».
 4. Признак успеха: на вкладке «Результат» видны пределы скорости по высоте слоя, а строка подсказки под заголовком содержит выбранный материал и принтер.
-5. Если страница открылась без вкладок или с ошибкой в консоли: откройте `index.html` именно из папки репозитория (не из закладок и не из `file://`‑пути к другой копии) и перезагрузите страницу со сбросом кеша (Ctrl+F5).
+5. Если страница открылась без вкладок или с ошибкой в консоли: откройте `tools/filament_test_protocol.html` именно из папки репозитория (не из закладок и не из `file://`‑пути к другой копии) и перезагрузите страницу со сбросом кеша (Ctrl+F5).
 
 ### Сценарий 2. Генератор матрицы MVS
 
 1. Где: та же папка репозитория.
-2. Откройте `tools/mvs-matrix.html` двойным щелчком или выполните `open tools/mvs-matrix.html` (macOS/Linux) или `Start-Process tools/mvs-matrix.html` (PowerShell).
+2. Откройте `index.html` двойным щелчком или выполните `open index.html` (macOS/Linux) или `Start-Process index.html` (PowerShell).
 3. Должно открыться окно с формой параметров, превью стола и превью слоя.
 4. Признак успеха: в поле «Число цилиндров» стоит `5`, а в поле «Объёмные скорости» — список `8, 12, 16, 20, 24`.
-5. Если поле пустое или страница не открывается: проверьте, что файл лежит в подпапке `tools/` рядом с `index.html`, и перезагрузите окно браузера.
+5. Если поле пустое или страница не открывается: проверьте, что `index.html` лежит в корне репозитория, и перезагрузите окно браузера.
 
 ### Сценарий 3. Проверка расчётной модели и генератора
 
@@ -44,8 +44,8 @@
 
 | Путь | Что лежит |
 |---|---|
-| `index.html` | Калькулятор: модель пределов, вкладки результата, протокола, отчёта, графиков, чувствительности, карты связей, пошагового расчёта, рекомендаций Bambu Studio |
-| `tools/mvs-matrix.html` | Автономный генератор G-code матрицы MVS: превью, расчёт подачи по кривизне, аудит G-code |
+| `tools/filament_test_protocol.html` | Калькулятор: модель пределов, вкладки результата, протокола, отчёта, графиков, чувствительности, карты связей, пошагового расчёта, рекомендаций Bambu Studio |
+| `index.html` | Автономный генератор G-code матрицы MVS: превью, расчёт подачи по кривизне, аудит G-code |
 | `tools/*.mjs` | Локальные стенды и проверки геометрии (Node.js), результаты пишутся рядом со скриптами |
 | `tools/stand-vs-diameters.mjs` | Стенд сравнения трёх вариантов прогрессии диаметра секций по VS |
 | `tools/spiral-row-schema.json` | Схема траектории ряда спиралей (JSON-вывод генератора) |
@@ -61,7 +61,7 @@
 | `docs/research/calibration-research.md` | Сравнение методик калибровки Orca, Ellis, Teaching Tech |
 | `docs/research/parameter-testing-methods-research.md` | Научная критика методов тестирования, противоречия между источниками |
 | `tools/spiral-row-builder.html` | Исходный генератор ряда спиралей (чистая функция без DOM) |
-| `docs/archive/MVS_Matrix_Labyrinth_GCode_Generator.html` | Архив первой версии генератора (заменена `tools/mvs-matrix.html`) |
+| `docs/archive/MVS_Matrix_Labyrinth_GCode_Generator.html` | Архив первой версии генератора (заменена `index.html`) |
 | `tools/defect-matrix.html` | Визуализация матрицы дефектов |
 | `docs/technologies.md` | Ссылки на внешние методики и источники |
 | `docs/project-presentation.md` | Презентация проекта (RU) |
@@ -95,7 +95,7 @@
 
 MVS Calibrator is a browser-based calculator for FDM print limits: enter printer and filament properties, see which constraint limits speed, explore charts and sensitivity, and get Bambu Studio values. It also contains a structured calibration protocol and an MVS matrix generator that emits G-code for a continuous spiral path.
 
-Run it: open `index.html` (calculator) or `tools/mvs-matrix.html` (matrix generator). Run checks: `node --test` — expect `tests 36`, `pass 36`, `fail 0`.
+Run it: open `tools/filament_test_protocol.html` (calculator) or `index.html` (matrix generator). Run checks: `node --test` — expect `tests 36`, `pass 36`, `fail 0`.
 
 Personal and other permitted noncommercial use is free under the PolyForm Noncommercial 1.0.0 license in `LICENSE`. Organizations need a separate commercial license; see `COMMERCIAL-LICENSE.md`. This is source-available, not an OSI-approved open-source license.
 

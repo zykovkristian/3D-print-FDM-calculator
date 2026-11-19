@@ -5,7 +5,7 @@
 
 Ядро геометрии перенесено из `tools/spiral-row-builder.html` (чистая функция без
 DOM): `buildSpiralRow`, `rowLanes`, `rowLocalArcs`. В генераторе
-`tools/mvs-matrix.html` оно живёт рядом с `segmentsToPoints` (развёртка дуг в
+`index.html` оно живёт рядом с `segmentsToPoints` (развёртка дуг в
 точки для превью, замеров и проверок).
 
 ## 1. Требование

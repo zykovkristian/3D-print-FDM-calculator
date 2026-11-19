@@ -366,6 +366,11 @@ test('валидатор: brim в несколько слоёв — поддер
   const C = loadCore();
   const p = { ...C.defaults(), brimLayers: 3 };
   assert.ok(!C.validate(p).some(i => i.code === 'brim-layers'), 'предупреждения brim-layers больше не должно быть');
+  // Brim печатается в 3 слоя: G-code содержит Z = 0.2, 0.4, 0.6 в brim-секции.
+  const { gcode } = C.compose(p);
+  const z = extrusionZ(gcode);
+  const brimZs = new Set(z.map(v => Math.round(v * 10)));
+  assert.ok(brimZs.has(2) && brimZs.has(4) && brimZs.has(6), 'brim должен содержать 3 слоя');
 });
 
 test('валидатор: высота слоя выше предела — ошибка', () => {
@@ -404,10 +409,19 @@ test('Flow Ratio выводится в G-code командой M221', () => {
 test('Z экструзии не убывает на пресете с brim', () => {
   const C = loadCore();
   const gcode = C.compose(C.defaults()).gcode;
-  // Brim печатается в несколько слоёв (Z растёт), затем основная печать начинается
-  // с первого слоя (Z падает до lh) — это ожидаемый переход. Проверяем монотонность
-  // только внутри основной печати, после маркера первого слоя.
+  // Brim печатается в несколько слоёв (Z растёт): проверяем монотонность brim.
   const lines = gcode.split('\n');
+  let brimStart = 0, brimEnd = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (/; --- BRIM ---/.test(lines[i])) brimStart = i;
+    if (brimStart > 0 && /; ===/.test(lines[i]) && i > brimStart) { brimEnd = i; break; }
+  }
+  const brimGcode = lines.slice(brimStart, brimEnd).join('\n');
+  const brimZ = extrusionZ(brimGcode);
+  for (let i = 1; i < brimZ.length; i++) {
+    assert.ok(brimZ[i] >= brimZ[i - 1], `Z brim убывает: ${brimZ[i - 1]} → ${brimZ[i]}`);
+  }
+  // Основная печать: монотонность после маркера первого слоя.
   let mainStart = 0;
   for (let i = 0; i < lines.length; i++) {
     if (/; LAYER 1:/.test(lines[i])) { mainStart = i; break; }
@@ -418,6 +432,49 @@ test('Z экструзии не убывает на пресете с brim', () 
   for (let i = 1; i < z.length; i++) {
     assert.ok(z[i] >= z[i - 1], `Z экструзии убывает: ${z[i - 1]} → ${z[i]}`);
   }
+});
+
+test('tempReverse: реверс температур', () => {
+  const C = loadCore();
+  const d = C.derive({ ...C.defaults(), tempReverse: true });
+  assert.deepEqual(Array.from(d.ts), [220, 210, 200, 190], 'tempReverse должен реверсировать массив температур');
+});
+
+test('tempReverse: по умолчанию порядок от холодной к горячей', () => {
+  const C = loadCore();
+  const d = C.derive(C.defaults());
+  assert.deepEqual(Array.from(d.ts), [190, 200, 210, 220], 'по умолчанию температуры от min к max');
+});
+
+test('fan=0: команда M106 с ненулевым обдувом отсутствует в G-code', () => {
+  const C = loadCore();
+  const { gcode } = C.compose({ ...C.defaults(), fan: 0 });
+  // M106 P1 S0 в конце (выключение вентилятора) допустим, но ненулевой обдув — нет.
+  assert.ok(!/M106\s+P1\s+S[1-9]/.test(gcode), 'при fan=0 не должно быть M106 с ненулевым S');
+});
+
+test('fan=50: команда M106 присутствует в G-code', () => {
+  const C = loadCore();
+  const { gcode } = C.compose({ ...C.defaults(), fan: 50 });
+  assert.ok(/^M106\b/m.test(gcode), 'при fan>0 команда M106 должна генерироваться');
+});
+
+test('brimLayers=3: brim печатается в 3 слоя (Z растёт)', () => {
+  const C = loadCore();
+  const { gcode } = C.compose({ ...C.defaults(), brimLayers: 3 });
+  const z = extrusionZ(gcode);
+  const brimZs = new Set(z.map(v => Math.round(v * 10)));
+  assert.ok(brimZs.has(2), 'brim должен содержать Z = 0.2 мм');
+  assert.ok(brimZs.has(4), 'brim должен содержать Z = 0.4 мм');
+  assert.ok(brimZs.has(6), 'brim должен содержать Z = 0.6 мм');
+});
+
+test('totalHeight учитывает высоту brim', () => {
+  const C = loadCore();
+  const p = { ...C.defaults(), brimLayers: 3 };
+  const d = C.derive(p);
+  const expected = (d.totalLayers + 3) * p.lh;
+  assert.ok(Math.abs(d.totalHeight - expected) < 1e-6, `totalHeight ${d.totalHeight} ≠ ${expected}`);
 });
 
 test('рамповые дуги не входят в измеримую длину спирали', () => {

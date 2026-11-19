@@ -4,6 +4,17 @@
 
 Интерактивный калькулятор пределов FDM-печати: по характеристикам принтера и свойствам катушки показывает, что ограничивает скорость и качество, и подбирает настройки для Bambu Studio. В состав входят протокол изолированных тестов и генератор калибровочной матрицы MVS (G-code).
 
+## Что умеет генератор MVS
+
+1. **Матрица T × Q в одном слое.** Ряд спиралей с разными объёмными скоростями печатается одной непрерывной траекторией дугами G2/G3; измеряемая длина отделена от дуг-рамп.
+2. **Обратный порядок температур** — чекбокс «Обратный порядок T»: горячая зона снизу, холодная сверху (по умолчанию холодная снизу).
+3. **Обратный обход ряда** включён по умолчанию: зеркалит направление обхода, змейка слоёв остаётся непрерывной.
+4. **Адгезия к столу настраивается**: brim — общий контур вокруг ряда в нескольких слоях; raft — сплошная подложка под модель по форме траектории с отступом от края, со своей скоростью и своей температурой. Brim и raft взаимоисключающие.
+5. **Отдельные параметры плота**: `raftSpeed` (по умолчанию 60 мм/с), `raftTemp` (0 = температура первой зоны), `raftLayers`, `raftGap`.
+6. **Отчёт по зонам**: таблица «зона → температура → диапазон слоёв» вместо построчного перечисления всех слоёв.
+7. **Обдув и ретракт по умолчанию выключены** (0 %): команда `M106` при нулевом обдуве в G-code не выдаётся, ретракт по умолчанию 0 мм.
+8. **Предпросмотр**: по умолчанию открывается вкладка «Слой»; в 3D-виде видны контур brim и заливка плота.
+
 ## Что нужно из внешнего
 
 1. Современный браузер: Chrome, Edge, Firefox или Safari, актуальная версия.
@@ -94,6 +105,8 @@
 ## English summary
 
 MVS Calibrator is a browser-based calculator for FDM print limits: enter printer and filament properties, see which constraint limits speed, explore charts and sensitivity, and get Bambu Studio values. It also contains a structured calibration protocol and an MVS matrix generator that emits G-code for a continuous spiral path.
+
+The MVS generator supports reversed temperature order (hot zone at the bottom), a reversed row traversal (on by default), multi-layer brim or a solid raft platform with its own speed and temperature, a per-zone temperature table in the report, and brim/raft outlines in the 3D preview.
 
 Run it: open `tools/filament_test_protocol.html` (calculator) or `index.html` (matrix generator). Run checks: `node --test` — expect `tests 45`, `pass 45`, `fail 0`.
 

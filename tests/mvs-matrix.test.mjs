@@ -4,14 +4,14 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
-const html = readFileSync(fileURLToPath(new URL('../tools/mvs-matrix.html', import.meta.url)), 'utf8');
+const html = readFileSync(fileURLToPath(new URL('../index.html', import.meta.url)), 'utf8');
 const MARKER = '/* ============ ИНТЕРФЕЙС ============ */';
 
 function loadCore() {
   const cut = html.indexOf(MARKER);
-  assert.ok(cut > 0, 'в tools/mvs-matrix.html не найден маркер интерфейса');
+  assert.ok(cut > 0, 'в index.html не найден маркер интерфейса');
   const start = html.indexOf('<script>');
-  assert.ok(start > 0, 'в tools/mvs-matrix.html не найден тег <script>');
+  assert.ok(start > 0, 'в index.html не найден тег <script>');
   const ctx = { module: { exports: {} } };
   vm.createContext(ctx);
   vm.runInContext(html.slice(start + '<script>'.length, cut), ctx, { filename: 'mvs-matrix.core.js' });
@@ -362,15 +362,15 @@ test('валидатор: brim за столом — ошибка до гене�
   assert.ok(C.validate(p).some(i => i.code === 'bed-brim' && i.level === 'error'), 'нужна ошибка bed-brim');
 });
 
-test('валидатор: brim в несколько слоёв — предупреждение, печать в один слой', () => {
+test('валидатор: brim в несколько слоёв — поддержан, без предупреждения', () => {
   const C = loadCore();
   const p = { ...C.defaults(), brimLayers: 3 };
-  assert.ok(C.validate(p).some(i => i.code === 'brim-layers' && i.level === 'warn'), 'нужно предупреждение brim-layers');
-
-  const z = extrusionZ(C.compose(p).gcode);
-  for (let i = 1; i < z.length; i++) {
-    assert.ok(z[i] >= z[i - 1], `Z экструзии убывает: ${z[i - 1]} → ${z[i]}`);
-  }
+  assert.ok(!C.validate(p).some(i => i.code === 'brim-layers'), 'предупреждения brim-layers больше не должно быть');
+  // Brim печатается в 3 слоя: G-code содержит Z = 0.2, 0.4, 0.6 в brim-секции.
+  const { gcode } = C.compose(p);
+  const z = extrusionZ(gcode);
+  const brimZs = new Set(z.map(v => Math.round(v * 10)));
+  assert.ok(brimZs.has(2) && brimZs.has(4) && brimZs.has(6), 'brim должен содержать 3 слоя');
 });
 
 test('валидатор: высота слоя выше предела — ошибка', () => {
@@ -390,7 +390,7 @@ test('checkChain ловит излом на прямом переходе меж
 
 test('обратный обход меняет направление слоя, змейка остаётся непрерывной', () => {
   const C = loadCore();
-  const normal = C.compose(C.defaults()).gcode;
+  const normal = C.compose({ ...C.defaults(), reversePath: false }).gcode;
   const reversed = C.compose({ ...C.defaults(), reversePath: true }).gcode;
   assert.notEqual(normal, reversed, 'обратный обход должен менять траекторию');
   assert.equal(snakeBreaks(normal), 0, 'разрыв змейки без обратного обхода');
@@ -408,11 +408,119 @@ test('Flow Ratio выводится в G-code командой M221', () => {
 
 test('Z экструзии не убывает на пресете с brim', () => {
   const C = loadCore();
-  const z = extrusionZ(C.compose(C.defaults()).gcode);
+  const gcode = C.compose(C.defaults()).gcode;
+  // Brim печатается в несколько слоёв (Z растёт): проверяем монотонность brim.
+  const lines = gcode.split('\n');
+  let brimStart = 0, brimEnd = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (/; --- BRIM ---/.test(lines[i])) brimStart = i;
+    if (brimStart > 0 && /; ===/.test(lines[i]) && i > brimStart) { brimEnd = i; break; }
+  }
+  const brimGcode = lines.slice(brimStart, brimEnd).join('\n');
+  const brimZ = extrusionZ(brimGcode);
+  for (let i = 1; i < brimZ.length; i++) {
+    assert.ok(brimZ[i] >= brimZ[i - 1], `Z brim убывает: ${brimZ[i - 1]} → ${brimZ[i]}`);
+  }
+  // Основная печать: монотонность после маркера первого слоя.
+  let mainStart = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (/; LAYER 1:/.test(lines[i])) { mainStart = i; break; }
+  }
+  const mainGcode = lines.slice(mainStart).join('\n');
+  const z = extrusionZ(mainGcode);
   assert.ok(z.length > 1000, 'должно быть много экструдирующих перемещений');
   for (let i = 1; i < z.length; i++) {
     assert.ok(z[i] >= z[i - 1], `Z экструзии убывает: ${z[i - 1]} → ${z[i]}`);
   }
+});
+
+test('tempReverse: реверс температур', () => {
+  const C = loadCore();
+  const d = C.derive({ ...C.defaults(), tempReverse: true });
+  assert.deepEqual(Array.from(d.ts), [220, 210, 200, 190], 'tempReverse должен реверсировать массив температур');
+});
+
+test('tempReverse: по умолчанию порядок от холодной к горячей', () => {
+  const C = loadCore();
+  const d = C.derive(C.defaults());
+  assert.deepEqual(Array.from(d.ts), [190, 200, 210, 220], 'по умолчанию температуры от min к max');
+});
+
+test('fan=0: команда M106 с ненулевым обдувом отсутствует в G-code', () => {
+  const C = loadCore();
+  const { gcode } = C.compose({ ...C.defaults(), fan: 0 });
+  // M106 P1 S0 в конце (выключение вентилятора) допустим, но ненулевой обдув — нет.
+  assert.ok(!/M106\s+P1\s+S[1-9]/.test(gcode), 'при fan=0 не должно быть M106 с ненулевым S');
+});
+
+test('fan=50: команда M106 присутствует в G-code', () => {
+  const C = loadCore();
+  const { gcode } = C.compose({ ...C.defaults(), fan: 50 });
+  assert.ok(/^M106\b/m.test(gcode), 'при fan>0 команда M106 должна генерироваться');
+});
+
+test('brimLayers=3: brim печатается в 3 слоя (Z растёт)', () => {
+  const C = loadCore();
+  const { gcode } = C.compose({ ...C.defaults(), brimLayers: 3 });
+  const z = extrusionZ(gcode);
+  const brimZs = new Set(z.map(v => Math.round(v * 10)));
+  assert.ok(brimZs.has(2), 'brim должен содержать Z = 0.2 мм');
+  assert.ok(brimZs.has(4), 'brim должен содержать Z = 0.4 мм');
+  assert.ok(brimZs.has(6), 'brim должен содержать Z = 0.6 мм');
+});
+
+test('raft: заливка идёт по форме модели с отступом, а не по прямоугольнику', () => {
+  const C = loadCore();
+  const p = { ...C.defaults(), brimOn: false, raftOn: true, raftLayers: 2, raftGap: 5 };
+  const { gcode } = C.compose(p);
+  assert.ok(gcode.includes('--- RAFT ---'), 'должна быть секция RAFT');
+  assert.ok(!gcode.includes('--- BRIM ---'), 'brim не должен генерироваться вместе с raft');
+
+  const d = C.derive(p);
+  // Первая полоса raft начинается у края модели + отступ, а не у габарита.
+  const raftX = [];
+  let inRaft = false;
+  for (const raw of gcode.split('\n')) {
+    const l = raw.trim();
+    if (l.includes('--- RAFT ---')) { inRaft = true; continue; }
+    if (inRaft && l.startsWith('; LAYER')) break;
+    if (inRaft && /^G1/.test(l)) {
+      const m = l.match(/X([-\d.]+)/);
+      if (m) raftX.push(Number(m[1]));
+    }
+  }
+  assert.ok(raftX.length > 10, 'raft должен содержать линии заливки');
+  const minX = Math.min(...raftX), maxX = Math.max(...raftX);
+  // Отступ от реального края траектории, а не от прямоугольного габарита.
+  assert.ok(minX >= d.bbox.minX - 5.001, `левая граница raft ${minX} слишком далеко от модели`);
+  assert.ok(maxX <= d.bbox.maxX + 5.001, `правая граница raft ${maxX} слишком далеко от модели`);
+  assert.ok(minX > d.bbox.minX - 4.9 || maxX < d.bbox.maxX + 4.9, 'raft не должен быть прямоугольником по габариту');
+});
+
+test('raft: своя скорость и своя температура', () => {
+  const C = loadCore();
+  const p = { ...C.defaults(), brimOn: false, raftOn: true, raftLayers: 2, raftSpeed: 40, raftTemp: 210 };
+  const { gcode } = C.compose(p);
+  // 40 мм/с → F2400 (мм/мин)
+  assert.match(gcode, /F2400/, 'скорость raft 40 мм/с должна дать F2400');
+  // Температура плота 210 °C и возврат к первой зоне после плота
+  assert.match(gcode, /M104 S210/, 'должна быть установка температуры плота');
+  assert.match(gcode, /M104 S190/, 'после плота — возврат к температуре первой зоны');
+});
+
+test('raft: отступ 30 мм не помещается на стол A1 mini — ошибка', () => {
+  const C = loadCore();
+  const p = { ...C.defaults(), brimOn: false, raftOn: true, raftGap: 30 };
+  const issues = C.validate(p);
+  assert.ok(issues.some(i => i.code === 'bed-raft' && i.level === 'error'), 'нужна ошибка bed-raft при отступе 30 мм');
+});
+
+test('totalHeight учитывает высоту brim', () => {
+  const C = loadCore();
+  const p = { ...C.defaults(), brimLayers: 3 };
+  const d = C.derive(p);
+  const expected = (d.totalLayers + 3) * p.lh;
+  assert.ok(Math.abs(d.totalHeight - expected) < 1e-6, `totalHeight ${d.totalHeight} ≠ ${expected}`);
 });
 
 test('рамповые дуги не входят в измеримую длину спирали', () => {

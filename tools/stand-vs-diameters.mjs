@@ -1,5 +1,5 @@
 // Стенд: как выглядит ряд спиралей при разных core_x по секциям.
-// Строит docs/plan-vs-scaled-diameters.svg из реального ядра tools/mvs-matrix.html.
+// Строит docs/plan-vs-scaled-diameters.svg из реального ядра index.html.
 // Запуск: node tools/stand-vs-diameters.mjs
 
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -9,10 +9,10 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('..', import.meta.url));
 
 function loadCore() {
-  const html = readFileSync(root + 'tools/mvs-matrix.html', 'utf8');
+  const html = readFileSync(root + 'index.html', 'utf8');
   const cut = html.indexOf('/* ============ ИНТЕРФЕЙС ============ */');
   const start = html.indexOf('<script>');
-  if (cut < 0 || start < 0) throw new Error('не найдено ядро в tools/mvs-matrix.html');
+  if (cut < 0 || start < 0) throw new Error('не найдено ядро в index.html');
   const ctx = { module: { exports: {} } };
   vm.createContext(ctx);
   vm.runInContext(html.slice(start + '<script>'.length, cut), ctx, { filename: 'mvs-matrix.core.js' });

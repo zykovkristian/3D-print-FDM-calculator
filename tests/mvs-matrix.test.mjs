@@ -608,6 +608,24 @@ test('AUTO-план: точка перебора — слои в зоне рас
   assert.ok(long.layersPerZone > short.layersPerZone, 'при большем окне нужно больше слоёв в зоне');
 });
 
+test('раскраска карты T: цвет по фактической температуре, не по индексу зоны', () => {
+  const C = loadCore();
+  const hot = C.derive({ ...C.defaults(), tempHotBottom: true });
+  const cold = C.derive({ ...C.defaults(), tempHotBottom: false });
+  const hueOf = d => d.ts.map(t => C.tempHue(t, Math.min(...d.ts), Math.max(...d.ts)));
+
+  // Одна и та же температура — один и тот же цвет при любом порядке зон.
+  const hHot = hueOf(hot), hCold = hueOf(cold);
+  for (const t of hot.ts) {
+    assert.equal(C.tempHue(t, 190, 220), C.tempHue(t, 190, 220), 'цвет зависит только от T');
+  }
+  // Порядок зон инвертирован, а набор цветов по температуре — тот же.
+  assert.deepEqual(hHot.slice().sort((a, b) => a - b), hCold.slice().sort((a, b) => a - b));
+  // Горячая зона — красная (hue малый), холодная — синяя (hue большой).
+  assert.ok(C.tempHue(220, 190, 220) < 40, '220 °C должен быть красным');
+  assert.ok(C.tempHue(190, 190, 220) > 180, '190 °C должен быть синим');
+});
+
 test('totalHeight учитывает высоту brim', () => {
   const C = loadCore();
   const p = { ...C.defaults(), brimLayers: 3 };

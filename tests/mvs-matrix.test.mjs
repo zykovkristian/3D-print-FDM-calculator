@@ -390,7 +390,7 @@ test('checkChain ловит излом на прямом переходе меж
 
 test('обратный обход меняет направление слоя, змейка остаётся непрерывной', () => {
   const C = loadCore();
-  const normal = C.compose(C.defaults()).gcode;
+  const normal = C.compose({ ...C.defaults(), reversePath: false }).gcode;
   const reversed = C.compose({ ...C.defaults(), reversePath: true }).gcode;
   assert.notEqual(normal, reversed, 'обратный обход должен менять траекторию');
   assert.equal(snakeBreaks(normal), 0, 'разрыв змейки без обратного обхода');

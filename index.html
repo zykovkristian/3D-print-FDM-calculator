@@ -376,14 +376,14 @@ pre.code .g{color:#7fb2e5}
     <section class="card" data-block="preview">
       <div class="hd"><span class="n">8</span><h2 data-i18n="b8">Предпросмотр</h2></div>
       <div class="tabs" role="tablist">
-        <button role="tab" aria-selected="true" data-tab="bed" data-i18n="tabBed">Стол</button>
-        <button role="tab" aria-selected="false" data-tab="layer" data-i18n="tabLayer">Слой</button>
+        <button role="tab" aria-selected="false" data-tab="bed" data-i18n="tabBed">Стол</button>
+        <button role="tab" aria-selected="true" data-tab="layer" data-i18n="tabLayer">Слой</button>
         <button role="tab" aria-selected="false" data-tab="iso" data-i18n="tabIso">3D</button>
       </div>
-      <div class="tabpane on" data-pane="bed">
+      <div class="tabpane" data-pane="bed">
         <div class="preview-box"><svg id="svgBed" viewBox="0 0 460 300" role="img" aria-label="Схема стола"></svg></div>
       </div>
-      <div class="tabpane" data-pane="layer">
+      <div class="tabpane on" data-pane="layer">
         <div class="preview-box"><svg id="svgLayer" viewBox="0 0 460 300" role="img" aria-label="Срез слоя"></svg></div>
         <div class="preview-bar">
           <span data-i18n="lblLayer">Слой</span>
@@ -586,14 +586,14 @@ function defaults() {
     cells: 5, vsMode: 'manual', vsList: '8, 12, 16, 20, 24',
     spiralPitch: 1.2, spiralPitchInner: null, coreX: 12, autoCore: true, turnsPerBranch: 2.5,
     innerLevels: 0, spiralGap: 0, rowAngle: 0, rowCenterX: null, rowCenterY: null,
-    rotFirst: 'CCW', closeTails: false, reversePath: false,
+    rotFirst: 'CCW', closeTails: false, reversePath: true,
     tStart: 190, tEnd: 220, tStep: 10, band: 10, tempReverse: false,
     lw: 0.42, lh: 0.20,
     quality: 1.2,
     brimOn: true, brimLoops: 3, brimLayers: 3, brimGap: 0.3,
     beadOn: false, beadSize: 0.6, dwell: 5,
     parkMode: 'auto', parkX: 10, parkY: 10,
-    retractLen: 0.8, retractSpeed: 30,
+    retractLen: 0, retractSpeed: 0,
     prologue: '', epilogue: '', fileName: 'mvs-matrix'
   };
 }
@@ -1487,8 +1487,8 @@ if (typeof module !== 'undefined') {
       parkMode: $('parkMode').value,
       parkX: +$('parkX').value || 10,
       parkY: +$('parkY').value || 10,
-      retractLen: +$('retractLen').value || 0.8,
-      retractSpeed: +$('retractSpeed').value || 30,
+      retractLen: +$('retractLen').value || 0,
+      retractSpeed: +$('retractSpeed').value || 0,
       prologue: $('prologue').value,
       epilogue: $('epilogue').value,
       fileName: $('fileName').value || 'mvs-matrix'
@@ -1546,8 +1546,8 @@ if (typeof module !== 'undefined') {
     $('parkMode').value = p.parkMode || 'auto';
     $('parkX').value = p.parkX ?? 10;
     $('parkY').value = p.parkY ?? 10;
-    $('retractLen').value = p.retractLen ?? 0.8;
-    $('retractSpeed').value = p.retractSpeed ?? 30;
+    $('retractLen').value = p.retractLen ?? 0;
+    $('retractSpeed').value = p.retractSpeed ?? 0;
     $('prologue').value = p.prologue || '';
     $('epilogue').value = p.epilogue || '';
     $('fileName').value = p.fileName || 'mvs-matrix';
@@ -1842,6 +1842,35 @@ if (typeof module !== 'undefined') {
     ctx.lineTo(b2.px, b2.py); ctx.lineTo(b3.px, b3.py); ctx.closePath();
     ctx.stroke();
 
+    // Brim (кайма) — если включена, рисуем контур вокруг ряда на первом слое
+    if (curParams.brimOn) {
+      const bGap = Math.max(0, curParams.brimGap || 0.3);
+      const bx0 = d.bbox.minX - bGap, bx1 = d.bbox.maxX + bGap;
+      const by0 = d.bbox.minY - bGap, by1 = d.bbox.maxY + bGap;
+      const r = Math.min(6, (by1 - by0) / 2);
+      ctx.strokeStyle = '#888';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      const pts = [];
+      const corner = (cx, cy, a0, a1) => {
+        const steps = 8;
+        for (let s = 0; s <= steps; s++) {
+          const a = a0 + (a1 - a0) * s / steps;
+          pts.push(project(cx + r * Math.cos(a), cy + r * Math.sin(a), curParams.lh));
+        }
+      };
+      corner(bx1 - r, by0 + r, -Math.PI / 2, 0);
+      corner(bx1 - r, by1 - r, 0, Math.PI / 2);
+      corner(bx0 + r, by1 - r, Math.PI / 2, Math.PI);
+      corner(bx0 + r, by0 + r, Math.PI, 1.5 * Math.PI);
+      ctx.moveTo(pts[0].px, pts[0].py);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].px, pts[i].py);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
     // Отрисовка спиралей (шаг по слоям для скорости)
     const vsColors = ['#4d8dff', '#33c6bd', '#8bd86f', '#e6d65e', '#f29a48', '#ee5c4e', '#b48ce8'];
     const stepL = Math.max(1, Math.round(d.totalLayers / 30));
@@ -1952,12 +1981,14 @@ if (typeof module !== 'undefined') {
 
       <div class="tw" style="margin-bottom:14px">
         <table>
-          <thead><tr><th>Слой</th><th>Зона</th><th>T, °C</th><th>Высота, мм</th></tr></thead>
+          <thead><tr><th>Зона</th><th>T, °C</th><th>Слои</th><th>Высота, мм</th></tr></thead>
           <tbody>
-            ${Array.from({length: d.totalLayers}, (_, i) => {
-              const zi = Math.floor(i / d.layersPerZone);
-              const z = (i + 1) * curParams.lh;
-              return `<tr><td class="mono">${i + 1}</td><td>${zi + 1}</td><td class="mono">${d.ts[zi]} °C</td><td class="mono">${z.toFixed(2)}</td></tr>`;
+            ${Array.from({length: d.zones}, (_, zi) => {
+              const firstLayer = zi * d.layersPerZone + 1;
+              const lastLayer = (zi + 1) * d.layersPerZone;
+              const zStart = firstLayer * curParams.lh;
+              const zEnd = lastLayer * curParams.lh;
+              return `<tr><td>${zi + 1}</td><td class="mono">${d.ts[zi]} °C</td><td class="mono">${firstLayer}–${lastLayer}</td><td class="mono">${zStart.toFixed(2)}–${zEnd.toFixed(2)}</td></tr>`;
             }).join('')}
           </tbody>
         </table>

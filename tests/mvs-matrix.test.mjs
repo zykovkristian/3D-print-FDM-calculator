@@ -579,6 +579,35 @@ test('raft: отступ 30 мм не помещается на стол A1 mini
   assert.ok(issues.some(i => i.code === 'bed-raft' && i.level === 'error'), 'нужна ошибка bed-raft при отступе 30 мм');
 });
 
+test('AUTO-план: окно каждой точки (VS × T) не короче заданного минимума', () => {
+  const C = loadCore();
+  const p = { ...C.defaults(), vsMode: 'plan', minPointSec: 60, maxPrintMin: 240 };
+  const d = C.derive(p);
+  assert.ok(d.plan, 'план должен быть посчитан');
+  assert.ok(d.plan.windows.length === d.vs.length, 'окно посчитано для каждой ячейки');
+  const worst = Math.min(...d.plan.windows);
+  assert.ok(worst >= 59.5, `самое короткое окно ${worst.toFixed(0)} с < 60 с`);
+  assert.ok(d.layersPerZone > 1, 'в зоне должно быть больше одного слоя');
+  assert.equal(d.plan.layersPerZone, d.layersPerZone, 'число слоёв в зоне из плана используется в расчёте');
+  assert.ok(Math.abs(d.plan.band - d.layersPerZone * p.lh) < 1e-6, `высота зоны ${d.plan.band} ≠ ${d.layersPerZone}×${p.lh}`);
+});
+
+test('AUTO-план: ряд помещается в стол и время печати в лимите', () => {
+  const C = loadCore();
+  const p = { ...C.defaults(), vsMode: 'plan', minPointSec: 60, maxPrintMin: 240 };
+  const d = C.derive(p);
+  assert.ok(d.bbox.minX >= 0 && d.bbox.maxX <= p.bedX, 'ряд по X в столе');
+  assert.ok(d.bbox.minY >= 0 && d.bbox.maxY <= p.bedY, 'ряд по Y в столе');
+  assert.ok(d.plan.printMin <= 240 * 1.05, `время печати ${d.plan.printMin.toFixed(0)} мин выше лимита`);
+});
+
+test('AUTO-план: точка перебора — слои в зоне растут с требованием к окну', () => {
+  const C = loadCore();
+  const short = C.derive({ ...C.defaults(), vsMode: 'plan', minPointSec: 30, maxPrintMin: 600 });
+  const long = C.derive({ ...C.defaults(), vsMode: 'plan', minPointSec: 120, maxPrintMin: 600 });
+  assert.ok(long.layersPerZone > short.layersPerZone, 'при большем окне нужно больше слоёв в зоне');
+});
+
 test('totalHeight учитывает высоту brim', () => {
   const C = loadCore();
   const p = { ...C.defaults(), brimLayers: 3 };

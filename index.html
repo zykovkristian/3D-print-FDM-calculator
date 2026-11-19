@@ -240,11 +240,19 @@ pre.code .g{color:#7fb2e5}
             <input id="cells" type="number" min="2" max="12" step="1" value="7">
             <div class="hint" id="cellsHint"></div></div>
           <div class="field"><label for="vsMode" data-i18n="fVsMode">Ряд VS</label>
-            <select id="vsMode"><option value="auto">auto (25–75 %)</option><option value="manual">manual</option></select>
+            <select id="vsMode"><option value="auto">auto (25–75 %)</option><option value="manual">manual</option><option value="plan">auto-план (рекомендуется)</option></select>
             <div class="hint" id="vsHint"></div></div>
           <div class="field wide"><label for="vsList" data-i18n="fVsList">Ряд объёмной скорости, мм³/с</label>
             <input id="vsList" type="text" value="5, 8, 11, 14, 17, 20">
             <div class="hint" id="vsListHint"></div></div>
+          <div class="field"><label for="minPointSec" data-i18n="fMinPoint">Окно точки, с (минимум)</label>
+            <input id="minPointSec" type="number" min="10" max="600" step="10" value="60">
+            <div class="hint" id="minPointHint"></div></div>
+          <div class="field"><label for="maxPrintMin" data-i18n="fMaxPrint">Время печати, мин (максимум)</label>
+            <input id="maxPrintMin" type="number" min="10" max="2000" step="10" value="240">
+            <div class="hint" id="maxPrintHint"></div></div>
+          <div class="field wide"><button class="btn solid" id="btnPlan" type="button" data-i18n="btnPlan">Подобрать параметры под принтер</button>
+            <div class="hint" id="planHint"></div></div>
           <div class="field"><label for="tStart" data-i18n="fTStart">Температура от, °C</label>
             <input id="tStart" type="number" min="120" max="350" step="1" value="190"></div>
           <div class="field"><label for="tEnd" data-i18n="fTEnd">Температура до, °C</label>
@@ -520,6 +528,8 @@ const I18N = {
     fFd: 'Диаметр прутка, мм', fRho: 'Плотность, г/см³', fFr: 'Flow Ratio', fPrice: 'Цена, ₽/кг',
     fBedT: 'Стол, °C', fFan: 'Обдув, %',
     fVsList: 'Ряд объёмной скорости, мм³/с', fVsMode: 'Ряд VS', fCells: 'Число цилиндров',
+    fMinPoint: 'Окно точки, с (минимум)', fMaxPrint: 'Время печати, мин (максимум)',
+    btnPlan: 'Подобрать параметры под принтер',
     fSpiralPitch: 'Шаг траекторий, мм', fCoreX: 'X (S-петля), мм', fTurnsPerBranch: 'Витков на ветвь',
     fAutoCore: 'Автопрогрессия диаметра', hAutoCore: 'секция с бо́льшим VS получает больше́й X: срез F снимается, габарит ряда растёт',
     fSpiralPitchInner: 'Внутренний шаг, мм', fInnerLevels: 'Внутренних уровней',
@@ -570,6 +580,8 @@ const I18N = {
     fFd: 'Filament Dia, mm', fRho: 'Density, g/cm³', fFr: 'Flow Ratio', fPrice: 'Price, $/kg',
     fBedT: 'Bed, °C', fFan: 'Fan, %',
     fVsList: 'Volumetric Speed Series, mm³/s', fVsMode: 'VS Series', fCells: 'Cylinders',
+    fMinPoint: 'Point window, s (minimum)', fMaxPrint: 'Print time, min (maximum)',
+    btnPlan: 'Fit parameters to this printer',
     fSpiralPitch: 'Track Pitch, mm', fCoreX: 'X (S-loop), mm', fTurnsPerBranch: 'Turns per Branch',
     fAutoCore: 'Auto diameter progression', hAutoCore: 'a higher-VS section gets a larger X: the F cut is removed, the row grows wider',
     fSpiralPitchInner: 'Inner Pitch, mm', fInnerLevels: 'Inner Levels',
@@ -649,6 +661,104 @@ function vsSeriesFromHotend(qHot, cells) {
   return out;
 }
 
+
+// Планировщик AUTO: подбирает параметры матрицы под конкретную конфигурацию
+// принтера так, чтобы КАЖДАЯ измерительная точка (VS × T) получила достаточное
+// время, а вся матрица осталась в столе и в разумном времени печати.
+//
+// Ограничения, которые он учитывает:
+//  - потолок хотэнда: ряд VS берётся от 25 % до 75 % от qHot;
+//  - время измерения: окно каждой точки (VS × T) не короче minPointSec;
+//  - высота зоны кратна высоте слоя;
+//  - ряд помещается в стол;
+//  - общее время печати не превышает maxPrintMin.
+//
+// Геометрия берётся настоящая: ряд строится тем же кодом, что и при печати,
+// поэтому длины ячеек и оценка времени совпадают с отчётом.
+function planAuto(p) {
+  const notes = [];
+  const lh = Math.max(0.06, p.lh);
+  const lw = Math.max(0.3, p.lw);
+  const A_line = lw * lh;
+  const aEff = Math.max(100, p.aMax * 0.8);
+  const qHot = Math.max(2, p.qHot || 28);
+  const minPointSec = Math.max(10, Number(p.minPointSec) || 60);
+  const maxPrintMin = Math.max(10, Number(p.maxPrintMin) || 240);
+  const cellsWanted = Math.max(2, Math.min(12, Math.round(p.cells || 5)));
+
+  const vs = vsSeriesFromHotend(qHot, cellsWanted);
+  const zones = parseTemps({ ...p, tempHotBottom: false }).length;
+
+  // Ряд с автопрогрессией: core_x каждой ячейки считается от её VS, иначе на
+  // быстрых ячейках срезается F и измерение теряет смысл.
+  const coreItems = [];
+  for (const v of vs) {
+    const rReq = (v / A_line) ** 2 / aEff;
+    coreItems.push({ coreX: Math.max(Math.max(2 * lw, Number(p.coreFloor) || 4), 1.15 * 2 * rReq) });
+  }
+  const traj = {
+    count: vs.length, angle: p.rowAngle || 0,
+    cx: p.rowCenterX != null ? p.rowCenterX : p.bedX / 2,
+    cy: p.rowCenterY != null ? p.rowCenterY : p.bedY / 2,
+    gap: Math.max(0, p.spiralGap || 0), rot: p.rotFirst === 'CW' ? -1 : 1,
+    tails: Boolean(p.closeTails), reverse: Boolean(p.reversePath),
+    turns: p.turnsPerBranch, pitch: p.spiralPitch, pitchIn: p.spiralPitchInner,
+    innerLevels: p.innerLevels, coreX: p.coreX, items: coreItems
+  };
+  const row = buildSpiralRow(traj);
+  const bb = row.stats.bbox;
+  const width = bb.maxX - bb.minX, depth = bb.maxY - bb.minY;
+  if (width > p.bedX || depth > p.bedY) {
+    return { error: `Ряд ${vs.length} ячеек не помещается в стол: ${width.toFixed(0)}×${depth.toFixed(0)} мм при столе ${p.bedX}×${p.bedY} мм. Уменьшите число ячеек.` };
+  }
+
+  // Настоящие измерительные длины ячеек (без дуг-рамп — как в отчёте).
+  const rowPtsPlan = segmentsToPoints(row.path, p.quality);
+  const meas = measureChain(p, { vs }, { pts: rowPtsPlan, row });
+  const cellLen = meas.cells.map(c => c.len);
+  const layerTime = (i) => cellLen[i] / (vs[i] / A_line);   // время одного слоя ячейки, с
+
+  // Слоёв в зоне: столько, чтобы ОКНО КАЖДОЙ точки было не короче minPointSec.
+  let layersPerZone = 1;
+  for (let guard = 0; guard < 2000; guard++) {
+    const worst = Math.min(...cellLen.map((_, i) => layerTime(i) * layersPerZone));
+    if (worst >= minPointSec) break;
+    layersPerZone++;
+  }
+  // Высота зоны — ровно целое число слоёв (без накопления ошибки float).
+  let band = Math.round(layersPerZone * lh * 1000) / 1000;
+
+  // Оценка времени печати: все ячейки × все зоны + прогрев на смену температуры.
+  const estimate = (lpz) => {
+    let sec = 0;
+    for (let i = 0; i < vs.length; i++) sec += layerTime(i) * lpz * zones;
+    sec += zones * ((Number(p.dwell) || 0) + 20);   // прогрев и парковка при смене T
+    return sec / 60;
+  };
+  let printMin = estimate(layersPerZone);
+  let guard = 0;
+  while (printMin > maxPrintMin && layersPerZone > 1 && guard++ < 400) {
+    layersPerZone--;
+    band = Math.round(layersPerZone * lh * 1000) / 1000;
+    printMin = estimate(layersPerZone);
+  }
+  if (printMin > maxPrintMin) {
+    notes.push(`Время печати ${printMin.toFixed(0)} мин превышает лимит ${maxPrintMin} мин даже при 1 слое в зоне — уменьшите число ячеек или температурных зон`);
+  }
+
+  // Итоговые окна измерения по ячейкам.
+  const windows = cellLen.map((_, i) => layerTime(i) * layersPerZone);
+  const minWin = Math.min(...windows), maxWin = Math.max(...windows);
+
+  notes.push(`VS: ${vs.join(', ')} мм³/с (25–75 % потолка ${qHot} мм³/с)`);
+  notes.push(`Слоёв в зоне: ${layersPerZone} (высота зоны ${band.toFixed(1)} мм)`);
+  notes.push(`Окно точки: ${minWin.toFixed(0)}–${maxWin.toFixed(0)} с на VS × T (минимум задан ${minPointSec} с)`);
+  notes.push(`Оценка времени печати: ${printMin.toFixed(0)} мин, всего точек ${vs.length * zones}`);
+  notes.push(`Габарит ряда: ${width.toFixed(0)}×${depth.toFixed(0)} мм`);
+
+  return { vs, band, layersPerZone, totalLayers: layersPerZone * zones, zones, printMin, windows, notes };
+}
+
 function parseTemps(p) {
   const t0 = Math.min(p.tStart, p.tEnd), t1 = Math.max(p.tStart, p.tEnd), step = Math.max(1, p.tStep);
   const arr = [];
@@ -660,9 +770,12 @@ function parseTemps(p) {
 
 function derive(p) {
   const cells = Math.max(1, Math.min(12, Math.round(p.cells || 6)));
+  // Режим plan: параметры считает планировщик (band, слои в зоне, ряд VS) —
+  // он подбирает их под потолки принтера и окно измерения.
+  const plan = p.vsMode === 'plan' ? planAuto(p) : null;
   const vs = p.vsMode === 'manual'
     ? parseVsList(p.vsList)
-    : vsSeriesFromHotend(p.qHot, cells);
+    : (plan && plan.vs ? plan.vs : vsSeriesFromHotend(p.qHot, cells));
   const ts = parseTemps(p);
   const cols = cells;                                   // ряд всегда один
   const rows = 1;
@@ -729,7 +842,12 @@ function derive(p) {
     return Number.isFinite(m) ? m : 0;
   });
 
-  const layersPerZone = Math.max(1, Math.round(p.band / p.lh));
+  const bandEff = (plan && plan.band != null) ? plan.band : p.band;
+  // В режиме plan берём число слоёв из плана — оно уже согласовано с высотой
+  // зоны и окном измерения; пересчёт по band может дать на слой больше или меньше.
+  const layersPerZone = (plan && plan.layersPerZone)
+    ? plan.layersPerZone
+    : Math.max(1, Math.round(bandEff / p.lh));
   const totalLayers = layersPerZone * zones;
   const effectiveBrimOn = p.brimOn && !p.raftOn;
   const effectiveRaftOn = p.raftOn && !p.brimOn;
@@ -763,7 +881,7 @@ function derive(p) {
     A_line, A_fil,
     v_max: vMaxPlan, a_eff: aEff, r_min, sectionMinR,
     autoCore: autoCoreUsed,
-    layersPerZone, totalLayers, totalHeight, modelBaseZ,
+    layersPerZone, totalLayers, totalHeight, modelBaseZ, plan,
     cellCenters, row, rowPts, traj, spiralOuterR,
     R_out: spiralOuterR.length ? Math.max(...spiralOuterR) : 0,
     bbox: { width: bboxWidth, depth: bboxDepth, minX, maxX, minY, maxY, centerX, centerY }
@@ -1765,6 +1883,8 @@ if (typeof module !== 'undefined') {
       fan: +$('fan').value || 0,
       vsMode: $('vsMode').value,
       vsList: $('vsList').value,
+      minPointSec: +$('minPointSec').value || 60,
+      maxPrintMin: +$('maxPrintMin').value || 240,
       tStart: +$('tStart').value || 190,
       tEnd: +$('tEnd').value || 220,
       tStep: +$('tStep').value || 10,
@@ -1772,6 +1892,8 @@ if (typeof module !== 'undefined') {
       tempHotBottom: $('tempHotBottom').checked,
       cells: +$('cells').value || 5,
       vsMode: $('vsMode').value,
+      minPointSec: +$('minPointSec').value || 60,
+      maxPrintMin: +$('maxPrintMin').value || 240,
       spiralPitch: +$('spiralPitch').value || 1.2,
       spiralPitchInner: +$('spiralPitchInner').value > 0 ? +$('spiralPitchInner').value : null,
       coreX: +$('coreX').value || 12,
@@ -1834,6 +1956,8 @@ if (typeof module !== 'undefined') {
     $('bedT').value = p.bedT ?? 60;
     $('fan').value = p.fan ?? 0;
     $('vsMode').value = p.vsMode || 'manual';
+    $('minPointSec').value = p.minPointSec ?? 60;
+    $('maxPrintMin').value = p.maxPrintMin ?? 240;
     $('vsList').value = p.vsList ?? '8, 12, 16, 20, 24';
     $('tStart').value = p.tStart ?? 190;
     $('tEnd').value = p.tEnd ?? 220;
@@ -2326,7 +2450,50 @@ if (typeof module !== 'undefined') {
 
     const estTimeMin = (totalPrintTimeSec / 60) * 1.25; // +25% на ускорения и переходы
 
+    // Полная матрица измерений: каждая ячейка VS печатается на каждой
+    // температуре, поэтому измерительных точек (VS × T) больше, чем строк
+    // основной таблицы. Показываем окно, массу и слои для каждой точки.
+    const matrixRowsHtml = [];
+    d.vs.forEach((v, i) => {
+      const vMmS = v / area;
+      const lenCell = cellLen[i] || 0;
+      const timeLayerSec = lenCell / vMmS;
+      d.ts.forEach((t, zi) => {
+        const timeZoneSec = timeLayerSec * d.layersPerZone;
+        const massZoneG = (lenCell * d.layersPerZone * area * curParams.rho) / 1000;
+        const firstLayer = zi * d.layersPerZone + 1;
+        const lastLayer = (zi + 1) * d.layersPerZone;
+        matrixRowsHtml.push(`<tr>
+          <td>${i + 1}</td>
+          <td class="mono">${v}</td>
+          <td class="mono">${t} °C</td>
+          <td class="mono">${vMmS.toFixed(1)}</td>
+          <td class="mono">${Math.round(vMmS * 60)}</td>
+          <td class="mono">${(timeZoneSec / 60).toFixed(2)}</td>
+          <td class="mono">${massZoneG.toFixed(2)}</td>
+          <td class="mono">${firstLayer}–${lastLayer}</td>
+        </tr>`);
+      });
+    });
+    const matrixHtml = matrixRowsHtml.join('');
+
+    // Честный блок о границах теста: что матрица не измеряет.
+    const limitsHtml = `
+      <div class="tw" style="margin-bottom:14px">
+        <table>
+          <thead><tr><th>Граница теста</th><th>Значение</th></tr></thead>
+          <tbody>
+            <tr><td>Повторов на точку (VS × T)</td><td class="mono">1</td></tr>
+            <tr><td>Контрольный образец в начале сессии</td><td class="mono">нет</td></tr>
+            <tr><td>Прогрев при смене температуры</td><td class="mono">${Math.round(Number(curParams.dwell) || 0)} с + пауза на прогреве</td></tr>
+            <tr><td>Температура зависит от высоты</td><td class="mono">да — зона ${d.zones}, шаг ${curParams.band} мм</td></tr>
+            <tr><td>Отклик фиксируется</td><td class="mono">вручную по образцу</td></tr>
+          </tbody>
+        </table>
+      </div>`;
+
     body.innerHTML = `
+      ${limitsHtml}
       <div class="tw" style="margin-bottom:14px">
         <table>
           <thead>
@@ -2352,6 +2519,18 @@ if (typeof module !== 'undefined') {
               return `<tr><td>${zi + 1}</td><td class="mono">${d.ts[zi]} °C</td><td class="mono">${firstLayer}–${lastLayer}</td><td class="mono">${zStart.toFixed(2)}–${zEnd.toFixed(2)}</td></tr>`;
             }).join('')}
           </tbody>
+        </table>
+      </div>
+
+      <div class="tw" style="margin-bottom:14px">
+        <table>
+          <thead>
+            <tr>
+              <th>${dict.thCell}</th><th>${dict.thVs}</th><th>T, °C</th><th>${dict.thV}</th><th>${dict.thF}</th>
+              <th>Время зоны, мин</th><th>Пластик, г</th><th>Слои</th>
+            </tr>
+          </thead>
+          <tbody>${matrixHtml}</tbody>
         </table>
       </div>
 
@@ -2453,6 +2632,25 @@ if (typeof module !== 'undefined') {
     });
     paramsCol.addEventListener('change', (e) => {
       if (e.target.matches('input, select, textarea')) onParamChange();
+    });
+
+    // Кнопка AUTO-плана: подбирает параметры матрицы под конфигурацию принтера
+    $('btnPlan').addEventListener('click', () => {
+      const p = readForm();
+      const plan = planAuto(p);
+      const hint = $('planHint');
+      if (plan.error) {
+        hint.textContent = plan.error;
+        hint.className = 'hint err';
+        return;
+      }
+      $('cells').value = plan.vs.length;
+      $('vsList').value = plan.vs.join(', ');
+      $('band').value = Number(plan.band.toFixed(2));
+      $('vsMode').value = 'plan';
+      hint.className = 'hint';
+      hint.textContent = plan.notes.join(' · ');
+      onParamChange();
     });
 
     // Взаимное исключение brim и raft

@@ -44,7 +44,7 @@
 
 1. Где: терминал (PowerShell, Git Bash или терминал VS Code), папка репозитория.
 2. Выполните команду: `node --test`
-3. Должен появиться блок `ℹ tests 51`, `ℹ pass 51`, `ℹ fail 0`.
+3. Должен появиться блок `ℹ tests 52`, `ℹ pass 52`, `ℹ fail 0`.
 4. Признак успеха: в выводе нет строки `✖ failing tests`, а счётчик `pass` равен числу выполненных тестов.
 5. Если Node.js не найден: установите Node.js 18+ и откройте терминал заново, затем повторите команду; если падает конкретный тест, его имя указано в секции `failing tests`.
 
@@ -109,7 +109,7 @@ MVS Calibrator is a browser-based calculator for FDM print limits: enter printer
 
 The MVS generator supports reversed temperature order (hot zone at the bottom), a reversed row traversal (on by default), multi-layer brim or a solid raft platform with its own speed and temperature, a per-zone temperature table in the report, and brim/raft outlines in the 3D preview.
 
-Run it: open `tools/filament_test_protocol.html` (calculator) or `index.html` (matrix generator). Run checks: `node --test` — expect `tests 51`, `pass 51`, `fail 0`.
+Run it: open `tools/filament_test_protocol.html` (calculator) or `index.html` (matrix generator). Run checks: `node --test` — expect `tests 52`, `pass 52`, `fail 0`.
 
 Personal and other permitted noncommercial use is free under the PolyForm Noncommercial 1.0.0 license in `LICENSE`. Organizations need a separate commercial license; see `COMMERCIAL-LICENSE.md`. This is source-available, not an OSI-approved open-source license.
 

@@ -38,6 +38,7 @@
 - `docs/archive/MVS_Matrix_Labyrinth_GCode_Generator.html` — первая версия генератора (архив, заменена `index.html`).
 - `docs/MVS_dialoge.md` — переписка по разработке матрицы MVS (исходное задание).
 - `docs/assets/image1.png`, `docs/assets/image2.png`, `docs/assets/image.png` — референсы формы матрицы (ряд цилиндров, вид сверху двойной спирали).
+- `docs/assets/screenshot-calculator.png`, `docs/assets/screenshot-generator.png` — снимки публичной версии для README (калькулятор и генератор с картой температур).
 - `tests/model.test.mjs` — проверки расчётной модели, запуск `node --test`.
 - `tests/mvs-matrix.test.mjs` — проверки генератора матрицы MVS, запуск `node --test` (52 теста).
 - `.github/workflows/ci.yml` — CI, тот же прогон на push и pull request.

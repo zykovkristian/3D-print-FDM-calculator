@@ -12,6 +12,9 @@
 // печатает проверки: самопересечения, минимальный зазор, радиус кривизны.
 
 import { writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const OUT_DIR = fileURLToPath(new URL('.', import.meta.url));
 
 const TAU = Math.PI * 2;
 const P = { R: 18, rc: 2.5, N: 6.5, L: 2.5 };
@@ -320,13 +323,13 @@ console.log('метрики (N=3, пропорции схемы):', JSON.stringi
   len: +M3.stats.len.toFixed(1)
 }));
 
-const outSvg = 'C:/Users/Christian/Desktop/3D-print-FDM-calculator/tools/spiral-s.svg';
-const outSvgF = 'C:/Users/Christian/Desktop/3D-print-FDM-calculator/tools/spiral-s-fixed.svg';
-const outSvgS = 'C:/Users/Christian/Desktop/3D-print-FDM-calculator/tools/spiral-s-schema.svg';
-const outHtml = 'C:/Users/Christian/Desktop/3D-print-FDM-calculator/tools/spiral-s.html';
+const outSvg = OUT_DIR + 'spiral-s.svg';
+const outSvgF = OUT_DIR + 'spiral-s-fixed.svg';
+const outSvgS = OUT_DIR + 'spiral-s-schema.svg';
+const outHtml = OUT_DIR + 'spiral-s.html';
 writeFileSync(outSvg, svg(P, M));
 writeFileSync(outSvgF, svg(P, Mf));
 writeFileSync(outSvgS, svgSchema(P, M));
-writeFileSync('C:/Users/Christian/Desktop/3D-print-FDM-calculator/tools/spiral-s-schema-n3.svg', svgSchema(P3, M3));
+writeFileSync(OUT_DIR + 'spiral-s-schema-n3.svg', svgSchema(P3, M3));
 writeFileSync(outHtml, html(P));
 console.log('записано:', outSvg, ',', outSvgF, ',', outSvgS, ', схема N=3 и', outHtml);

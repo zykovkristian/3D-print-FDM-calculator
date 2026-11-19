@@ -3,9 +3,12 @@
 // профиль межканального расстояния по углу.
 
 import { writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const OUT_DIR = fileURLToPath(new URL('.', import.meta.url));
 
 const D2R = Math.PI / 180;
-const OUT = 'C:/Users/CHRIST~1/AppData/Local/Temp/kilo/stand-centers.svg';
+const OUT = OUT_DIR + 'stand-centers.svg';
 
 // ---------- общие параметры эталонного пресета ----------
 const A_line = 0.096, aEff = 8000;
@@ -275,7 +278,7 @@ svg += `<text x="20" y="985" fill="#6f8090" font-size="11">Оранжевый �
 svg += `</svg>`;
 
 writeFileSync(OUT, svg);
-writeFileSync('C:/Users/Christian/Desktop/3D-print-FDM-calculator/tools/stand-centers.html',
+writeFileSync(OUT_DIR + 'stand-centers.html',
   '<!doctype html><meta charset="utf-8"><body style="margin:0;background:#0e1218">' + svg + '</body>');
 console.log('SVG записан:', OUT);
 for (const v of variants) {

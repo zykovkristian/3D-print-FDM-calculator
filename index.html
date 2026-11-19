@@ -240,11 +240,19 @@ pre.code .g{color:#7fb2e5}
             <input id="cells" type="number" min="2" max="12" step="1" value="7">
             <div class="hint" id="cellsHint"></div></div>
           <div class="field"><label for="vsMode" data-i18n="fVsMode">Ряд VS</label>
-            <select id="vsMode"><option value="auto">auto (25–75 %)</option><option value="manual">manual</option></select>
+            <select id="vsMode"><option value="auto">auto (25–75 %)</option><option value="manual">manual</option><option value="plan">auto-план (рекомендуется)</option></select>
             <div class="hint" id="vsHint"></div></div>
           <div class="field wide"><label for="vsList" data-i18n="fVsList">Ряд объёмной скорости, мм³/с</label>
             <input id="vsList" type="text" value="5, 8, 11, 14, 17, 20">
             <div class="hint" id="vsListHint"></div></div>
+          <div class="field"><label for="minPointSec" data-i18n="fMinPoint">Окно точки, с (минимум)</label>
+            <input id="minPointSec" type="number" min="10" max="600" step="10" value="60">
+            <div class="hint" id="minPointHint"></div></div>
+          <div class="field"><label for="maxPrintMin" data-i18n="fMaxPrint">Время печати, мин (максимум)</label>
+            <input id="maxPrintMin" type="number" min="10" max="2000" step="10" value="240">
+            <div class="hint" id="maxPrintHint"></div></div>
+          <div class="field wide"><button class="btn solid" id="btnPlan" type="button" data-i18n="btnPlan">Подобрать параметры под принтер</button>
+            <div class="hint" id="planHint"></div></div>
           <div class="field"><label for="tStart" data-i18n="fTStart">Температура от, °C</label>
             <input id="tStart" type="number" min="120" max="350" step="1" value="190"></div>
           <div class="field"><label for="tEnd" data-i18n="fTEnd">Температура до, °C</label>
@@ -254,7 +262,7 @@ pre.code .g{color:#7fb2e5}
           <div class="field"><label for="band" data-i18n="fBand">Высота зоны, мм</label>
             <input id="band" type="number" min="0.4" max="60" step="0.2" value="10">
             <div class="hint" id="bandHint"></div></div>
-          <label class="check"><input id="tempReverse" type="checkbox"><span><span data-i18n="fTempReverse">Обратный порядок температур (горячая снизу)</span></span></label>
+          <label class="check"><input id="tempHotBottom" type="checkbox" checked><span><span data-i18n="fTempHotBottom">Горячая зона снизу</span><small data-i18n="hTempHotBottom">холодная — сверху (по умолчанию)</small></span></label>
         </div>
       </div>
     </section>
@@ -327,12 +335,22 @@ pre.code .g{color:#7fb2e5}
           <label class="check"><input id="raftOn" type="checkbox"><span><span data-i18n="fRaftOn">Включить raft</span><small data-i18n="hRaftOn">полноценная подложка под модель (вместо brim)</small></span></label>
           <div class="field"><label for="raftLayers" data-i18n="fRaftLayers">Слоёв raft</label>
             <input id="raftLayers" type="number" min="1" max="6" step="1" value="3"></div>
-          <div class="field"><label for="raftGap" data-i18n="fRaftGap">Зазор от модели, мм</label>
-            <input id="raftGap" type="number" min="0" max="60" step="0.5" value="5"></div>
+          <div class="field"><label for="raftGap" data-i18n="fRaftGap">Расширение от модели, мм</label>
+            <input id="raftGap" type="number" min="0" max="60" step="0.1" value="1.5"></div>
           <div class="field"><label for="raftSpeed" data-i18n="fRaftSpeed">Скорость raft, мм/с</label>
             <input id="raftSpeed" type="number" min="10" max="200" step="5" value="60"></div>
           <div class="field"><label for="raftTemp" data-i18n="fRaftTemp">Температура raft, °C (0 = первая зона)</label>
             <input id="raftTemp" type="number" min="0" max="350" step="1" value="0"></div>
+          <div class="field"><label for="raftBottomLayers" data-i18n="fRaftBottom">Слоёв низа (сплошных)</label>
+            <input id="raftBottomLayers" type="number" min="0" max="6" step="1" value="1"></div>
+          <div class="field"><label for="raftTopLayers" data-i18n="fRaftTop">Слоёв верха (сплошных)</label>
+            <input id="raftTopLayers" type="number" min="0" max="6" step="1" value="1"></div>
+          <div class="field"><label for="raftDensity" data-i18n="fRaftDensity">Плотность средних слоёв, %</label>
+            <input id="raftDensity" type="number" min="1" max="100" step="5" value="20"></div>
+          <div class="field"><label for="raftContact" data-i18n="fRaftContact">Зазор контакта с моделью, мм</label>
+            <input id="raftContact" type="number" min="0" max="1" step="0.05" value="0.1"></div>
+          <div class="field"><label for="raftFirstExpansion" data-i18n="fRaftFirstExp">Расширение нижнего слоя, мм</label>
+            <input id="raftFirstExpansion" type="number" min="0" max="20" step="0.5" value="2"></div>
         </div>
         <div class="sep"></div>
         <p class="sub-h" data-i18n="sTrans">Переходы</p>
@@ -510,6 +528,8 @@ const I18N = {
     fFd: 'Диаметр прутка, мм', fRho: 'Плотность, г/см³', fFr: 'Flow Ratio', fPrice: 'Цена, ₽/кг',
     fBedT: 'Стол, °C', fFan: 'Обдув, %',
     fVsList: 'Ряд объёмной скорости, мм³/с', fVsMode: 'Ряд VS', fCells: 'Число цилиндров',
+    fMinPoint: 'Окно точки, с (минимум)', fMaxPrint: 'Время печати, мин (максимум)',
+    btnPlan: 'Подобрать параметры под принтер',
     fSpiralPitch: 'Шаг траекторий, мм', fCoreX: 'X (S-петля), мм', fTurnsPerBranch: 'Витков на ветвь',
     fAutoCore: 'Автопрогрессия диаметра', hAutoCore: 'секция с бо́льшим VS получает больше́й X: срез F снимается, габарит ряда растёт',
     fSpiralPitchInner: 'Внутренний шаг, мм', fInnerLevels: 'Внутренних уровней',
@@ -519,7 +539,7 @@ const I18N = {
     fRowCenterX: 'Центр ряда X, мм', fRowCenterY: 'Центр ряда Y, мм',
     bTraj: 'Траектория ряда', sTraj: 'Спираль: ветвь внутрь → S-петля в центре → ветвь наружу',
     fTStart: 'Температура от, °C', fTEnd: 'Температура до, °C',
-    fTStep: 'Шаг температуры, °C', fBand: 'Высота зоны, мм', fTempReverse: 'Обратный порядок T (горячая снизу)',
+    fTStep: 'Шаг температуры, °C', fBand: 'Высота зоны, мм', fTempHotBottom: 'Горячая зона снизу', hTempHotBottom: 'холодная — сверху (по умолчанию)',
     fLw: 'Ширина линии, мм', fLh: 'Высота слоя, мм',
     fQuality: 'Плотность точек, мм',
     sBrim: 'Brim (кайма)', fBrimOn: 'Включить brim', hBrimOn: 'общий контур вокруг всех ячеек',
@@ -527,6 +547,9 @@ const I18N = {
     fRaftOn: 'Включить raft', hRaftOn: 'полноценная подложка под модель (вместо brim)',
     fRaftLayers: 'Слоёв raft', fRaftGap: 'Зазор от модели, мм',
     fRaftSpeed: 'Скорость raft, мм/с', fRaftTemp: 'Температура raft, °C (0 = первая зона)',
+    fRaftBottom: 'Слоёв низа (сплошных)', fRaftTop: 'Слоёв верха (сплошных)',
+    fRaftDensity: 'Плотность средних слоёв, %', fRaftContact: 'Зазор контакта с моделью, мм',
+    fRaftFirstExp: 'Расширение нижнего слоя, мм',
     sTrans: 'Переходы', fBeadOn: 'Метка границы зон', hBeadOn: 'полка на первом слое зоны',
     fBeadSize: 'Вынос полки, мм', fDwell: 'Выдержка на смене T, с',
     fParkMode: 'Точка парковки', fParkX: 'Парковка X, мм', fParkY: 'Парковка Y, мм',
@@ -557,6 +580,8 @@ const I18N = {
     fFd: 'Filament Dia, mm', fRho: 'Density, g/cm³', fFr: 'Flow Ratio', fPrice: 'Price, $/kg',
     fBedT: 'Bed, °C', fFan: 'Fan, %',
     fVsList: 'Volumetric Speed Series, mm³/s', fVsMode: 'VS Series', fCells: 'Cylinders',
+    fMinPoint: 'Point window, s (minimum)', fMaxPrint: 'Print time, min (maximum)',
+    btnPlan: 'Fit parameters to this printer',
     fSpiralPitch: 'Track Pitch, mm', fCoreX: 'X (S-loop), mm', fTurnsPerBranch: 'Turns per Branch',
     fAutoCore: 'Auto diameter progression', hAutoCore: 'a higher-VS section gets a larger X: the F cut is removed, the row grows wider',
     fSpiralPitchInner: 'Inner Pitch, mm', fInnerLevels: 'Inner Levels',
@@ -566,7 +591,7 @@ const I18N = {
     fRowCenterX: 'Row Center X, mm', fRowCenterY: 'Row Center Y, mm',
     bTraj: 'Row Trajectory', sTraj: 'Spiral: inward branch → S-loop at center → outward branch',
     fTStart: 'Temp From, °C', fTEnd: 'Temp To, °C',
-    fTStep: 'Temp Step, °C', fBand: 'Band Height, mm', fTempReverse: 'Reverse T order (hot at bottom)',
+    fTStep: 'Temp Step, °C', fBand: 'Band Height, mm', fTempHotBottom: 'Hot zone at bottom', hTempHotBottom: 'cold zone on top (default)',
     fLw: 'Line Width, mm', fLh: 'Layer Height, mm',
     fQuality: 'Point chord, mm',
     sBrim: 'Brim', fBrimOn: 'Enable brim', hBrimOn: 'continuous brim around all cells',
@@ -574,6 +599,9 @@ const I18N = {
     fRaftOn: 'Enable raft', hRaftOn: 'full platform under model (instead of brim)',
     fRaftLayers: 'Raft layers', fRaftGap: 'Gap from model, mm',
     fRaftSpeed: 'Raft speed, mm/s', fRaftTemp: 'Raft temperature, °C (0 = first zone)',
+    fRaftBottom: 'Bottom solid layers', fRaftTop: 'Top solid layers',
+    fRaftDensity: 'Middle layer density, %', fRaftContact: 'Contact gap to model, mm',
+    fRaftFirstExp: 'Bottom layer expansion, mm',
     sTrans: 'Transitions', fBeadOn: 'Zone boundary mark', hBeadOn: 'step on zone entry layer',
     fBeadSize: 'Step size, mm', fDwell: 'Dwell on temp change, s',
     fParkMode: 'Park position', fParkX: 'Park X, mm', fParkY: 'Park Y, mm',
@@ -602,10 +630,11 @@ function defaults() {
     spiralPitch: 1.2, spiralPitchInner: null, coreX: 12, autoCore: true, turnsPerBranch: 2.5,
     innerLevels: 0, spiralGap: 0, rowAngle: 0, rowCenterX: null, rowCenterY: null,
     rotFirst: 'CCW', closeTails: false, reversePath: true,
-    tStart: 190, tEnd: 220, tStep: 10, band: 10, tempReverse: false,
+    tStart: 190, tEnd: 220, tStep: 10, band: 10, tempHotBottom: true,
     lw: 0.42, lh: 0.20,
     quality: 1.2,
-    brimOn: true, brimLoops: 3, brimLayers: 3, brimGap: 0.3, raftOn: false, raftLayers: 3, raftGap: 5, raftSpeed: 60, raftTemp: 0,
+    brimOn: true, brimLoops: 3, brimLayers: 3, brimGap: 0.3, raftOn: false, raftLayers: 3, raftGap: 1.5, raftSpeed: 60, raftTemp: 0,
+    raftBottomLayers: 1, raftTopLayers: 1, raftDensity: 20, raftContact: 0.1, raftFirstExpansion: 2,
     beadOn: false, beadSize: 0.6, dwell: 5,
     parkMode: 'auto', parkX: 10, parkY: 10,
     retractLen: 0, retractSpeed: 0,
@@ -632,19 +661,121 @@ function vsSeriesFromHotend(qHot, cells) {
   return out;
 }
 
+
+// Планировщик AUTO: подбирает параметры матрицы под конкретную конфигурацию
+// принтера так, чтобы КАЖДАЯ измерительная точка (VS × T) получила достаточное
+// время, а вся матрица осталась в столе и в разумном времени печати.
+//
+// Ограничения, которые он учитывает:
+//  - потолок хотэнда: ряд VS берётся от 25 % до 75 % от qHot;
+//  - время измерения: окно каждой точки (VS × T) не короче minPointSec;
+//  - высота зоны кратна высоте слоя;
+//  - ряд помещается в стол;
+//  - общее время печати не превышает maxPrintMin.
+//
+// Геометрия берётся настоящая: ряд строится тем же кодом, что и при печати,
+// поэтому длины ячеек и оценка времени совпадают с отчётом.
+function planAuto(p) {
+  const notes = [];
+  const lh = Math.max(0.06, p.lh);
+  const lw = Math.max(0.3, p.lw);
+  const A_line = lw * lh;
+  const aEff = Math.max(100, p.aMax * 0.8);
+  const qHot = Math.max(2, p.qHot || 28);
+  const minPointSec = Math.max(10, Number(p.minPointSec) || 60);
+  const maxPrintMin = Math.max(10, Number(p.maxPrintMin) || 240);
+  const cellsWanted = Math.max(2, Math.min(12, Math.round(p.cells || 5)));
+
+  const vs = vsSeriesFromHotend(qHot, cellsWanted);
+  const zones = parseTemps({ ...p, tempHotBottom: false }).length;
+
+  // Ряд с автопрогрессией: core_x каждой ячейки считается от её VS, иначе на
+  // быстрых ячейках срезается F и измерение теряет смысл.
+  const coreItems = [];
+  for (const v of vs) {
+    const rReq = (v / A_line) ** 2 / aEff;
+    coreItems.push({ coreX: Math.max(Math.max(2 * lw, Number(p.coreFloor) || 4), 1.15 * 2 * rReq) });
+  }
+  const traj = {
+    count: vs.length, angle: p.rowAngle || 0,
+    cx: p.rowCenterX != null ? p.rowCenterX : p.bedX / 2,
+    cy: p.rowCenterY != null ? p.rowCenterY : p.bedY / 2,
+    gap: Math.max(0, p.spiralGap || 0), rot: p.rotFirst === 'CW' ? -1 : 1,
+    tails: Boolean(p.closeTails), reverse: Boolean(p.reversePath),
+    turns: p.turnsPerBranch, pitch: p.spiralPitch, pitchIn: p.spiralPitchInner,
+    innerLevels: p.innerLevels, coreX: p.coreX, items: coreItems
+  };
+  const row = buildSpiralRow(traj);
+  const bb = row.stats.bbox;
+  const width = bb.maxX - bb.minX, depth = bb.maxY - bb.minY;
+  if (width > p.bedX || depth > p.bedY) {
+    return { error: `Ряд ${vs.length} ячеек не помещается в стол: ${width.toFixed(0)}×${depth.toFixed(0)} мм при столе ${p.bedX}×${p.bedY} мм. Уменьшите число ячеек.` };
+  }
+
+  // Настоящие измерительные длины ячеек (без дуг-рамп — как в отчёте).
+  const rowPtsPlan = segmentsToPoints(row.path, p.quality);
+  const meas = measureChain(p, { vs }, { pts: rowPtsPlan, row });
+  const cellLen = meas.cells.map(c => c.len);
+  const layerTime = (i) => cellLen[i] / (vs[i] / A_line);   // время одного слоя ячейки, с
+
+  // Слоёв в зоне: столько, чтобы ОКНО КАЖДОЙ точки было не короче minPointSec.
+  let layersPerZone = 1;
+  for (let guard = 0; guard < 2000; guard++) {
+    const worst = Math.min(...cellLen.map((_, i) => layerTime(i) * layersPerZone));
+    if (worst >= minPointSec) break;
+    layersPerZone++;
+  }
+  // Высота зоны — ровно целое число слоёв (без накопления ошибки float).
+  let band = Math.round(layersPerZone * lh * 1000) / 1000;
+
+  // Оценка времени печати: все ячейки × все зоны + прогрев на смену температуры.
+  const estimate = (lpz) => {
+    let sec = 0;
+    for (let i = 0; i < vs.length; i++) sec += layerTime(i) * lpz * zones;
+    sec += zones * ((Number(p.dwell) || 0) + 20);   // прогрев и парковка при смене T
+    return sec / 60;
+  };
+  let printMin = estimate(layersPerZone);
+  let guard = 0;
+  while (printMin > maxPrintMin && layersPerZone > 1 && guard++ < 400) {
+    layersPerZone--;
+    band = Math.round(layersPerZone * lh * 1000) / 1000;
+    printMin = estimate(layersPerZone);
+  }
+  if (printMin > maxPrintMin) {
+    notes.push(`Время печати ${printMin.toFixed(0)} мин превышает лимит ${maxPrintMin} мин даже при 1 слое в зоне — уменьшите число ячеек или температурных зон`);
+  }
+
+  // Итоговые окна измерения по ячейкам.
+  const windows = cellLen.map((_, i) => layerTime(i) * layersPerZone);
+  const minWin = Math.min(...windows), maxWin = Math.max(...windows);
+
+  notes.push(`VS: ${vs.join(', ')} мм³/с (25–75 % потолка ${qHot} мм³/с)`);
+  notes.push(`Слоёв в зоне: ${layersPerZone} (высота зоны ${band.toFixed(1)} мм)`);
+  notes.push(`Окно точки: ${minWin.toFixed(0)}–${maxWin.toFixed(0)} с на VS × T (минимум задан ${minPointSec} с)`);
+  notes.push(`Оценка времени печати: ${printMin.toFixed(0)} мин, всего точек ${vs.length * zones}`);
+  notes.push(`Габарит ряда: ${width.toFixed(0)}×${depth.toFixed(0)} мм`);
+
+  return { vs, band, layersPerZone, totalLayers: layersPerZone * zones, zones, printMin, windows, notes };
+}
+
 function parseTemps(p) {
   const t0 = Math.min(p.tStart, p.tEnd), t1 = Math.max(p.tStart, p.tEnd), step = Math.max(1, p.tStep);
   const arr = [];
   for (let t = t0; t <= t1 + 1e-4 && arr.length < 25; t += step) arr.push(Math.round(t));
-  if (p.tempReverse) arr.reverse();
+  // По умолчанию горячая зона снизу: массив температур по слоям снизу вверх.
+  if (p.tempHotBottom) arr.reverse();
   return arr;
 }
 
 function derive(p) {
   const cells = Math.max(1, Math.min(12, Math.round(p.cells || 6)));
+  // Режим plan: параметры считает планировщик (band, слои в зоне, ряд VS) —
+  // он подбирает их под потолки принтера и окно измерения.
+  const plan = p.vsMode === 'plan' ? planAuto(p) : null;
   const vs = p.vsMode === 'manual'
     ? parseVsList(p.vsList)
-    : vsSeriesFromHotend(p.qHot, cells);
+    : (plan && plan.vs ? plan.vs : vsSeriesFromHotend(p.qHot, cells));
   const ts = parseTemps(p);
   const cols = cells;                                   // ряд всегда один
   const rows = 1;
@@ -711,14 +842,27 @@ function derive(p) {
     return Number.isFinite(m) ? m : 0;
   });
 
-  const layersPerZone = Math.max(1, Math.round(p.band / p.lh));
+  const bandEff = (plan && plan.band != null) ? plan.band : p.band;
+  // В режиме plan берём число слоёв из плана — оно уже согласовано с высотой
+  // зоны и окном измерения; пересчёт по band может дать на слой больше или меньше.
+  const layersPerZone = (plan && plan.layersPerZone)
+    ? plan.layersPerZone
+    : Math.max(1, Math.round(bandEff / p.lh));
   const totalLayers = layersPerZone * zones;
   const effectiveBrimOn = p.brimOn && !p.raftOn;
   const effectiveRaftOn = p.raftOn && !p.brimOn;
   const bLayers = effectiveBrimOn ? Math.max(1, Math.min(6, p.brimLayers || 3)) : 0;
   const rLayers = effectiveRaftOn ? Math.max(1, Math.min(6, p.raftLayers || 3)) : 0;
+  // Высота, на которой начинается печать модели. Brim печатается слоями под
+  // моделью, поэтому модель идёт на один слой выше. Raft — сплошная
+  // подложка: модель начинается на её верхней поверхности + зазор контакта
+  // (raft_contact_distance в слайсерах).
+  const contactGap = effectiveRaftOn ? Math.max(0, Number(p.raftContact) || 0) : 0;
+  const modelBaseZ = effectiveRaftOn
+    ? rLayers * p.lh + contactGap
+    : (bLayers + 1) * p.lh;
   const adhesionLayers = Math.max(bLayers, rLayers);
-  const totalHeight = (totalLayers + adhesionLayers) * p.lh;
+  const totalHeight = modelBaseZ + totalLayers * p.lh;
 
   // Центры ячеек (совпадают с центрами спиралей ряда)
   const cellCenters = [];
@@ -737,7 +881,7 @@ function derive(p) {
     A_line, A_fil,
     v_max: vMaxPlan, a_eff: aEff, r_min, sectionMinR,
     autoCore: autoCoreUsed,
-    layersPerZone, totalLayers, totalHeight,
+    layersPerZone, totalLayers, totalHeight, modelBaseZ, plan,
     cellCenters, row, rowPts, traj, spiralOuterR,
     R_out: spiralOuterR.length ? Math.max(...spiralOuterR) : 0,
     bbox: { width: bboxWidth, depth: bboxDepth, minX, maxX, minY, maxY, centerX, centerY }
@@ -883,6 +1027,162 @@ function measureChain(p, d, chain) {
 /* ============ ПРОВЕРКИ ГЕОМЕТРИИ ТРАЕКТОРИИ ============ */
 
 // Проверки параметров до генерации: стол, температура, кинематика, геометрия.
+
+// Геометрия плота. Спирали ряда — окружности разного радиуса с центрами на
+// одной прямой, касающиеся соседей. Плот = объединение этих окружностей,
+// увеличенных на расширение gap: получается «стадион» — две прямые касательные
+// между крайними окружностями и внешние дуги по краям.
+
+// Окружности спиралей, увеличенные на gap. Спирали ряда — окружности
+// разного радиуса с центрами на одной прямой, поэтому их объединение —
+// «стадион»: внешние дуги крайних окружностей и общие внешние касательные
+// между соседними.
+function raftCircles(d, gap) {
+  const spirals = (d.row && d.row.spirals) || [];
+  return spirals.map(q => ({ x: q.center[0], y: q.center[1], r: q.outerR + gap }));
+}
+
+// Пересечение двух окружностей: точки p1, p2 или null.
+function circleIntersect(A, B) {
+  const dx = B.x - A.x, dy = B.y - A.y;
+  const d = Math.hypot(dx, dy);
+  if (d < 1e-9 || d > A.r + B.r || d <= Math.abs(A.r - B.r)) return null;
+  const a = (A.r * A.r - B.r * B.r + d * d) / (2 * d);
+  const h2 = A.r * A.r - a * a;
+  if (h2 < 0) return null;
+  const h = Math.sqrt(h2);
+  const mx = A.x + a * dx / d, my = A.y + a * dy / d;
+  const px = -dy / d, py = dx / d;
+  return [[mx + px * h, my + py * h], [mx - px * h, my - py * h]];
+}
+
+// Контур объединения окружностей (против часовой стрелки). Внешняя граница
+// состоит из дуг окружностей: у каждой окружности видна часть вне соседей.
+// Соседние окружности перекрываются, поэтому граница проходит через точки их
+// пересечения.
+function raftOutline(d, gap) {
+  const cs = raftCircles(d, gap);
+  const N = cs.length;
+  if (!N) return [];
+  const pts = [];
+  const arc = (c, a0, a1) => {
+    let span = a1 - a0;
+    while (span < 0) span += 2 * Math.PI;
+    const steps = Math.max(6, Math.ceil(span * c.r / 1.5));
+    for (let i = 0; i <= steps; i++) {
+      const a = a0 + span * i / steps;
+      pts.push([c.x + c.r * Math.cos(a), c.y + c.r * Math.sin(a)]);
+    }
+  };
+  if (N === 1) { arc(cs[0], Math.PI / 2, 3 * Math.PI / 2); return pts; }
+
+  // Ось ряда: от центра первой окружности к центру последней.
+  const A0 = cs[0], BN = cs[N - 1];
+  const dx = BN.x - A0.x, dy = BN.y - A0.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len, uy = dy / len;    // вдоль ряда
+  const nx = -uy, ny = ux;               // нормаль ряда («верх»)
+
+  // Для каждой пары соседей — углы точек пересечения на обеих окружностях.
+  // upR[i]: угол верхнего пересечения на окружности i с правым соседом;
+  // upL[i]: угол верхнего пересечения на окружности i с левым соседом.
+  const upR = new Array(N).fill(null), upL = new Array(N).fill(null);
+  for (let i = 0; i + 1 < N; i++) {
+    const inter = circleIntersect(cs[i], cs[i + 1]);
+    if (!inter) continue;
+    // «Верхняя» точка — та, что со стороны нормали ряда.
+    let up = inter[0], dn = inter[1];
+    if ((up[0] - cs[i].x) * nx + (up[1] - cs[i].y) * ny < (dn[0] - cs[i].x) * nx + (dn[1] - cs[i].y) * ny) {
+      up = inter[1]; dn = inter[0];
+    }
+    upR[i] = Math.atan2(up[1] - cs[i].y, up[0] - cs[i].x);
+    upL[i + 1] = Math.atan2(up[1] - cs[i + 1].y, up[0] - cs[i + 1].x);
+  }
+
+  // Обход против часовой стрелки: снизу слева направо, затем вверх по правой
+  // окружности, затем сверху справа налево.
+  // Нижняя часть: дуга от нижнего пересечения с левым соседом до нижнего
+  // пересечения с правым (у первой — от левой точки до нижней).
+  for (let i = 0; i < N; i++) {
+    const c = cs[i];
+    let a0, a1;
+    if (i === 0) {
+      a0 = Math.PI;                                  // левая точка окружности
+      a1 = (upR[i] != null) ? -upR[i] : 0;           // нижнее пересечение справа
+    } else if (i === N - 1) {
+      a0 = (upL[i] != null) ? -upL[i] : Math.PI;     // нижнее пересечение слева
+      a1 = 0;                                         // правая точка окружности
+    } else {
+      a0 = (upL[i] != null) ? -upL[i] : Math.PI;
+      a1 = (upR[i] != null) ? -upR[i] : 0;
+    }
+    arc(c, a0, a1);
+  }
+  // Верхняя часть: от правой точки последней окружности к левой точке первой.
+  for (let i = N - 1; i >= 0; i--) {
+    const c = cs[i];
+    let a0, a1;
+    if (i === N - 1) {
+      a0 = 0;                                        // правая точка
+      a1 = (upL[i] != null) ? upL[i] : Math.PI / 2;
+    } else if (i === 0) {
+      a0 = (upR[i] != null) ? upR[i] : Math.PI / 2;
+      a1 = Math.PI / 2;                              // верхняя точка
+    } else {
+      a0 = (upR[i] != null) ? upR[i] : Math.PI / 2;
+      a1 = (upL[i] != null) ? upL[i] : Math.PI / 2;
+    }
+    arc(c, a0, a1);
+  }
+  return pts;
+}
+
+// Внутренние горизонтальные отрезки заливки на высоте y: пересечение
+// объединения окружностей с прямой y. Возвращает отрезки [x0, x1].
+function raftSpans(d, gap, y) {
+  const cs = raftCircles(d, gap);
+  const spans = [];
+  for (const c of cs) {
+    const dy = y - c.y;
+    if (Math.abs(dy) > c.r) continue;
+    const h = Math.sqrt(Math.max(0, c.r * c.r - dy * dy));
+    spans.push([c.x - h, c.x + h]);
+  }
+  if (!spans.length) return [];
+  spans.sort((a, b) => a[0] - b[0]);
+  const merged = [spans[0].slice()];
+  for (let i = 1; i < spans.length; i++) {
+    const lastS = merged[merged.length - 1];
+    if (spans[i][0] <= lastS[1] + 1e-9) lastS[1] = Math.max(lastS[1], spans[i][1]);
+    else merged.push(spans[i].slice());
+  }
+  return merged;
+}
+
+// Габарит объединения окружностей с расширением gap.
+function raftBBox(d, gap) {
+  const cs = raftCircles(d, gap);
+  if (!cs.length) return null;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const c of cs) {
+    minX = Math.min(minX, c.x - c.r); maxX = Math.max(maxX, c.x + c.r);
+    minY = Math.min(minY, c.y - c.r); maxY = Math.max(maxY, c.y + c.r);
+  }
+  return { minX, maxX, minY, maxY };
+}
+
+// Габарит объединения окружностей с расширением gap.
+function raftBBox(d, gap) {
+  const cs = raftCircles(d, gap);
+  if (!cs.length) return null;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const c of cs) {
+    minX = Math.min(minX, c.x - c.r); maxX = Math.max(maxX, c.x + c.r);
+    minY = Math.min(minY, c.y - c.r); maxY = Math.max(maxY, c.y + c.r);
+  }
+  return { minX, maxX, minY, maxY };
+}
+
 function validate(p) {
   const errs = [];
   const d = derive(p);
@@ -961,9 +1261,14 @@ function validate(p) {
   // --- Raft и габарит с учётом подложки ---
   if (p.raftOn && !p.brimOn) {
     const rGap = Math.max(0, Number(p.raftGap) || 0);
-    if (d.bbox.minX - rGap < 0 || d.bbox.maxX + rGap > p.bedX ||
-        d.bbox.minY - rGap < 0 || d.bbox.maxY + rGap > p.bedY) {
-      errs.push({ level: 'error', field: 'raftGap', code: 'bed-raft', msg: `Raft выходит за стол: отступ ${rGap} мм от края модели не помещается (${p.bedX}×${p.bedY} мм)` });
+    const firstExp = Math.max(0, Number(p.raftFirstExpansion) || 0);
+    const rLayers = Math.max(1, Math.min(6, Number(p.raftLayers) || 3));
+    const bottom = Math.max(0, Math.min(rLayers, Math.round(Number(p.raftBottomLayers) || 0)));
+    // Нижний слой плота расширен сильнее — он и выходит за край стола первым.
+    const worstGap = bottom > 0 ? rGap + firstExp : rGap;
+    const rb = raftBBox(d, worstGap);
+    if (rb && (rb.minX < 0 || rb.maxX > p.bedX || rb.minY < 0 || rb.maxY > p.bedY)) {
+      errs.push({ level: 'error', field: 'raftGap', code: 'bed-raft', msg: `Raft выходит за стол: отступ ${worstGap} мм от края модели даёт габарит ${rb.maxX - rb.minX}×${rb.maxY - rb.minY} мм при столе ${p.bedX}×${p.bedY} мм` });
     }
   }
 
@@ -1045,6 +1350,7 @@ function compose(p) {
   const bLayers = effectiveBrimOn ? Math.max(1, Math.min(6, p.brimLayers || 3)) : 0;
   const rLayers = effectiveRaftOn ? Math.max(1, Math.min(6, p.raftLayers || 3)) : 0;
   const adhesionLayers = Math.max(bLayers, rLayers);
+  const modelBaseZ = d.modelBaseZ;
   if (effectiveBrimOn) {
     out += `\n; --- BRIM ---\n`;
     const loops = Math.max(1, Math.min(8, p.brimLoops || 3));
@@ -1083,17 +1389,25 @@ function compose(p) {
     }
   }
 
-  // Raft (если включён): сплошная подложка по форме модели с отступом
-  // raftGap мм от края. Форма берётся из траектории ряда: для каждой полосы
-  // по Y находится диапазон X модели, к нему добавляется отступ. Скорость и
-  // температура плота задаются отдельно (raftSpeed, raftTemp).
+  // Raft (если включён): сплошная подложка под модель по форме ряда спиралей.
+  // Структура как в слайсерах: нижние слои сплошные (с увеличенным
+  // расширением — ради адгезии к столу), средние разреженные, верхние
+  // сплошные (гладкая поверхность под модель). Между плотом и моделью —
+  // зазор контакта raftContact. Скорость и температура — свои.
   if (effectiveRaftOn) {
     const margin = Math.max(0, Number(p.raftGap) || 0);
+    const bottomLayers = Math.max(0, Math.min(rLayers, Math.round(Number(p.raftBottomLayers) || 0)));
+    const topLayers = Math.max(0, Math.min(rLayers - bottomLayers, Math.round(Number(p.raftTopLayers) || 0)));
+    const density = Math.max(1, Math.min(100, Math.round(Number(p.raftDensity) || 20))) / 100;
+    const contact = Math.max(0, Number(p.raftContact) || 0);
+    const firstExp = Math.max(0, Number(p.raftFirstExpansion) || 0);
     const raftT = Number(p.raftTemp) > 0 ? Number(p.raftTemp) : d.ts[0];
     const raftV = Math.max(10, Number(p.raftSpeed) || 60);   // мм/с
     const raftF = Math.round(raftV * 60);                    // мм/мин
+
     out += `\n; --- RAFT ---\n`;
-    out += `; Raft: ${rLayers} сл., отступ ${margin} мм, скорость ${raftV} мм/с, температура ${raftT} C\n`;
+    out += `; Raft: ${rLayers} сл. (${bottomLayers} сплошных снизу, ${topLayers} сплошных сверху, средние ${Math.round(density * 100)}%),\n`;
+    out += `;   расширение ${margin} мм (низ +${firstExp} мм), зазор контакта ${contact} мм, скорость ${raftV} мм/с, температура ${raftT} C\n`;
 
     // Температура плота: если отличается от первой зоны — переключаем и ждём.
     const tempChanged = raftT !== d.ts[0];
@@ -1102,43 +1416,62 @@ function compose(p) {
       out += `${flv.nozzleWait(raftT)}\n`;
     }
 
-    // Полосы заливки по форме модели: на каждой Y — диапазон X модели + отступ.
-    const outline = d.rowPts || [];
-    const spacing = Math.max(0.1, p.lw);
-    let yMin = Infinity, yMax = -Infinity;
-    for (const q of outline) {
-      if (q.y < yMin) yMin = q.y;
-      if (q.y > yMax) yMax = q.y;
-    }
-    if (!isFinite(yMin)) { yMin = d.bbox.minY; yMax = d.bbox.maxY; }
-    const nBands = Math.max(1, Math.ceil((yMax - yMin) / spacing));
-    const bands = [];
-    for (let bi = 0; bi <= nBands; bi++) {
-      const y = Math.min(yMin + bi * spacing, yMax);
-      let mn = Infinity, mx = -Infinity;
-      for (const q of outline) {
-        if (Math.abs(q.y - y) <= spacing * 0.75) {
-          if (q.x < mn) mn = q.x;
-          if (q.x > mx) mx = q.x;
-        }
+    // Контур плота: объединение окружностей спиралей с расширением.
+    const outline = raftOutline(d, margin);
+    if (outline.length > 2) {
+      // Периметр плота: замкнутая петля по контуру (обход против часовой).
+      out += `; Raft perimeter (${outline.length} точек)\n`;
+      out += `G0 X${outline[0][0].toFixed(3)} Y${outline[0][1].toFixed(3)} Z${p.lh.toFixed(3)} F3600\n`;
+      for (let i = 1; i <= outline.length; i++) {
+        const q = outline[i % outline.length];
+        const dist = Math.hypot(q[0] - outline[i - 1][0], q[1] - outline[i - 1][1]);
+        const e = dist * d.A_line / d.A_fil;
+        out += `G1 X${q[0].toFixed(3)} Y${q[1].toFixed(3)} E${e.toFixed(5)} F${raftF}\n`;
       }
-      if (!isFinite(mn)) continue;
-      bands.push({ y, x0: mn - margin, x1: mx + margin });
     }
 
-    for (let rl = 0; rl < rLayers; rl++) {
-      const zRaft = (rl + 1) * p.lh;
-      out += `; Raft layer ${rl + 1}/${rLayers}, Z=${zRaft.toFixed(3)}\n`;
-      for (let bi = 0; bi < bands.length; bi++) {
-        const bd = bands[bi];
-        const xStart = (bi % 2 === 0) ? bd.x0 : bd.x1;
-        const xEnd = (bi % 2 === 0) ? bd.x1 : bd.x0;
-        out += `G0 X${xStart.toFixed(3)} Y${bd.y.toFixed(3)} Z${zRaft.toFixed(3)} F3600\n`;
-        const dist = Math.abs(xEnd - xStart);
-        if (dist < 1e-6) continue;
-        const e = dist * d.A_line / d.A_fil;
-        out += `G1 X${xEnd.toFixed(3)} Y${bd.y.toFixed(3)} E${e.toFixed(5)} F${raftF}\n`;
+    // Слои плота: снизу вверх. Нижние — сплошные, средние — разреженные,
+    // верхние — сплошные. Заливка идёт горизонтальными полосами по Y внутри
+    // контура; направление чередуется (монотонный обход: перемещения между
+    // полосами минимальны, нахлёст полос между слоями лучше).
+    const bboxR = raftBBox(d, margin);
+    if (bboxR) {
+      const yTop = bboxR.maxY, yBot = bboxR.minY;
+      for (let rl = 0; rl < rLayers; rl++) {
+        const zRaft = (rl + 1) * p.lh;
+        const isBottom = rl < bottomLayers;
+        const isTop = rl >= rLayers - topLayers;
+        const solid = isBottom || isTop;
+        // Расширение нижнего слоя больше — он держит модель на столе.
+        const gapLayer = (isBottom ? margin + firstExp : margin);
+        // Шаг полос: сплошной слой — шаг ширины линии, разреженный — реже.
+        const step = solid ? p.lw : p.lw / density;
+        out += `; Raft layer ${rl + 1}/${rLayers}${solid ? ' (solid)' : ` (${Math.round(density * 100)}%)`}, Z=${zRaft.toFixed(3)}\n`;
+        const nBands = Math.max(1, Math.ceil((yTop - yBot) / step));
+        let dir = 1;
+        for (let bi = 0; bi <= nBands; bi++) {
+          const y = Math.min(yBot + bi * step, yTop);
+          const spans = raftSpans(d, gapLayer, y);
+          for (const sp of spans) {
+            const x0 = sp[0], x1 = sp[1];
+            const xStart = dir > 0 ? x0 : x1;
+            const xEnd = dir > 0 ? x1 : x0;
+            dir = -dir;
+            const dist = Math.abs(xEnd - xStart);
+            if (dist < 1e-6) continue;
+            out += `G0 X${xStart.toFixed(3)} Y${y.toFixed(3)} Z${zRaft.toFixed(3)} F3600\n`;
+            const e = dist * d.A_line / d.A_fil;
+            out += `G1 X${xEnd.toFixed(3)} Y${y.toFixed(3)} E${e.toFixed(5)} F${raftF}\n`;
+          }
+        }
       }
+    }
+
+    // Зазор контакта: модель печатается на 0.1 мм выше верха плота (как в
+    // Bambu/Orca: raft_contact_distance), чтобы верхний слой плота не слипался
+    // с первым слоем модели.
+    if (contact > 0) {
+      out += `; Contact gap ${contact} mm\n`;
     }
 
     // Возврат к температуре первой зоны для основной печати.
@@ -1182,7 +1515,7 @@ function compose(p) {
     if (zi > 0) {
       out += `; Transition: park and wait for temp stabilization\n`;
       out += `G1 E-${p.retractLen.toFixed(2)} F${p.retractSpeed * 60}\n`;
-      out += `G0 Z${((zi * d.layersPerZone + 1) * p.lh + 2.0).toFixed(3)} F1200\n`;
+      out += `G0 Z${(modelBaseZ + zi * d.layersPerZone * p.lh + 2.0).toFixed(3)} F1200\n`;
       out += `G0 X${parkX.toFixed(3)} Y${parkY.toFixed(3)} F6000\n`;
       out += `${flv.nozzleSet(targetT)}\n`;
       out += `${flv.nozzleWait(targetT)}\n`;
@@ -1191,7 +1524,7 @@ function compose(p) {
 
     for (let li = 0; li < d.layersPerZone; li++) {
       const globalLayer = zi * d.layersPerZone + li;
-      const zCur = (globalLayer + 1 + adhesionLayers) * p.lh;
+      const zCur = modelBaseZ + globalLayer * p.lh;
       const isBead = p.beadOn && li === 0 && zi > 0;
       // Змейка: на нечётных слоях ряд проходится в обратную сторону, поэтому
       // конец слоя попадает в начало следующего — между слоями нет перемещений.
@@ -1550,13 +1883,17 @@ if (typeof module !== 'undefined') {
       fan: +$('fan').value || 0,
       vsMode: $('vsMode').value,
       vsList: $('vsList').value,
+      minPointSec: +$('minPointSec').value || 60,
+      maxPrintMin: +$('maxPrintMin').value || 240,
       tStart: +$('tStart').value || 190,
       tEnd: +$('tEnd').value || 220,
       tStep: +$('tStep').value || 10,
       band: +$('band').value || 10,
-      tempReverse: $('tempReverse').checked,
+      tempHotBottom: $('tempHotBottom').checked,
       cells: +$('cells').value || 5,
       vsMode: $('vsMode').value,
+      minPointSec: +$('minPointSec').value || 60,
+      maxPrintMin: +$('maxPrintMin').value || 240,
       spiralPitch: +$('spiralPitch').value || 1.2,
       spiralPitchInner: +$('spiralPitchInner').value > 0 ? +$('spiralPitchInner').value : null,
       coreX: +$('coreX').value || 12,
@@ -1582,6 +1919,11 @@ if (typeof module !== 'undefined') {
       raftGap: +$('raftGap').value ?? 5,
       raftSpeed: +$('raftSpeed').value || 60,
       raftTemp: +$('raftTemp').value || 0,
+      raftBottomLayers: +$('raftBottomLayers').value ?? 1,
+      raftTopLayers: +$('raftTopLayers').value ?? 1,
+      raftDensity: +$('raftDensity').value ?? 20,
+      raftContact: +$('raftContact').value ?? 0.1,
+      raftFirstExpansion: +$('raftFirstExpansion').value ?? 2,
       beadOn: $('beadOn').checked,
       beadSize: +$('beadSize').value || 0.6,
       dwell: +$('dwell').value || 5,
@@ -1614,12 +1956,14 @@ if (typeof module !== 'undefined') {
     $('bedT').value = p.bedT ?? 60;
     $('fan').value = p.fan ?? 0;
     $('vsMode').value = p.vsMode || 'manual';
+    $('minPointSec').value = p.minPointSec ?? 60;
+    $('maxPrintMin').value = p.maxPrintMin ?? 240;
     $('vsList').value = p.vsList ?? '8, 12, 16, 20, 24';
     $('tStart').value = p.tStart ?? 190;
     $('tEnd').value = p.tEnd ?? 220;
     $('tStep').value = p.tStep ?? 10;
     $('band').value = p.band ?? 10;
-    $('tempReverse').checked = !!p.tempReverse;
+    $('tempHotBottom').checked = p.tempHotBottom !== false;
     $('cells').value = p.cells ?? 5;
     $('spiralPitch').value = p.spiralPitch ?? 1.2;
     $('spiralPitchInner').value = p.spiralPitchInner ?? 0;
@@ -1646,6 +1990,11 @@ if (typeof module !== 'undefined') {
     $('raftGap').value = p.raftGap ?? 5;
     $('raftSpeed').value = p.raftSpeed ?? 60;
     $('raftTemp').value = p.raftTemp ?? 0;
+    $('raftBottomLayers').value = p.raftBottomLayers ?? 1;
+    $('raftTopLayers').value = p.raftTopLayers ?? 1;
+    $('raftDensity').value = p.raftDensity ?? 20;
+    $('raftContact').value = p.raftContact ?? 0.1;
+    $('raftFirstExpansion').value = p.raftFirstExpansion ?? 2;
     $('beadOn').checked = Boolean(p.beadOn);
     $('beadSize').value = p.beadSize ?? 0.6;
     $('dwell').value = p.dwell ?? 5;
@@ -1705,7 +2054,7 @@ if (typeof module !== 'undefined') {
       <div class="kpi"><span class="k">${dict.kpiDim}:</span><span class="v">${d.bbox.width.toFixed(1)}×${d.bbox.depth.toFixed(1)} мм</span></div>
       <div class="kpi"><span class="k">${dict.kpiHeight}:</span><span class="v">${d.totalHeight.toFixed(1)} мм</span></div>
       <div class="kpi"><span class="k">${dict.kpiLayers}:</span><span class="v">${d.totalLayers}</span></div>
-      <div class="kpi"><span class="k">Зон T:</span><span class="v">${d.zones} (${d.ts[0]}–${d.ts[d.ts.length - 1]}°C)</span></div>
+      <div class="kpi"><span class="k">Зон T:</span><span class="v">${d.zones} (${Math.min(...d.ts)}–${Math.max(...d.ts)}°C${d.ts[0] > d.ts[d.ts.length - 1] ? ', снизу горячее' : ''})</span></div>
       <div class="badge ${isDirty ? 'dirty' : ''}">${isDirty ? 'Не сохранено' : 'Актуально'}</div>
     `;
   }
@@ -1977,41 +2326,25 @@ if (typeof module !== 'undefined') {
       ctx.setLineDash([]);
     }
 
-    // Raft (подложка) — если включён, рисуем заливку по форме модели + отступ
+    // Raft (подложка) — если включён, рисуем контур плота: объединение
+    // окружностей спиралей с отступом (нижний слой расширен сильнее).
     if (curParams.raftOn && !curParams.brimOn) {
       const margin = Math.max(0, Number(curParams.raftGap) || 0);
-      const outline = d.rowPts || [];
-      const spacing = Math.max(0.1, curParams.lw);
-      let yMin = Infinity, yMax = -Infinity;
-      for (const q of outline) {
-        if (q.y < yMin) yMin = q.y;
-        if (q.y > yMax) yMax = q.y;
-      }
-      if (!isFinite(yMin)) { yMin = d.bbox.minY; yMax = d.bbox.maxY; }
-      const nBands = Math.max(1, Math.ceil((yMax - yMin) / spacing));
-      const left = [], right = [];
-      for (let bi = 0; bi <= nBands; bi++) {
-        const y = Math.min(yMin + bi * spacing, yMax);
-        let mn = Infinity, mx = -Infinity;
-        for (const q of outline) {
-          if (Math.abs(q.y - y) <= spacing * 0.75) {
-            if (q.x < mn) mn = q.x;
-            if (q.x > mx) mx = q.x;
-          }
-        }
-        if (!isFinite(mn)) continue;
-        left.push(project(mn - margin, y, curParams.lh));
-        right.push(project(mx + margin, y, curParams.lh));
-      }
+      const firstExp = Math.max(0, Number(curParams.raftFirstExpansion) || 0);
+      const bottomLayers = Math.max(0, Math.round(Number(curParams.raftBottomLayers) || 0));
+      const contour = raftOutline(d, margin + (bottomLayers > 0 ? firstExp : 0));
       ctx.fillStyle = 'rgba(136, 136, 136, 0.3)';
       ctx.strokeStyle = '#888';
       ctx.lineWidth = 1;
       ctx.setLineDash([]);
-      if (left.length > 1) {
+      if (contour.length > 2) {
         ctx.beginPath();
-        ctx.moveTo(left[0].px, left[0].py);
-        for (let i = 1; i < left.length; i++) ctx.lineTo(left[i].px, left[i].py);
-        for (let i = right.length - 1; i >= 0; i--) ctx.lineTo(right[i].px, right[i].py);
+        const p0 = project(contour[0][0], contour[0][1], curParams.lh);
+        ctx.moveTo(p0.px, p0.py);
+        for (let i = 1; i < contour.length; i++) {
+          const pr = project(contour[i][0], contour[i][1], curParams.lh);
+          ctx.lineTo(pr.px, pr.py);
+        }
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
@@ -2040,7 +2373,12 @@ if (typeof module !== 'undefined') {
 
         let color = vsColors[ci % vsColors.length];
         if (isoMode === 't') {
-          const uT = zIdx / Math.max(1, d.zones - 1);
+          // Цвет по фактической температуре зоны: холодная — синяя, горячая —
+          // красная. Не по индексу зоны: при «горячая снизу» индексы идут от
+          // горячей зоны к холодной, и цвет обязан следовать за температурой.
+          const tMin = d.ts.length ? Math.min(...d.ts) : 0;
+          const tMax = d.ts.length ? Math.max(...d.ts) : 1;
+          const uT = (tMax > tMin) ? (d.ts[zIdx] - tMin) / (tMax - tMin) : 0;
           color = `hsl(${Math.round(220 - uT * 220)}, 85%, 60%)`;
         }
 
@@ -2112,7 +2450,50 @@ if (typeof module !== 'undefined') {
 
     const estTimeMin = (totalPrintTimeSec / 60) * 1.25; // +25% на ускорения и переходы
 
+    // Полная матрица измерений: каждая ячейка VS печатается на каждой
+    // температуре, поэтому измерительных точек (VS × T) больше, чем строк
+    // основной таблицы. Показываем окно, массу и слои для каждой точки.
+    const matrixRowsHtml = [];
+    d.vs.forEach((v, i) => {
+      const vMmS = v / area;
+      const lenCell = cellLen[i] || 0;
+      const timeLayerSec = lenCell / vMmS;
+      d.ts.forEach((t, zi) => {
+        const timeZoneSec = timeLayerSec * d.layersPerZone;
+        const massZoneG = (lenCell * d.layersPerZone * area * curParams.rho) / 1000;
+        const firstLayer = zi * d.layersPerZone + 1;
+        const lastLayer = (zi + 1) * d.layersPerZone;
+        matrixRowsHtml.push(`<tr>
+          <td>${i + 1}</td>
+          <td class="mono">${v}</td>
+          <td class="mono">${t} °C</td>
+          <td class="mono">${vMmS.toFixed(1)}</td>
+          <td class="mono">${Math.round(vMmS * 60)}</td>
+          <td class="mono">${(timeZoneSec / 60).toFixed(2)}</td>
+          <td class="mono">${massZoneG.toFixed(2)}</td>
+          <td class="mono">${firstLayer}–${lastLayer}</td>
+        </tr>`);
+      });
+    });
+    const matrixHtml = matrixRowsHtml.join('');
+
+    // Честный блок о границах теста: что матрица не измеряет.
+    const limitsHtml = `
+      <div class="tw" style="margin-bottom:14px">
+        <table>
+          <thead><tr><th>Граница теста</th><th>Значение</th></tr></thead>
+          <tbody>
+            <tr><td>Повторов на точку (VS × T)</td><td class="mono">1</td></tr>
+            <tr><td>Контрольный образец в начале сессии</td><td class="mono">нет</td></tr>
+            <tr><td>Прогрев при смене температуры</td><td class="mono">${Math.round(Number(curParams.dwell) || 0)} с + пауза на прогреве</td></tr>
+            <tr><td>Температура зависит от высоты</td><td class="mono">да — зона ${d.zones}, шаг ${curParams.band} мм</td></tr>
+            <tr><td>Отклик фиксируется</td><td class="mono">вручную по образцу</td></tr>
+          </tbody>
+        </table>
+      </div>`;
+
     body.innerHTML = `
+      ${limitsHtml}
       <div class="tw" style="margin-bottom:14px">
         <table>
           <thead>
@@ -2138,6 +2519,18 @@ if (typeof module !== 'undefined') {
               return `<tr><td>${zi + 1}</td><td class="mono">${d.ts[zi]} °C</td><td class="mono">${firstLayer}–${lastLayer}</td><td class="mono">${zStart.toFixed(2)}–${zEnd.toFixed(2)}</td></tr>`;
             }).join('')}
           </tbody>
+        </table>
+      </div>
+
+      <div class="tw" style="margin-bottom:14px">
+        <table>
+          <thead>
+            <tr>
+              <th>${dict.thCell}</th><th>${dict.thVs}</th><th>T, °C</th><th>${dict.thV}</th><th>${dict.thF}</th>
+              <th>Время зоны, мин</th><th>Пластик, г</th><th>Слои</th>
+            </tr>
+          </thead>
+          <tbody>${matrixHtml}</tbody>
         </table>
       </div>
 
@@ -2239,6 +2632,25 @@ if (typeof module !== 'undefined') {
     });
     paramsCol.addEventListener('change', (e) => {
       if (e.target.matches('input, select, textarea')) onParamChange();
+    });
+
+    // Кнопка AUTO-плана: подбирает параметры матрицы под конфигурацию принтера
+    $('btnPlan').addEventListener('click', () => {
+      const p = readForm();
+      const plan = planAuto(p);
+      const hint = $('planHint');
+      if (plan.error) {
+        hint.textContent = plan.error;
+        hint.className = 'hint err';
+        return;
+      }
+      $('cells').value = plan.vs.length;
+      $('vsList').value = plan.vs.join(', ');
+      $('band').value = Number(plan.band.toFixed(2));
+      $('vsMode').value = 'plan';
+      hint.className = 'hint';
+      hint.textContent = plan.notes.join(' · ');
+      onParamChange();
     });
 
     // Взаимное исключение brim и raft

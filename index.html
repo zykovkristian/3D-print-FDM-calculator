@@ -324,6 +324,11 @@ pre.code .g{color:#7fb2e5}
             <input id="brimLayers" type="number" min="1" max="6" step="1" value="1"></div>
           <div class="field"><label for="brimGap" data-i18n="fBrimGap">Зазор от стенки, мм</label>
             <input id="brimGap" type="number" min="0" max="3" step="0.05" value="0.3"></div>
+          <label class="check"><input id="raftOn" type="checkbox"><span><span data-i18n="fRaftOn">Включить raft</span><small data-i18n="hRaftOn">полноценная подложка под модель (вместо brim)</small></span></label></div>
+          <div class="field"><label for="raftLayers" data-i18n="fRaftLayers">Слоёв raft</label>
+            <input id="raftLayers" type="number" min="1" max="6" step="1" value="3"></div>
+          <div class="field"><label for="raftGap" data-i18n="fRaftGap">Зазор от модели, мм</label>
+            <input id="raftGap" type="number" min="0" max="5" step="0.1" value="0.5"></div>
         </div>
         <div class="sep"></div>
         <p class="sub-h" data-i18n="sTrans">Переходы</p>
@@ -515,6 +520,8 @@ const I18N = {
     fQuality: 'Плотность точек, мм',
     sBrim: 'Brim (кайма)', fBrimOn: 'Включить brim', hBrimOn: 'общий контур вокруг всех ячеек',
     fBrimLoops: 'Витков', fBrimLayers: 'Слоёв', fBrimGap: 'Зазор от стенки, мм',
+    fRaftOn: 'Включить raft', hRaftOn: 'полноценная подложка под модель (вместо brim)',
+    fRaftLayers: 'Слоёв raft', fRaftGap: 'Зазор от модели, мм',
     sTrans: 'Переходы', fBeadOn: 'Метка границы зон', hBeadOn: 'полка на первом слое зоны',
     fBeadSize: 'Вынос полки, мм', fDwell: 'Выдержка на смене T, с',
     fParkMode: 'Точка парковки', fParkX: 'Парковка X, мм', fParkY: 'Парковка Y, мм',
@@ -559,6 +566,8 @@ const I18N = {
     fQuality: 'Point chord, mm',
     sBrim: 'Brim', fBrimOn: 'Enable brim', hBrimOn: 'continuous brim around all cells',
     fBrimLoops: 'Loops', fBrimLayers: 'Layers', fBrimGap: 'Gap to wall, mm',
+    fRaftOn: 'Enable raft', hRaftOn: 'full platform under model (instead of brim)',
+    fRaftLayers: 'Raft layers', fRaftGap: 'Gap from model, mm',
     sTrans: 'Transitions', fBeadOn: 'Zone boundary mark', hBeadOn: 'step on zone entry layer',
     fBeadSize: 'Step size, mm', fDwell: 'Dwell on temp change, s',
     fParkMode: 'Park position', fParkX: 'Park X, mm', fParkY: 'Park Y, mm',
@@ -590,7 +599,7 @@ function defaults() {
     tStart: 190, tEnd: 220, tStep: 10, band: 10, tempReverse: false,
     lw: 0.42, lh: 0.20,
     quality: 1.2,
-    brimOn: true, brimLoops: 3, brimLayers: 3, brimGap: 0.3,
+    brimOn: true, brimLoops: 3, brimLayers: 3, brimGap: 0.3, raftOn: false, raftLayers: 3, raftGap: 0.5,
     beadOn: false, beadSize: 0.6, dwell: 5,
     parkMode: 'auto', parkX: 10, parkY: 10,
     retractLen: 0, retractSpeed: 0,
@@ -698,8 +707,12 @@ function derive(p) {
 
   const layersPerZone = Math.max(1, Math.round(p.band / p.lh));
   const totalLayers = layersPerZone * zones;
-  const bLayers = p.brimOn ? Math.max(1, Math.min(6, p.brimLayers || 3)) : 0;
-  const totalHeight = (totalLayers + bLayers) * p.lh;
+  const effectiveBrimOn = p.brimOn && !p.raftOn;
+  const effectiveRaftOn = p.raftOn && !p.brimOn;
+  const bLayers = effectiveBrimOn ? Math.max(1, Math.min(6, p.brimLayers || 3)) : 0;
+  const rLayers = effectiveRaftOn ? Math.max(1, Math.min(6, p.raftLayers || 3)) : 0;
+  const adhesionLayers = Math.max(bLayers, rLayers);
+  const totalHeight = (totalLayers + adhesionLayers) * p.lh;
 
   // Центры ячеек (совпадают с центрами спиралей ряда)
   const cellCenters = [];
@@ -932,13 +945,20 @@ function validate(p) {
   }
 
   // --- Brim и габарит с учётом каймы ---
-  if (p.brimOn) {
+  if (p.brimOn && !p.raftOn) {
     const brimExt = (p.brimGap || 0.3) + (Math.max(1, Math.min(8, p.brimLoops || 3)) - 1) * p.lw;
     if (d.bbox.minX - brimExt < 0 || d.bbox.maxX + brimExt > p.bedX ||
         d.bbox.minY - brimExt < 0 || d.bbox.maxY + brimExt > p.bedY) {
       errs.push({ level: 'error', field: 'brimGap', code: 'bed-brim', msg: `Brim выходит за стол: с зазором ${p.brimGap} мм и ${p.brimLoops} витками кайма шире ряда на ${brimExt.toFixed(2)} мм` });
     }
-    // brimLayers now supported (multiple layers)
+  }
+  // --- Raft и габарит с учётом подложки ---
+  if (p.raftOn && !p.brimOn) {
+    const rGap = Math.max(0, p.raftGap || 0.5);
+    if (d.bbox.minX - rGap < 0 || d.bbox.maxX + rGap > p.bedX ||
+        d.bbox.minY - rGap < 0 || d.bbox.maxY + rGap > p.bedY) {
+      errs.push({ level: 'error', field: 'raftGap', code: 'bed-raft', msg: `Raft выходит за стол: с зазором ${rGap} мм подложка шире стола` });
+    }
   }
 
   return errs;
@@ -1014,8 +1034,12 @@ function compose(p) {
 
   // Brim (если включен): общий контур вокруг всего ряда спиралей —
   // скруглённый прямоугольник по габаритам траектории.
-  const bLayers = p.brimOn ? Math.max(1, Math.min(6, p.brimLayers || 3)) : 0;
-  if (p.brimOn) {
+  const effectiveBrimOn = p.brimOn && !p.raftOn;
+  const effectiveRaftOn = p.raftOn && !p.brimOn;
+  const bLayers = effectiveBrimOn ? Math.max(1, Math.min(6, p.brimLayers || 3)) : 0;
+  const rLayers = effectiveRaftOn ? Math.max(1, Math.min(6, p.raftLayers || 3)) : 0;
+  const adhesionLayers = Math.max(bLayers, rLayers);
+  if (effectiveBrimOn) {
     out += `\n; --- BRIM ---\n`;
     const loops = Math.max(1, Math.min(8, p.brimLoops || 3));
     const bGap = Math.max(0, p.brimGap || 0.3);
@@ -1049,6 +1073,31 @@ function compose(p) {
           const e = dist * d.A_line / d.A_fil;
           out += `G1 X${q[0].toFixed(3)} Y${q[1].toFixed(3)} E${e.toFixed(5)} F1800\n`;
         }
+      }
+    }
+  }
+
+  // Raft (если включён): полноценная подложка под модель — сплошная заливка
+  // прямоугольника по габаритам траектории + зазор. Печатается в rLayers слоёв,
+  // затем основная печать начинается со смещением.
+  if (effectiveRaftOn) {
+    out += `\n; --- RAFT ---\n`;
+    const rGap = Math.max(0, p.raftGap || 0.5);
+    const rx0 = d.bbox.minX - rGap, rx1 = d.bbox.maxX + rGap;
+    const ry0 = d.bbox.minY - rGap, ry1 = d.bbox.maxY + rGap;
+    const spacing = p.lw;
+    const numLines = Math.max(1, Math.ceil((ry1 - ry0) / spacing));
+    for (let rl = 0; rl < rLayers; rl++) {
+      const zRaft = (rl + 1) * p.lh;
+      out += `; Raft layer ${rl + 1}/${rLayers}, Z=${zRaft.toFixed(3)}\n`;
+      for (let li = 0; li <= numLines; li++) {
+        const y = Math.min(ry0 + li * spacing, ry1);
+        const xStart = (li % 2 === 0) ? rx0 : rx1;
+        const xEnd = (li % 2 === 0) ? rx1 : rx0;
+        out += `G0 X${xStart.toFixed(3)} Y${y.toFixed(3)} Z${zRaft.toFixed(3)} F3600\n`;
+        const dist = Math.abs(xEnd - xStart);
+        const e = dist * d.A_line / d.A_fil;
+        out += `G1 X${xEnd.toFixed(3)} Y${y.toFixed(3)} E${e.toFixed(5)} F1800\n`;
       }
     }
   }
@@ -1095,7 +1144,7 @@ function compose(p) {
 
     for (let li = 0; li < d.layersPerZone; li++) {
       const globalLayer = zi * d.layersPerZone + li;
-      const zCur = (globalLayer + 1 + bLayers) * p.lh;
+      const zCur = (globalLayer + 1 + adhesionLayers) * p.lh;
       const isBead = p.beadOn && li === 0 && zi > 0;
       // Змейка: на нечётных слоях ряд проходится в обратную сторону, поэтому
       // конец слоя попадает в начало следующего — между слоями нет перемещений.
@@ -1481,6 +1530,9 @@ if (typeof module !== 'undefined') {
       brimLoops: +$('brimLoops').value || 3,
       brimLayers: +$('brimLayers').value || 1,
       brimGap: +$('brimGap').value || 0.3,
+      raftOn: $('raftOn').checked,
+      raftLayers: +$('raftLayers').value || 3,
+      raftGap: +$('raftGap').value || 0.5,
       beadOn: $('beadOn').checked,
       beadSize: +$('beadSize').value || 0.6,
       dwell: +$('dwell').value || 5,
@@ -1540,6 +1592,9 @@ if (typeof module !== 'undefined') {
     $('brimLoops').value = p.brimLoops ?? 3;
     $('brimLayers').value = p.brimLayers ?? 1;
     $('brimGap').value = p.brimGap ?? 0.3;
+    $('raftOn').checked = !!p.raftOn;
+    $('raftLayers').value = p.raftLayers ?? 3;
+    $('raftGap').value = p.raftGap ?? 0.5;
     $('beadOn').checked = Boolean(p.beadOn);
     $('beadSize').value = p.beadSize ?? 0.6;
     $('dwell').value = p.dwell ?? 5;
@@ -1843,7 +1898,7 @@ if (typeof module !== 'undefined') {
     ctx.stroke();
 
     // Brim (кайма) — если включена, рисуем контур вокруг ряда на первом слое
-    if (curParams.brimOn) {
+    if (curParams.brimOn && !curParams.raftOn) {
       const bGap = Math.max(0, curParams.brimGap || 0.3);
       const bx0 = d.bbox.minX - bGap, bx1 = d.bbox.maxX + bGap;
       const by0 = d.bbox.minY - bGap, by1 = d.bbox.maxY + bGap;
@@ -1869,6 +1924,25 @@ if (typeof module !== 'undefined') {
       ctx.closePath();
       ctx.stroke();
       ctx.setLineDash([]);
+    }
+
+    // Raft (подложка) — если включён, рисуем сплошной прямоугольник
+    if (curParams.raftOn && !curParams.brimOn) {
+      const rGap = Math.max(0, curParams.raftGap || 0.5);
+      const rx0 = d.bbox.minX - rGap, rx1 = d.bbox.maxX + rGap;
+      const ry0 = d.bbox.minY - rGap, ry1 = d.bbox.maxY + rGap;
+      ctx.fillStyle = 'rgba(136, 136, 136, 0.3)';
+      ctx.strokeStyle = '#888';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([]);
+      const corners = [project(rx0, ry0, curParams.lh), project(rx1, ry0, curParams.lh),
+                       project(rx1, ry1, curParams.lh), project(rx0, ry1, curParams.lh)];
+      ctx.beginPath();
+      ctx.moveTo(corners[0].px, corners[0].py);
+      for (let i = 1; i < corners.length; i++) ctx.lineTo(corners[i].px, corners[i].py);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
     }
 
     // Отрисовка спиралей (шаг по слоям для скорости)
@@ -2092,6 +2166,14 @@ if (typeof module !== 'undefined') {
     });
     paramsCol.addEventListener('change', (e) => {
       if (e.target.matches('input, select, textarea')) onParamChange();
+    });
+
+    // Взаимное исключение brim и raft
+    $('brimOn').addEventListener('change', () => {
+      if ($('brimOn').checked) { $('raftOn').checked = false; onParamChange(); }
+    });
+    $('raftOn').addEventListener('change', () => {
+      if ($('raftOn').checked) { $('brimOn').checked = false; onParamChange(); }
     });
 
     // Аккордеоны блоков

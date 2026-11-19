@@ -183,7 +183,7 @@ pre.code .g{color:#7fb2e5}
       <div class="bd">
         <div class="fields">
           <div class="field wide"><label for="preset" data-i18n="fPreset">Пресет</label>
-            <select id="preset"></select><div class="hint" id="presetHint"></div></div>
+            <select id="preset"></select></div>
           <div class="field"><label for="flavor" data-i18n="fFlavor">Диалект команд</label>
             <select id="flavor">
               <option value="bambu">Bambu Lab</option>
@@ -250,14 +250,6 @@ pre.code .g{color:#7fb2e5}
           <div class="field"><label for="band" data-i18n="fBand">Высота зоны, мм</label>
             <input id="band" type="number" min="0.4" max="60" step="0.2" value="10">
             <div class="hint" id="bandHint"></div></div>
-          <div class="field"><label for="sizeMode" data-i18n="fSizeMode">Габарит</label>
-            <select id="sizeMode"><option value="auto">auto (по столу)</option><option value="manual">manual</option></select>
-            <div class="hint" id="sizeHint"></div></div>
-          <div class="field"><label for="pitch" data-i18n="fPitch">Шаг между центрами, мм</label>
-            <input id="pitch" type="number" min="10" max="120" step="0.5" value="28">
-            <div class="hint" id="pitchHint"></div></div>
-          <div class="field"><label for="cellGap" data-i18n="fCellGap">Зазор между цилиндрами, мм</label>
-            <input id="cellGap" type="number" min="1.5" max="20" step="0.5" value="3"></div>
         </div>
       </div>
     </section>
@@ -307,8 +299,7 @@ pre.code .g{color:#7fb2e5}
           <div class="field"><label for="lh" data-i18n="fLh">Высота слоя, мм</label>
             <input id="lh" type="number" min="0.06" max="0.4" step="0.01" value="0.2"></div>
           <div class="field"><label for="quality" data-i18n="fQuality">Плотность точек, мм</label>
-            <input id="quality" type="number" min="0.3" max="3" step="0.1" value="1.2">
-            <div class="hint" id="qualityHint"></div></div>
+            <input id="quality" type="number" min="0.3" max="3" step="0.1" value="1.2"></div>
         </div>
       </div>
     </section>
@@ -384,7 +375,6 @@ pre.code .g{color:#7fb2e5}
       </div>
       <div class="tabpane on" data-pane="bed">
         <div class="preview-box"><svg id="svgBed" viewBox="0 0 460 300" role="img" aria-label="Схема стола"></svg></div>
-        <div class="legend" id="bedLegend"></div>
       </div>
       <div class="tabpane" data-pane="layer">
         <div class="preview-box"><svg id="svgLayer" viewBox="0 0 460 300" role="img" aria-label="Срез слоя"></svg></div>
@@ -512,11 +502,9 @@ const I18N = {
     fRowCenterX: 'Центр ряда X, мм', fRowCenterY: 'Центр ряда Y, мм',
     bTraj: 'Траектория ряда', sTraj: 'Спираль: ветвь внутрь → S-петля в центре → ветвь наружу',
     fTStart: 'Температура от, °C', fTEnd: 'Температура до, °C',
-    fTStep: 'Шаг температуры, °C', fBand: 'Высота зоны, мм', fSizeMode: 'Габарит ряда', fPitch: 'Шаг между центрами, мм',
-    fCellGap: 'Зазор между цилиндрами, мм', fGCenter: 'Центральный канал, мм',
-    fDiameter: 'Диаметр, мм', fLw: 'Ширина линии, мм', fLh: 'Высота слоя, мм', fGap: 'Зазор дорожек, мм',
-    fRminMode: 'Внутренний радиус', fRminVal: 'r_min, мм', fTurnsMode: 'Витков на ветвь', fTurnsVal: 'Витки',
-    fStartAngle: 'Угол старта, °', fStartAngleMode: 'Угол старта спирали', fLinkAmp: 'Амплитуда перехода, мм', fQuality: 'Плотность точек, мм',
+    fTStep: 'Шаг температуры, °C', fBand: 'Высота зоны, мм',
+    fLw: 'Ширина линии, мм', fLh: 'Высота слоя, мм',
+    fQuality: 'Плотность точек, мм',
     sBrim: 'Brim (кайма)', fBrimOn: 'Включить brim', hBrimOn: 'общий контур вокруг всех ячеек',
     fBrimLoops: 'Витков', fBrimLayers: 'Слоёв', fBrimGap: 'Зазор от стенки, мм',
     sTrans: 'Переходы', fBeadOn: 'Метка границы зон', hBeadOn: 'полка на первом слое зоны',
@@ -531,8 +519,8 @@ const I18N = {
     thLen: 'Путь/слой', thTimeL: 'Время слоя', thTimeT: 'Время зоны', thFil: 'Пластик',
     thCut: 'Срез по a', thStatus: 'Статус',
     kpiDim: 'Габариты X×Y', kpiHeight: 'Высота', kpiMass: 'Масса', kpiTime: 'Время',
-    kpiLayers: 'Слоёв', kpiCost: 'Стоимость', kpiLines: 'Строк G-code',
-    issuesTitle: 'Проверки валидности', noIssues: 'Ошибок геометрии и лимитов не обнаружено'
+    kpiLayers: 'Слоёв', kpiCost: 'Стоимость',
+    noIssues: 'Ошибок геометрии и лимитов не обнаружено'
   },
   en: {
     title: 'MVS Matrix',
@@ -557,11 +545,9 @@ const I18N = {
     fRowCenterX: 'Row Center X, mm', fRowCenterY: 'Row Center Y, mm',
     bTraj: 'Row Trajectory', sTraj: 'Spiral: inward branch → S-loop at center → outward branch',
     fTStart: 'Temp From, °C', fTEnd: 'Temp To, °C',
-    fTStep: 'Temp Step, °C', fBand: 'Band Height, mm', fSizeMode: 'Row Size', fPitch: 'Pitch, mm',
-    fCellGap: 'Gap Between Cylinders, mm', fGCenter: 'Center Channel, mm',
-    fDiameter: 'Diameter, mm', fLw: 'Line Width, mm', fLh: 'Layer Height, mm', fGap: 'Track Gap, mm',
-    fRminMode: 'Inner Radius', fRminVal: 'r_min, mm', fTurnsMode: 'Turns per branch', fTurnsVal: 'Turns',
-    fStartAngle: 'Start Angle, °', fStartAngleMode: 'Spiral start angle', fLinkAmp: 'Transition Amplitude, mm', fQuality: 'Point chord, mm',
+    fTStep: 'Temp Step, °C', fBand: 'Band Height, mm',
+    fLw: 'Line Width, mm', fLh: 'Layer Height, mm',
+    fQuality: 'Point chord, mm',
     sBrim: 'Brim', fBrimOn: 'Enable brim', hBrimOn: 'continuous brim around all cells',
     fBrimLoops: 'Loops', fBrimLayers: 'Layers', fBrimGap: 'Gap to wall, mm',
     sTrans: 'Transitions', fBeadOn: 'Zone boundary mark', hBeadOn: 'step on zone entry layer',
@@ -576,8 +562,8 @@ const I18N = {
     thLen: 'Path/layer', thTimeL: 'Layer time', thTimeT: 'Zone time', thFil: 'Plastic',
     thCut: 'Accel cap', thStatus: 'Status',
     kpiDim: 'Dimensions X×Y', kpiHeight: 'Height', kpiMass: 'Mass', kpiTime: 'Time',
-    kpiLayers: 'Layers', kpiCost: 'Cost', kpiLines: 'G-code lines',
-    issuesTitle: 'Validation checks', noIssues: 'No errors or limit breaches found'
+    kpiLayers: 'Layers', kpiCost: 'Cost',
+    noIssues: 'No errors or limit breaches found'
   }
 };
 
@@ -594,8 +580,7 @@ function defaults() {
     rotFirst: 'CCW', closeTails: false, reversePath: false,
     tStart: 190, tEnd: 220, tStep: 10, band: 10,
     lw: 0.42, lh: 0.20,
-    rminMode: 'auto', rminVal: 5.42, turnsMode: 'auto', turnsVal: 2.85,
-    startAngleMode: 'auto', startAngle: 208.8, quality: 1.2, linkAmp: 0,
+    quality: 1.2,
     brimOn: true, brimLoops: 3, brimLayers: 1, brimGap: 0.3,
     beadOn: false, beadSize: 0.6, dwell: 5,
     parkMode: 'auto', parkX: 10, parkY: 10,
@@ -642,7 +627,6 @@ function derive(p) {
 
   const A_line = p.lw * p.lh;
   const A_fil = Math.PI * (p.fd / 2) ** 2;
-  const g = p.lw + p.gap;
 
   // ---- Траектория ряда спиралей (ядро из docs/spiral-row-builder.html) ----
   const traj = {
@@ -678,8 +662,9 @@ function derive(p) {
 
   const vMaxPlan = vs.length ? Math.max(...vs) / A_line : 200;
   const aEff = Math.max(100, p.aMax * 0.8);
-  const rMinAuto = Math.max(g, (vMaxPlan * vMaxPlan) / aEff);
-  const r_min = p.rminMode === 'manual' ? Math.max(g / 2, p.rminVal) : rMinAuto;
+  // Минимальный радиус берём из построенного ряда: это S-петля (core_x/2).
+  // Именно там фактический VS ниже заданного — единственное место среза F.
+  const r_min = row.stats.minR;
 
   const layersPerZone = Math.max(1, Math.round(p.band / p.lh));
   const totalLayers = layersPerZone * zones;
@@ -699,7 +684,7 @@ function derive(p) {
 
   return {
     vs, ts, cells, cols, rows, zones,
-    A_line, A_fil, g,
+    A_line, A_fil,
     v_max: vMaxPlan, a_eff: aEff, r_min,
     layersPerZone, totalLayers, totalHeight,
     cellCenters, row, rowPts, traj, spiralOuterR,
@@ -709,276 +694,6 @@ function derive(p) {
 }
 
 /* ============ ГЕОМЕТРИЯ ТРАЕКТОРИИ ============ */
-
-// Радиус кривизны по трём соседним точкам (радиус описанной окружности).
-function curvatureRadius(pts, i) {
-  if (i <= 0 || i >= pts.length - 1) return Infinity;
-  const a = pts[i - 1], b = pts[i], c = pts[i + 1];
-  const ab = Math.hypot(b.x - a.x, b.y - a.y);
-  const bc = Math.hypot(c.x - b.x, c.y - b.y);
-  const ca = Math.hypot(a.x - c.x, a.y - c.y);
-  if (ab < 1e-9 || bc < 1e-9 || ca < 1e-9) return Infinity;
-  const s = (ab + bc + ca) / 2;
-  const area = Math.sqrt(Math.max(0, s * (s - ab) * (s - bc) * (s - ca)));
-  if (area < 1e-9) return Infinity;
-  return (ab * bc * ca) / (4 * area);
-}
-
-// Угол входа спирали: внутренняя общая касательная двух окружностей
-// радиуса R_out с шагом pitch. Для слоя-метки радиус больше — угол считается
-// заново, иначе переход перестаёт быть касательной.
-function autoStartAngle(p, R_out, pitch) {
-  const step = pitch || p.pitch;
-  const ratio = Math.min(1, (2 * R_out) / Math.max(1e-6, step));
-  return (180 + Math.acos(ratio) * 180 / Math.PI) * Math.PI / 180;
-}
-
-// Двухзаходная лабиринтная спираль ячейки в локальных координатах (центр в 0,0).
-// Ветвь A: снаружи внутрь (угол растёт). Разворот в центре — полуокружность
-// радиуса g/2, радиус при этом уменьшается на g, угол не меняется.
-// Ветвь B: из центра наружу по соседнему каналу (угол убывает), ветви идут
-// параллельно со смещением ровно на g.
-// Замыкающая дуга: продолжение ветви B наружу на пол-оборота — внешняя
-// цилиндрическая граница ячейки.
-// Итог: вход и выход ячейки лежат на противоположных сторонах, касательные
-// в обеих точках совпадают по направлению — это делает стык с переходом
-// гладким, без излома.
-function spiralCell(p, d, opts) {
-  const o = opts || {};
-  const R_out = o.bead ? (d.R_out + (p.beadSize || 0.6)) : d.R_out;
-  const r_min = Math.max(d.r_min, d.g * 0.75);
-  const g = d.g;
-  const n = d.n;
-  const th0 = p.startAngleMode === 'manual'
-    ? (p.startAngle || 0) * Math.PI / 180
-    : autoStartAngle(p, R_out, d.pitch);
-  const total = 2 * Math.PI * n;
-  const chord = Math.max(0.3, Math.min(3.0, p.quality || 1.2));
-
-  // Дискретизация задаётся порогом плавности: не более 5° смены направления
-  // на сегмент (запас к граничным 6°; разворот в центре — самый крутой участок).
-  // Разворот дискретизируется мельче (3°), потому что к его касательной
-  // примыкает спираль с иным радиальным шагом.
-  const maxTurnDeg = 5;
-  const steps = Math.max(24, Math.round(total * ((R_out + r_min) / 2) / chord), Math.ceil(total / (maxTurnDeg * Math.PI / 180)));
-  const turnSteps = Math.max(24, Math.ceil(Math.PI / (3 * Math.PI / 180)));
-  const closeSteps = Math.max(24, Math.ceil(Math.PI / (maxTurnDeg * Math.PI / 180)));
-
-  const pts = [];
-
-  // Ветвь A: от внешнего радиуса к центру, угол растёт.
-  for (let i = 0; i <= steps; i++) {
-    const u = i / steps;
-    const th = th0 + total * u;
-    const r = R_out - (R_out - r_min) * u;
-    pts.push({ x: r * Math.cos(th), y: r * Math.sin(th), seg: 'branchA' });
-  }
-
-  // Разворот в центре: полуокружность радиусом gCenter/2 — она соединяет
-  // конец ветви A с началом ветви B. Радиус разворота задаётся шириной
-  // центрального канала gCenter: он в разы больше, чем шаг дорожек g, поэтому
-  // сопло не скребёт по стенке на витке малого диаметра, а предел скорости
-  // в центре выше (sqrt(a_eff · gCenter/2)).
-  const thEnd = th0 + total;
-  const dirX = Math.cos(thEnd), dirY = Math.sin(thEnd);
-  const gC = Math.max(g, p.gCenter || g);
-  const turnR = gC / 2;
-  const cX = (r_min - turnR) * dirX;
-  const cY = (r_min - turnR) * dirY;
-  for (let i = 1; i <= turnSteps; i++) {
-    const phi = Math.PI * i / turnSteps;
-    const cs = Math.cos(phi), sn = Math.sin(phi);
-    pts.push({
-      x: cX + turnR * (cs * dirX - sn * dirY),
-      y: cY + turnR * (cs * dirY + sn * dirX),
-      seg: 'turn'
-    });
-  }
-
-  // Ветвь B: из центра наружу по соседнему каналу, угол убывает.
-  // Начало совпадает с концом разворота, поэтому стартовая точка пропускается.
-  const rBstart = r_min - gC;
-  for (let i = 1; i <= steps; i++) {
-    const u = i / steps;
-    const th = thEnd - total * u;
-    const r = rBstart + (R_out - g - rBstart) * u;
-    pts.push({ x: r * Math.cos(th), y: r * Math.sin(th), seg: 'branchB' });
-  }
-
-  // Замыкающая дуга: продолжение ветви B наружу на пол-оборота.
-  const rBend = R_out - g;
-  for (let i = 1; i <= closeSteps; i++) {
-    const u = i / closeSteps;
-    const th = th0 - Math.PI * u;
-    const r = rBend + g * u;
-    pts.push({ x: r * Math.cos(th), y: r * Math.sin(th), seg: 'close' });
-  }
-
-  return pts;
-}
-
-// Переход между ячейками: гладкая S-кривая в зазоре между цилиндрами.
-// Конец и начало совпадают с точками спиралей, касательные берутся из
-// фактической геометрии, поэтому стык непрерывен и по положению, и по
-// направлению. Амплитуда отклонения от хорды задаётся параметром linkAmp.
-function linkPath(endPt, endDir, startPt, startDir, amp, chord) {
-  const dx = startPt.x - endPt.x, dy = startPt.y - endPt.y;
-  const len = Math.hypot(dx, dy) || 1e-6;
-  const ux = dx / len, uy = dy / len;                 // единичный вектор хорды
-  const px = -uy, py = ux;                            // нормаль к хорде
-
-  const bez = (h) => {
-    const c1x = endPt.x + endDir.x * h, c1y = endPt.y + endDir.y * h;
-    const c2x = startPt.x - startDir.x * h, c2y = startPt.y - startDir.y * h;
-    const steps = Math.max(8, Math.ceil(len / Math.max(0.2, (chord || 1.2) * 0.6)));
-    const out = [];
-    for (let i = 0; i <= steps; i++) {
-      const t = i / steps, mt = 1 - t;
-      const b0 = mt * mt * mt, b1 = 3 * mt * mt * t, b2 = 3 * mt * t * t, b3 = t * t * t;
-      const x = b0 * endPt.x + b1 * c1x + b2 * c2x + b3 * startPt.x;
-      const y = b0 * endPt.y + b1 * c1y + b2 * c2y + b3 * startPt.y;
-      out.push({ x, y });
-    }
-    return out;
-  };
-
-  // Переход по прямой: равномерное деление хорды (Безье с нулевыми ручками
-  // даёт неравномерный шаг и «залипание» в начале).
-  const straight = () => {
-    const steps = Math.max(8, Math.ceil(len / Math.max(0.2, (chord || 1.2) * 0.6)));
-    const out = [];
-    for (let i = 0; i <= steps; i++) {
-      const t = i / steps;
-      out.push({ x: endPt.x + dx * t, y: endPt.y + dy * t });
-    }
-    return out;
-  };
-
-  // Калибровка ручки под требуемую амплитуду отклонения от хорды.
-  // amp = 0 — переход идёт по прямой хорде; при автоматическом угле старта
-  // хорда совпадает с внутренней общей касательной двух цилиндров, и переход
-  // получается прямым и гладким.
-  const deviation = (pts) => {
-    let m = 0;
-    for (const q of pts) {
-      const t = Math.max(0, Math.min(1, ((q.x - endPt.x) * ux + (q.y - endPt.y) * uy) / len));
-      const cx = endPt.x + ux * len * t, cy = endPt.y + uy * len * t;
-      m = Math.max(m, Math.hypot(q.x - cx, q.y - cy));
-    }
-    return m;
-  };
-
-  let h = 0;
-  let raw;
-  if (amp > 0.01) {
-    h = Math.max(len * 0.35, 0.5);
-    const dev = deviation(bez(h));
-    if (dev > 1e-6) h *= (amp / dev);
-    raw = bez(h);
-  } else {
-    raw = straight();
-  }
-
-  // Точки внутренние (без дублирования концов) + амплитуда для отчёта.
-  const pts = raw.slice(1, -1).map(q => ({ x: q.x, y: q.y, seg: 'link' }));
-  return { pts, amp: deviation(raw), length: len };
-}
-
-// Полная цепочка слоя: все ячейки и переходы одной непрерывной линией.
-// Каждая точка несёт номер ячейки (-1 для перехода), тип участка и VS.
-// flip = true — змейка: ячейки идут в обратном порядке, геометрия ячейки
-// отражается по X, поэтому конец слоя совпадает с началом следующего.
-function chainPath(p, d, opts) {
-  const o = opts || {};
-  const amp = Math.max(0, p.linkAmp ?? 0);
-  const chord = Math.max(0.3, Math.min(3.0, p.quality || 1.2));
-  const out = [];
-  const links = [];
-
-  const order = [];
-  for (let i = 0; i < d.cells; i++) order.push(o.flip ? d.cells - 1 - i : i);
-
-  // Локальные спирали ячеек. В змейке ячейка проходится в обратном порядке,
-  // поэтому её точки берутся с конца: конец слоя тогда совпадает с началом
-  // следующего и перемещения между слоями не нужны.
-  const locals = [];
-  for (let i = 0; i < d.cells; i++) {
-    const raw = spiralCell(p, d, o);
-    locals.push(o.flip ? raw.slice().reverse() : raw);
-  }
-
-  for (let oi = 0; oi < order.length; oi++) {
-    const i = order[oi];
-    const local = locals[i];
-    const c = d.cellCenters[i];
-    for (const pt of local) {
-      out.push({ x: c.cx + pt.x, y: c.cy + pt.y, cell: i, seg: pt.seg, vs: d.vs[i] });
-    }
-    if (oi < order.length - 1) {
-      const j = order[oi + 1];
-      const nextLocal = locals[j];
-      const nc = d.cellCenters[j];
-
-      const endIdx = out.length - 1;
-      const endPt = out[endIdx];
-      const prevPt = out[endIdx - 1];
-      const endDir = unit(endPt.x - prevPt.x, endPt.y - prevPt.y);
-      const startPt = { x: nc.cx + nextLocal[0].x, y: nc.cy + nextLocal[0].y };
-      const startDir = unit(nextLocal[1].x - nextLocal[0].x, nextLocal[1].y - nextLocal[0].y);
-      const link = linkPath(endPt, endDir, startPt, startDir, amp, chord);
-
-      // VS рампа по длине перехода: от значения текущей ячейки к следующей.
-      // Нормировка по фактической длине полилинии перехода, чтобы на его конце
-      // объёмная скорость точно равнялась значению следующего цилиндра.
-      const vsA = d.vs[i], vsB = d.vs[j];
-      const cum = [];
-      let acc = 0;
-      let prev = endPt;
-      for (const q of link.pts) {
-        acc += Math.hypot(q.x - prev.x, q.y - prev.y);
-        cum.push(acc);
-        prev = q;
-      }
-      const tot = cum.length ? cum[cum.length - 1] : 1e-9;
-      link.pts.forEach((q, k) => {
-        const u = Math.max(0, Math.min(1, cum[k] / (tot || 1e-9)));
-        out.push({ x: q.x, y: q.y, cell: -1, seg: 'link', toCell: j, vs: vsA + (vsB - vsA) * u });
-      });
-      links.push({ from: i, to: j, length: link.length, amp: link.amp });
-    }
-  }
-
-  return { pts: out, links, order };
-}
-
-// Длина цепочки по точкам.
-function chainLength(pts) {
-  let s = 0;
-  for (let i = 1; i < pts.length; i++) {
-    s += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
-  }
-  return s;
-}
-
-function unit(x, y) {
-  const l = Math.hypot(x, y);
-  if (l < 1e-9) return { x: 0, y: 0 };
-  return { x: x / l, y: y / l };
-}
-
-// Подача по каждой точке: номинал по VS, ограничение по ускорению и кривизне.
-function pathFeeds(p, d, pts) {
-  const res = [];
-  for (let i = 0; i < pts.length; i++) {
-    const vs = pts[i].vs || d.vs[0];
-    const vNom = vs / d.A_line;
-    const R = curvatureRadius(pts, i);
-    const vCap = R > 1e-6 ? Math.sqrt(d.a_eff * R) : 0;
-    const v = Math.min(vNom, vCap);
-    res.push({ F: v * 60, v, capped: v < vNom * 0.98, R });
-  }
-  return res;
-}
 
 // Проверки траектории ряда спиралей (chain = { pts, row }).
 function checkChain(p, d, chain) {
@@ -997,13 +712,21 @@ function checkChain(p, d, chain) {
     out.push({ level: 'error', field: 'quality', code: 'gap-continuity', msg: `Разрыв траектории ${maxJump.toFixed(3)} мм между сегментами ${jumpAt} и ${jumpAt + 1}` });
   }
 
-  // 2. Смена направления в стыках дуг (касательные должны совпадать).
+  // 2. Смена направления в стыках сегментов (касательные должны совпадать).
+  //    Учитываются и дуги, и прямые перемычки: у прямой направление совпадает
+  //    с направлением движения, у дуги — радиус повёрнут на 90°.
   let maxTurn = 0, turnAt = -1;
+  const tangentAt = (s, at) => {
+    if (s.type === 'arc') {
+      const pt = at === 'to' ? s.to : s.from;
+      return Math.atan2(pt[1] - s.center[1], pt[0] - s.center[0]) + (s.ccw ? Math.PI / 2 : -Math.PI / 2);
+    }
+    return Math.atan2(s.to[1] - s.from[1], s.to[0] - s.from[0]);
+  };
   for (let i = 1; i < segs.length; i++) {
     const a = segs[i - 1], b = segs[i];
-    if (!a.center || !b.center) continue;
-    const ta = Math.atan2(a.to[1] - a.center[1], a.to[0] - a.center[0]) + (a.ccw ? Math.PI / 2 : -Math.PI / 2);
-    const tb = Math.atan2(b.from[1] - b.center[1], b.from[0] - b.center[0]) + (b.ccw ? Math.PI / 2 : -Math.PI / 2);
+    const ta = tangentAt(a, 'to');
+    const tb = tangentAt(b, 'from');
     let diff = Math.abs(((ta - tb) * 180 / Math.PI + 540) % 360 - 180);
     if (diff > maxTurn) { maxTurn = diff; turnAt = i; }
   }
@@ -1079,30 +802,29 @@ function checkChain(p, d, chain) {
 }
 
 // Замеры по спиралям: длина пути на спираль и в измерительной области.
+// len — измеримая часть (VS постоянен), lenIn — дуги-рампы на стыке спиралей
+// (там VS усреднённый), они в измеримую часть не входят.
 function measureChain(p, d, chain) {
   const segs = (chain.row && chain.row.path) || [];
   const cells = d.vs.map(v => ({ vs: v, len: 0, lenIn: 0 }));
   const links = [];
-  for (const s of segs) {
+  const rampIdx = new Set();
+  for (let i = 1; i < segs.length; i++) {
+    if (segs[i].spiral !== segs[i - 1].spiral) { rampIdx.add(i - 1); rampIdx.add(i); }
+  }
+  for (let i = 0; i < segs.length; i++) {
+    const s = segs[i];
     const len = s.type === 'arc' ? Math.PI * s.r : Math.hypot(s.to[0] - s.from[0], s.to[1] - s.from[1]);
     if (s.type === 'line') { links.push({ to: s.spiral, len }); continue; }
     const c = cells[Math.min(cells.length - 1, Math.max(0, s.spiral - 1))];
-    if (c) c.len += len;
+    if (!c) continue;
+    if (rampIdx.has(i)) c.lenIn += len; else c.len += len;
   }
-  return { cells, links, total: cells.reduce((s, c) => s + c.len, 0) + links.reduce((s, l) => s + l.len, 0) };
-}
-
-// Локальная траектория одной ячейки (прежнее имя cellPath).
-function cellPath(p, cellIndex, isBeadLayer = false) {
-  const d = derive(p);
-  return spiralCell(p, d, { bead: isBeadLayer });
-}
-
-// Подача по списку точек при постоянном VS (прежнее имя layerFeed).
-function layerFeed(p, pts, Q) {
-  const d = derive(p);
-  const tagged = pts.map(q => ({ x: q.x, y: q.y, vs: Q }));
-  return pathFeeds(p, d, tagged);
+  return {
+    cells, links,
+    rampTotal: cells.reduce((s, c) => s + c.lenIn, 0),
+    total: cells.reduce((s, c) => s + c.len + c.lenIn, 0) + links.reduce((s, l) => s + l.len, 0)
+  };
 }
 
 /* ============ ПРОВЕРКИ ГЕОМЕТРИИ ТРАЕКТОРИИ ============ */
@@ -1148,8 +870,10 @@ function validate(p) {
   if (d.v_max > p.vTool) {
     errs.push({ level: 'error', field: 'vTool', code: 'v-tool', msg: `Скорость печати ${d.v_max.toFixed(0)} мм/с выше предела перемещений ${p.vTool} мм/с` });
   }
-  if (p.lh > p.lhMax) {
-    errs.push({ level: 'error', field: 'lh', code: 'lh', msg: `Высота слоя ${p.lh} мм выше предела ${p.lhMax} мм` });
+  // Предел высоты слоя для сопла 0,4 мм (совпадает с атрибутом max поля lh).
+  const LH_MAX = 0.4;
+  if (p.lh > LH_MAX) {
+    errs.push({ level: 'error', field: 'lh', code: 'lh', msg: `Высота слоя ${p.lh} мм выше предела ${LH_MAX} мм` });
   }
 
   // --- Параметры траектории ---
@@ -1164,6 +888,25 @@ function validate(p) {
   }
   if (p.spiralGap < 0) {
     errs.push({ level: 'error', field: 'spiralGap', code: 'gap', msg: 'Зазор между спиралями не может быть отрицательным' });
+  }
+
+  // --- План ряда VS: каждому цилиндру — своё значение ---
+  if (!d.vs.length) {
+    errs.push({ level: 'error', field: 'vsList', code: 'vs-empty', msg: 'Список объёмных скоростей пуст или не содержит чисел — измерять нечего' });
+  } else if (d.vs.length !== d.cells) {
+    errs.push({ level: 'error', field: 'vsList', code: 'vs-count', msg: `В списке ${d.vs.length} значений VS, а цилиндров ${d.cells}: каждому цилиндру нужно своё значение` });
+  }
+
+  // --- Brim и габарит с учётом каймы ---
+  if (p.brimOn) {
+    const brimExt = (p.brimGap || 0.3) + (Math.max(1, Math.min(8, p.brimLoops || 3)) - 1) * p.lw;
+    if (d.bbox.minX - brimExt < 0 || d.bbox.maxX + brimExt > p.bedX ||
+        d.bbox.minY - brimExt < 0 || d.bbox.maxY + brimExt > p.bedY) {
+      errs.push({ level: 'error', field: 'brimGap', code: 'bed-brim', msg: `Brim выходит за стол: с зазором ${p.brimGap} мм и ${p.brimLoops} витками кайма шире ряда на ${brimExt.toFixed(2)} мм` });
+    }
+    if ((p.brimLayers || 1) > 1) {
+      errs.push({ level: 'warn', field: 'brimLayers', code: 'brim-layers', msg: 'Brim печатается только на первом слое: несколько слоёв каймы не поддержаны, параметр «Слоёв» игнорируется' });
+    }
   }
 
   return errs;
@@ -1197,21 +940,13 @@ function riskReport(p, d, chain) {
   };
 }
 
-// Минимальный радиус кривизны полилинии (по трём соседним точкам).
-function minCurvatureRadius(pts) {
-  let m = Infinity;
-  for (let i = 1; i < pts.length - 1; i++) {
-    const R = curvatureRadius(pts, i);
-    if (R < m) m = R;
-  }
-  return Number.isFinite(m) ? m : 0;
-}
-
 function compose(p) {
   const d = derive(p);
   const flv = FLAVORS[p.flavor] || FLAVORS.bambu;
   const issues = validate(p);
   const hasErrors = issues.some(x => x.level === 'error');
+  // Битый план не превращаем в G-code: без этого пустой ряд VS давал FNaN.
+  if (hasErrors) return { gcode: '; === ОШИБКИ ВАЛИДАЦИИ ===\n', report: d, issues };
 
   const cellCenters = d.cellCenters;
 
@@ -1236,6 +971,7 @@ function compose(p) {
   out += `${flv.nozzleWait(d.ts[0])}\n`;
   out += `${flv.fan(p.fan)}\n`;
   out += `${flv.accel(p.aMax)}\n`;
+  out += `M221 S${Math.round((p.fr || 1) * 100)} ; Flow Ratio материала\n`;
   out += `G92 E0\n`;
 
   if (p.prologue && p.prologue.trim()) {
@@ -1247,7 +983,7 @@ function compose(p) {
   if (p.brimOn) {
     out += `\n; --- BRIM ---\n`;
     const loops = Math.max(1, Math.min(8, p.brimLoops || 3));
-    const bLayers = Math.max(1, Math.min(3, p.brimLayers || 1));
+    const bLayers = 1;   // кайма — только первый слой: иначе Z шёл бы вниз (см. проверку brim-layers)
     const bGap = Math.max(0, p.brimGap || 0.3);
     const bx0 = d.bbox.minX - bGap, bx1 = d.bbox.maxX + bGap;
     const by0 = d.bbox.minY - bGap, by1 = d.bbox.maxY + bGap;
@@ -1299,7 +1035,7 @@ function compose(p) {
     const key = (bead ? 'b' : 'n') + (flip ? 'f' : 'l');
     let ch = chainVariants.get(key);
     if (!ch) {
-      const traj = { ...d.traj, reverse: flip };
+      const traj = { ...d.traj, reverse: flip !== Boolean(p.reversePath) };
       const row = buildSpiralRow(traj);
       ch = { row, pts: segmentsToPoints(row.path, p.quality) };
       chainVariants.set(key, ch);
@@ -1633,21 +1369,6 @@ if (typeof module !== 'undefined') {
     : document.getElementById(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
 
-  // Кэш цепочек: траектория пересчитывается при каждом изменении параметров,
-  // а нужна сразу в нескольких местах (проверки, отчёт, превью).
-  const chainCache = new Map();
-  function getChain(d, opts) {
-    const key = JSON.stringify([curParams, opts || {}]);
-    let ch = chainCache.get(key);
-    if (!ch) {
-      ch = chainPath(curParams, d, opts || {});
-      chainCache.set(key, ch);
-      if (chainCache.size > 12) chainCache.delete(chainCache.keys().next().value);
-    }
-    return ch;
-  }
-  function clearChainCache() { chainCache.clear(); }
-
   // Инициализация пресетов
   function initPresets() {
     const sel = $('preset');
@@ -1805,8 +1526,7 @@ if (typeof module !== 'undefined') {
     $('coreXHint').textContent = `радиус S-петли ${(curParams.coreX / 2).toFixed(1)} мм`;
     $('spiralPitchInnerHint').textContent = curParams.spiralPitchInner
       ? `шаг ${curParams.spiralPitchInner} мм` : '0 = как основной';
-    $('sizeHint').textContent = `Ø${(d.spiralOuterR[0] || 0).toFixed(1)} мм · S-петля R=${((d.row.stats.minR) || 0).toFixed(1)} мм`;
-    $('cellsHint').textContent = `ряд ${d.cells} шт · ${d.bbox.width.toFixed(0)}×${d.bbox.depth.toFixed(0)} мм`;
+    $('cellsHint').textContent = `ряд ${d.cells} шт · ${d.bbox.width.toFixed(0)}×${d.bbox.depth.toFixed(0)} мм · Ø${(d.spiralOuterR[0] || 0).toFixed(1)} мм`;
     $('vsHint').textContent = curParams.vsMode === 'auto'
       ? `25–75 % от ${curParams.qHot} мм³/с`
       : 'свой ряд';
@@ -1882,6 +1602,15 @@ if (typeof module !== 'undefined') {
     box.innerHTML = html;
     $('btnBuild').disabled = hasErrors;
 
+    // Сгенерированный файл больше не соответствует параметрам — снимаем его с выдачи.
+    if (hasErrors && generatedGcode) {
+      generatedGcode = '';
+      $('codeBox').textContent = '';
+      $('auditBox').innerHTML = '';
+      $('btnDownload').disabled = true;
+      $('btnCopy').disabled = true;
+    }
+
     if (chainStats) {
       const st = chainStats;
       box.innerHTML += `<div class="ok-note" style="margin-top:6px">
@@ -1953,7 +1682,7 @@ if (typeof module !== 'undefined') {
 
     const isBead = curParams.beadOn && (lIdx - 1) % d.layersPerZone === 0 && zIdx > 0;
     const flip = (lIdx - 1) % 2 === 1;
-    const row = buildSpiralRow({ ...d.traj, reverse: flip });
+    const row = buildSpiralRow({ ...d.traj, reverse: flip !== Boolean(curParams.reversePath) });
     const pts = segmentsToPoints(row.path, curParams.quality);
     const segs = row.path;
 
@@ -2138,8 +1867,8 @@ if (typeof module !== 'undefined') {
       const timeZoneSec = timeLayerSec * d.layersPerZone;
       totalPrintTimeSec += timeZoneSec * d.zones;
       const massCellG = (lenCell * d.totalLayers * area * curParams.rho) / 1000;
-      const r_req = (vMmS * vMmS) / (curParams.aMax || 10000);
-      const isCapped = r_req > d.r_min;
+      const r_req = (vMmS * vMmS) / (d.a_eff || 10000);
+      const isCapped = r_req > (d.r_min || 0);
 
       return `
         <tr>
@@ -2328,9 +2057,19 @@ if (typeof module !== 'undefined') {
     // Генерация G-code
     $('btnBuild').addEventListener('click', () => {
       const status = $('buildStatus');
-      status.textContent = 'Генерация...';
+      const dict = I18N[curLang] || I18N.ru;
+      status.textContent = dict.building;
       setTimeout(() => {
         const res = compose(curParams);
+        if (res.issues.some(x => x.level === 'error')) {
+          generatedGcode = '';
+          $('codeBox').textContent = '';
+          $('auditBox').innerHTML = '';
+          $('btnDownload').disabled = true;
+          $('btnCopy').disabled = true;
+          status.textContent = dict.errGen;
+          return;
+        }
         generatedGcode = res.gcode;
         const aud = audit(generatedGcode, curParams);
 
@@ -2344,7 +2083,7 @@ if (typeof module !== 'undefined') {
           <div class="stat"><div class="k">Экструзия E</div><div class="v">${aud.E.toFixed(1)} мм</div></div>
           <div class="stat"><div class="k">Аудит</div><div class="v" style="color:${aud.mismatches.length ? 'var(--err)' : 'var(--ok)'}">${aud.mismatches.length ? 'Ошибка' : 'Совпадает'}</div></div>
         `;
-        status.textContent = 'Готово!';
+        status.textContent = dict.done;
         isDirty = false;
         renderStrip(derive(curParams));
       }, 20);
@@ -2365,9 +2104,10 @@ if (typeof module !== 'undefined') {
     // Копирование
     $('btnCopy').addEventListener('click', async () => {
       if (!generatedGcode) return;
+      const dict = I18N[curLang] || I18N.ru;
       await navigator.clipboard.writeText(generatedGcode);
-      $('btnCopy').textContent = 'Скопировано!';
-      setTimeout(() => { $('btnCopy').textContent = 'Копировать'; }, 2000);
+      $('btnCopy').textContent = dict.copied;
+      setTimeout(() => { $('btnCopy').textContent = dict.copy; }, 2000);
     });
   }
 

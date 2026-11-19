@@ -206,3 +206,180 @@ test('детерминизм генерации', () => {
   const p = { ...C.defaults(), band: 0.4 };
   assert.equal(C.compose(p).gcode, C.compose(p).gcode, 'два прогона должны давать одинаковый G-code');
 });
+
+/* ============ РЕГРЕССИИ: дефекты баг-ревью ============ */
+
+// Блоки G-code по маркеру слоя.
+function layerBlocks(gcode) {
+  const lines = gcode.split('\n');
+  const starts = [];
+  for (let i = 0; i < lines.length; i++) if (lines[i].startsWith('; LAYER ')) starts.push(i);
+  return starts.map((s, k) => lines.slice(s, starts[k + 1] ?? lines.length));
+}
+
+// Z в момент экструзии: учитываем G0 Z, затем экструдирующие перемещения.
+function extrusionZ(gcode) {
+  let z = 0;
+  const seq = [];
+  for (const raw of gcode.split('\n')) {
+    const l = raw.trim();
+    const zm = l.match(/\bZ([\d.]+)/);
+    if (zm && /^G0\b/.test(l)) z = Number(zm[1]);
+    const em = l.match(/\bE([\d.]+)/);
+    if (em && /^G[123]\b/.test(l) && Number(em[1]) > 0) seq.push(z);
+  }
+  return seq;
+}
+
+// Начало и конец каждого слоя по экструдирующим перемещениям (позиция сквозная).
+function layerEnds(gcode) {
+  let cur = null;
+  return layerBlocks(gcode).map((block) => {
+    let first = null, last = null;
+    for (const raw of block) {
+      const l = raw.trim();
+      if (!/^G[123]\b/.test(l)) continue;
+      const m = l.match(/\bX([-\d.]+) Y([-\d.]+)/);
+      if (!m) continue;
+      const pt = [Number(m[1]), Number(m[2])];
+      if (!first) first = cur;
+      cur = pt;
+      last = pt;
+    }
+    return { first, last };
+  });
+}
+
+function snakeBreaks(gcode) {
+  const ends = layerEnds(gcode).slice(1);
+  let breaks = 0;
+  for (let i = 1; i < ends.length; i++) {
+    const a = ends[i - 1].last, b = ends[i].first;
+    if (!a || !b) continue;
+    if (Math.hypot(a[0] - b[0], a[1] - b[1]) > 1e-6) breaks++;
+  }
+  return breaks;
+}
+
+test('валидатор: пустой ряд VS — ошибка, G-code не содержит NaN', () => {
+  const C = loadCore();
+  const p = { ...C.defaults(), vsList: 'abc' };
+  const d = C.derive(p);
+  assert.equal(d.vs.length, 0, 'нечисловой список VS должен давать пустой ряд');
+  assert.ok(C.validate(p).some(i => i.code === 'vs-empty' && i.level === 'error'), 'нужна ошибка vs-empty');
+
+  const res = C.compose(p);
+  assert.ok(res.issues.some(i => i.level === 'error'), 'compose должен сообщить об ошибке');
+  assert.ok(!/NaN|undefined/.test(res.gcode), 'в G-code не должно быть NaN/undefined');
+});
+
+test('валидатор: число значений VS не равно числу цилиндров — ошибка', () => {
+  const C = loadCore();
+  const p = C.defaults();
+  const fewer = { ...p, vsList: '8, 12' };
+  assert.ok(C.validate(fewer).some(i => i.code === 'vs-count' && i.level === 'error'), 'нужна ошибка vs-count (меньше)');
+  assert.ok(!/undefined/.test(C.compose(fewer).gcode), 'в G-code не должно быть «VS undefined»');
+
+  const more = { ...p, vsList: '8, 12, 16, 20, 24, 28' };
+  assert.ok(C.validate(more).some(i => i.code === 'vs-count' && i.level === 'error'), 'нужна ошибка vs-count (больше)');
+});
+
+test('производные величины конечны: r_min — минимум траектории, не NaN', () => {
+  const C = loadCore();
+  const d = C.derive(C.defaults());
+  assert.ok(Number.isFinite(d.r_min), `r_min должен быть числом, получено ${d.r_min}`);
+  near(d.r_min, d.row.stats.minR, 1e-9, 'r_min равен минимальному радиусу траектории');
+  near(d.r_min, C.defaults().coreX / 2, 1e-9, 'минимальный радиус — S-петля (core_x/2)');
+});
+
+test('отчёт: колонка «Срез по a» согласована с таблицей рисков', () => {
+  const C = loadCore();
+  const p = C.defaults();
+  const d = C.derive(p);
+  const risk = C.riskReport(p, d, { pts: d.rowPts, row: d.row });
+  for (const r of risk.rows) {
+    const rReq = (r.v * r.v) / d.a_eff;
+    assert.equal(rReq > d.r_min, r.capped, `VS ${r.vs}: колонка отчёта и риск-таблица расходятся`);
+  }
+  assert.ok(risk.rows.some(r => r.capped) && risk.rows.some(r => !r.capped), 'в пресете должны быть и срез, и запас');
+});
+
+test('валидатор: brim за столом — ошибка до генерации', () => {
+  const C = loadCore();
+  const p = { ...C.defaults(), rowCenterX: 85 };
+  const d = C.derive(p);
+  assert.ok(d.bbox.minX >= 0 && d.bbox.maxX <= p.bedX, 'сам ряд помещается в стол');
+  assert.ok(C.validate(p).some(i => i.code === 'bed-brim' && i.level === 'error'), 'нужна ошибка bed-brim');
+});
+
+test('валидатор: brim в несколько слоёв — предупреждение, печать в один слой', () => {
+  const C = loadCore();
+  const p = { ...C.defaults(), brimLayers: 3 };
+  assert.ok(C.validate(p).some(i => i.code === 'brim-layers' && i.level === 'warn'), 'нужно предупреждение brim-layers');
+
+  const z = extrusionZ(C.compose(p).gcode);
+  for (let i = 1; i < z.length; i++) {
+    assert.ok(z[i] >= z[i - 1], `Z экструзии убывает: ${z[i - 1]} → ${z[i]}`);
+  }
+});
+
+test('валидатор: высота слоя выше предела — ошибка', () => {
+  const C = loadCore();
+  assert.ok(C.validate({ ...C.defaults(), lh: 0.5 }).some(i => i.code === 'lh' && i.level === 'error'), 'нужна ошибка lh');
+});
+
+test('checkChain ловит излом на прямом переходе между спиралями', () => {
+  const C = loadCore();
+  const p = { ...C.defaults(), spiralGap: 0.5 };
+  const d = C.derive(p);
+  assert.ok(d.row.path.some(s => s.type === 'line'), 'при зазоре появляются прямые переходы');
+  const chk = C.checkChain(p, d, { pts: d.rowPts, row: d.row });
+  assert.ok(chk.stats.maxTurnDeg > 45, `излом должен измеряться, получено ${chk.stats.maxTurnDeg.toFixed(1)}°`);
+  assert.ok(chk.issues.some(i => i.code === 'kink' && i.level === 'error'), 'нужна ошибка kink');
+});
+
+test('обратный обход меняет направление слоя, змейка остаётся непрерывной', () => {
+  const C = loadCore();
+  const normal = C.compose(C.defaults()).gcode;
+  const reversed = C.compose({ ...C.defaults(), reversePath: true }).gcode;
+  assert.notEqual(normal, reversed, 'обратный обход должен менять траекторию');
+  assert.equal(snakeBreaks(normal), 0, 'разрыв змейки без обратного обхода');
+  assert.equal(snakeBreaks(reversed), 0, 'разрыв змейки с обратным обходом');
+});
+
+test('Flow Ratio выводится в G-code командой M221', () => {
+  const C = loadCore();
+  assert.match(C.compose(C.defaults()).gcode, /M221 S100/, 'для fr = 1 должен быть M221 S100');
+  const one = C.compose({ ...C.defaults(), fr: 1 }).gcode;
+  const low = C.compose({ ...C.defaults(), fr: 0.94 }).gcode;
+  assert.match(low, /M221 S94/, 'для fr = 0,94 должен быть M221 S94');
+  assert.notEqual(one, low, 'разный Flow Ratio должен давать разный G-code');
+});
+
+test('Z экструзии не убывает на пресете с brim', () => {
+  const C = loadCore();
+  const z = extrusionZ(C.compose(C.defaults()).gcode);
+  assert.ok(z.length > 1000, 'должно быть много экструдирующих перемещений');
+  for (let i = 1; i < z.length; i++) {
+    assert.ok(z[i] >= z[i - 1], `Z экструзии убывает: ${z[i - 1]} → ${z[i]}`);
+  }
+});
+
+test('рамповые дуги не входят в измеримую длину спирали', () => {
+  const C = loadCore();
+  const p = C.defaults();
+  const d = C.derive(p);
+  const meas = C.measureChain(p, d, { pts: d.rowPts, row: d.row });
+
+  assert.ok(meas.rampTotal > 0, 'должны быть дуги-рампы на стыках');
+  for (const c of meas.cells) {
+    assert.ok(c.len > 0 && c.lenIn > 0, 'у каждой спирали есть измеримая часть и рампа');
+  }
+  // Сумма измеримой части и рампы равна полной длине дуг спирали.
+  for (let s = 1; s <= d.cells; s++) {
+    const total = d.row.path
+      .filter(seg => seg.type === 'arc' && seg.spiral === s)
+      .reduce((acc, seg) => acc + Math.PI * seg.r, 0);
+    near(meas.cells[s - 1].len + meas.cells[s - 1].lenIn, total, 1e-9, `баланс длин спирали ${s}`);
+  }
+});

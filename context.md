@@ -25,7 +25,7 @@
 | Ресёрч матрицы и скорости | `docs/research/temperature-flow-matrix.md`, `docs/research/speed-limit-analysis.md` | сценарий T × Q, что считается и что измеряется в границах скорости |
 | Указатель проекта | `AGENTS.md` | порядок чтения и адреса документов |
 | Проверки модели | `tests/model.test.mjs` | 9 проверок, запуск `node --test` |
-| Проверки генератора MVS | `tests/mvs-matrix.test.mjs` | 51 проверка (ядро, G-code, валидатор, регрессии баг-ревью, автопрогрессия диаметра, новые фичи, raft) |
+| Проверки генератора MVS | `tests/mvs-matrix.test.mjs` | 52 проверки (ядро, G-code, валидатор, регрессии баг-ревью, автопрогрессия диаметра, новые фичи, raft) |
 | CI | `.github/workflows/ci.yml` | GitHub Actions, тот же прогон |
 | Обвязка репозитория | `README.md`, `LICENSE`, `.gitignore`, `.gitattributes`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` | создана |
 | git | `.git` | ветка `main`, рабочее дерево чистое |

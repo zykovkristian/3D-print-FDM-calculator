@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const OUT_DIR = fileURLToPath(new URL('.', import.meta.url));
 
 const D2R = Math.PI / 180;
-const OUT = OUT_DIR + 'stand-centers.svg';
+const OUT = OUT_DIR + '../docs/generated/stand-centers.svg';
 
 // ---------- общие параметры эталонного пресета ----------
 const A_line = 0.096, aEff = 8000;

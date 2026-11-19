@@ -28,3 +28,11 @@ temp/
 
 # --- Node: тесты и CI (tests/, .github/workflows) ---
 node_modules/
+
+# --- временные и резервные копии ---
+*.tmp
+*.bak
+*.orig
+*~
+*.swp
+*.swo

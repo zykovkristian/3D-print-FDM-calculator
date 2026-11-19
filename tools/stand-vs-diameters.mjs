@@ -178,7 +178,7 @@ push(`<line x1="${gx0 + 132}" y1="${baseY - scaleH + 4}" x2="${gx0 + 152}" y2="$
 push('</svg>');
 
 const svg = out.join('\n');
-writeFileSync(root + 'docs/plan-vs-scaled-diameters.svg', svg, 'utf8');
+writeFileSync(root + 'docs/generated/plan-vs-scaled-diameters.svg', svg, 'utf8');
 
 // ---- Сводка в консоль ----
 for (const v of data) {

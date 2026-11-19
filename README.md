@@ -48,20 +48,20 @@
 | `tools/mvs-matrix.html` | Автономный генератор G-code матрицы MVS: превью, расчёт подачи по кривизне, аудит G-code |
 | `tools/*.mjs` | Локальные стенды и проверки геометрии (Node.js), результаты пишутся рядом со скриптами |
 | `tools/stand-vs-diameters.mjs` | Стенд сравнения трёх вариантов прогрессии диаметра секций по VS |
-| `tools/.json` | Схема траектории ряда спиралей (JSON-вывод генератора) |
+| `tools/spiral-row-schema.json` | Схема траектории ряда спиралей (JSON-вывод генератора) |
 | `tools/spiral-s.html`, `tools/stand-centers.html` | Схемы и стенды сравнения, собранные скриптами выше |
 | `docs/design-notes.md` | Допущения модели, источники данных, границы и открытые вопросы |
 | `docs/test-protocol.md` | Протокол тестов: порядок, алгоритмы, поля ввода, корректировка |
 | `docs/mvs-matrix-geometry.md` | Геометрия траектории матрицы MVS |
 | `docs/mvs-matrix-risks.md` | Анализ рисков: пороги плавности, механики, температуры, пределы принтера |
 | `docs/plan-vs-scaled-diameters.md` | Прогрессивный диаметр секций по VS: как снимается срез F без выхода за стол, цена для объективности, контрольные опыты |
-| `docs/plan-vs-scaled-diameters.svg` | Схема трёх вариантов прогрессии диаметра (строится `tools/stand-vs-diameters.mjs`) |
+| `docs/generated/plan-vs-scaled-diameters.svg` | Схема трёх вариантов прогрессии диаметра (строится `tools/stand-vs-diameters.mjs`) |
 | `docs/temperature-flow-matrix.md` | Ресёрч матрицы «температура × поток» |
 | `docs/speed-limit-analysis.md` | Что в границах скорости считается, а что измеряется |
 | `docs/calibration-research.md` | Сравнение методик калибровки Orca, Ellis, Teaching Tech |
 | `docs/parameter-testing-methods-research.md` | Научная критика методов тестирования, противоречия между источниками |
 | `docs/spiral-row-builder.html` | Исходный генератор ряда спиралей (чистая функция без DOM) |
-| `docs/MVS_Matrix_Labyrinth_GCode_Generator.html` | Архив первой версии генератора (заменена `tools/mvs-matrix.html`) |
+| `docs/archive/MVS_Matrix_Labyrinth_GCode_Generator.html` | Архив первой версии генератора (заменена `tools/mvs-matrix.html`) |
 | `docs/defect-matrix.html` | Визуализация матрицы дефектов |
 | `docs/technologies.md` | Ссылки на внешние методики и источники |
 | `docs/project-presentation.md` | Презентация проекта (RU) |
@@ -83,6 +83,14 @@
 3. Не публиковать в коммерческих целях код или его производные без письменной лицензии. Причина: лицензия PolyForm Noncommercial разрешает только некоммерческое использование.
 4. Не переносить в репозиторий секреты, токены и учётные данные. Причина: `.gitignore` исключает типовые имена, но история публичного репозитория сохраняется навсегда.
 
+## Отказ от ответственности
+
+1. Проект предоставляется «как есть», без каких-либо гарантий безопасности, совместимости или пригодности для конкретной задачи. Автор не несёт ответственности за повреждение принтера, сопла, стола, хотэнда, электроники, пожар, травмы, финансовые потери или любые другие последствия, возникшие при использовании сгенерированного G-code или настроек.
+2. Сгенерированный G-code управляет нагревом, движением и экструзией. Перед отправкой в принтер пользователь обязан самостоятельно проверить команды: совместимость с моделью принтера и прошивкой, потолки температуры и скорости, габариты стола, отсутствие коллизий.
+3. Результаты расчётов и рекомендации являются ориентировочными: модель упрощена и не заменяет калибровку под конкретный материал, принтер и условия печати. Параметры, отмеченные как непроверенные, требуют испытаний на вашем оборудовании.
+4. При первом запуске нового G-code оставайтесь рядом с принтером и держите руку на выключателе питания. Не оставляйте принтер без присмотра во время проверочных печатей.
+5. Использование проекта означает согласие с тем, что вся ответственность за результат лежит на пользователе.
+
 ## English summary
 
 MVS Calibrator is a browser-based calculator for FDM print limits: enter printer and filament properties, see which constraint limits speed, explore charts and sensitivity, and get Bambu Studio values. It also contains a structured calibration protocol and an MVS matrix generator that emits G-code for a continuous spiral path.
@@ -90,3 +98,5 @@ MVS Calibrator is a browser-based calculator for FDM print limits: enter printer
 Run it: open `index.html` (calculator) or `tools/mvs-matrix.html` (matrix generator). Run checks: `node --test` — expect `tests 36`, `pass 36`, `fail 0`.
 
 Personal and other permitted noncommercial use is free under the PolyForm Noncommercial 1.0.0 license in `LICENSE`. Organizations need a separate commercial license; see `COMMERCIAL-LICENSE.md`. This is source-available, not an OSI-approved open-source license.
+
+Disclaimer: the project is provided "as is" without warranty. Generated G-code controls heating, motion and extrusion; verify it against your printer model, firmware and limits before use. The author assumes no liability for hardware damage, fire, injury or any other consequences. Stay near the printer during first runs.

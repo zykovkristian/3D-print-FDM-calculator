@@ -323,13 +323,13 @@ console.log('метрики (N=3, пропорции схемы):', JSON.stringi
   len: +M3.stats.len.toFixed(1)
 }));
 
-const outSvg = OUT_DIR + 'spiral-s.svg';
-const outSvgF = OUT_DIR + 'spiral-s-fixed.svg';
-const outSvgS = OUT_DIR + 'spiral-s-schema.svg';
+const outSvg = OUT_DIR + '../docs/generated/spiral-s.svg';
+const outSvgF = OUT_DIR + '../docs/generated/spiral-s-fixed.svg';
+const outSvgS = OUT_DIR + '../docs/generated/spiral-s-schema.svg';
 const outHtml = OUT_DIR + 'spiral-s.html';
 writeFileSync(outSvg, svg(P, M));
 writeFileSync(outSvgF, svg(P, Mf));
 writeFileSync(outSvgS, svgSchema(P, M));
-writeFileSync(OUT_DIR + 'spiral-s-schema-n3.svg', svgSchema(P3, M3));
+writeFileSync(OUT_DIR + '../docs/generated/spiral-s-schema-n3.svg', svgSchema(P3, M3));
 writeFileSync(outHtml, html(P));
 console.log('записано:', outSvg, ',', outSvgF, ',', outSvgS, ', схема N=3 и', outHtml);

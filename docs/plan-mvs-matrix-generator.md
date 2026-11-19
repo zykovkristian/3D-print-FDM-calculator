@@ -11,14 +11,14 @@
 подбор пластика. Страница считает и пишет файл, ответственность за запуск
 на принтере остаётся у пользователя.
 
-**Заменяет.** `docs/MVS_Matrix_Labyrinth_GCode_Generator.html` (вёрсия 0.2).
+**Заменяет.** `docs/archive/MVS_Matrix_Labyrinth_GCode_Generator.html` (вёрсия 0.2).
 Тот файл не удаляется этим планом: он источник идей, а не регрессия.
 
 ---
 
 ## 2. Что не так с версией 0.2 (чтобы не повторить)
 
-Проверено по коду `docs/MVS_Matrix_Labyrinth_GCode_Generator.html`:
+Проверено по коду `docs/archive/MVS_Matrix_Labyrinth_GCode_Generator.html`:
 
 | # | Дефект | Строка | Следствие | Решение в новой версии |
 |---|---|---|---|---|

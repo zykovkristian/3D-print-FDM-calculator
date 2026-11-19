@@ -6,7 +6,7 @@
 180 мм. Ниже — механика, числа, цена и способ проверить, что сравнение осталось
 объективным; решение принимал пользователь.
 
-Схема: `docs/plan-vs-scaled-diameters.svg` (строится `tools/stand-vs-diameters.mjs`).
+Схема: `docs/generated/plan-vs-scaled-diameters.svg` (строится `tools/stand-vs-diameters.mjs`).
 
 ## 1. Что именно ограничивает скорость
 

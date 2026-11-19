@@ -469,6 +469,52 @@ test('brimLayers=3: brim печатается в 3 слоя (Z растёт)', (
   assert.ok(brimZs.has(6), 'brim должен содержать Z = 0.6 мм');
 });
 
+test('raft: заливка идёт по форме модели с отступом, а не по прямоугольнику', () => {
+  const C = loadCore();
+  const p = { ...C.defaults(), brimOn: false, raftOn: true, raftLayers: 2, raftGap: 5 };
+  const { gcode } = C.compose(p);
+  assert.ok(gcode.includes('--- RAFT ---'), 'должна быть секция RAFT');
+  assert.ok(!gcode.includes('--- BRIM ---'), 'brim не должен генерироваться вместе с raft');
+
+  const d = C.derive(p);
+  // Первая полоса raft начинается у края модели + отступ, а не у габарита.
+  const raftX = [];
+  let inRaft = false;
+  for (const raw of gcode.split('\n')) {
+    const l = raw.trim();
+    if (l.includes('--- RAFT ---')) { inRaft = true; continue; }
+    if (inRaft && l.startsWith('; LAYER')) break;
+    if (inRaft && /^G1/.test(l)) {
+      const m = l.match(/X([-\d.]+)/);
+      if (m) raftX.push(Number(m[1]));
+    }
+  }
+  assert.ok(raftX.length > 10, 'raft должен содержать линии заливки');
+  const minX = Math.min(...raftX), maxX = Math.max(...raftX);
+  // Отступ от реального края траектории, а не от прямоугольного габарита.
+  assert.ok(minX >= d.bbox.minX - 5.001, `левая граница raft ${minX} слишком далеко от модели`);
+  assert.ok(maxX <= d.bbox.maxX + 5.001, `правая граница raft ${maxX} слишком далеко от модели`);
+  assert.ok(minX > d.bbox.minX - 4.9 || maxX < d.bbox.maxX + 4.9, 'raft не должен быть прямоугольником по габариту');
+});
+
+test('raft: своя скорость и своя температура', () => {
+  const C = loadCore();
+  const p = { ...C.defaults(), brimOn: false, raftOn: true, raftLayers: 2, raftSpeed: 40, raftTemp: 210 };
+  const { gcode } = C.compose(p);
+  // 40 мм/с → F2400 (мм/мин)
+  assert.match(gcode, /F2400/, 'скорость raft 40 мм/с должна дать F2400');
+  // Температура плота 210 °C и возврат к первой зоне после плота
+  assert.match(gcode, /M104 S210/, 'должна быть установка температуры плота');
+  assert.match(gcode, /M104 S190/, 'после плота — возврат к температуре первой зоны');
+});
+
+test('raft: отступ 30 мм не помещается на стол A1 mini — ошибка', () => {
+  const C = loadCore();
+  const p = { ...C.defaults(), brimOn: false, raftOn: true, raftGap: 30 };
+  const issues = C.validate(p);
+  assert.ok(issues.some(i => i.code === 'bed-raft' && i.level === 'error'), 'нужна ошибка bed-raft при отступе 30 мм');
+});
+
 test('totalHeight учитывает высоту brim', () => {
   const C = loadCore();
   const p = { ...C.defaults(), brimLayers: 3 };

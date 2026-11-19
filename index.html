@@ -328,7 +328,11 @@ pre.code .g{color:#7fb2e5}
           <div class="field"><label for="raftLayers" data-i18n="fRaftLayers">Слоёв raft</label>
             <input id="raftLayers" type="number" min="1" max="6" step="1" value="3"></div>
           <div class="field"><label for="raftGap" data-i18n="fRaftGap">Зазор от модели, мм</label>
-            <input id="raftGap" type="number" min="0" max="5" step="0.1" value="0.5"></div>
+            <input id="raftGap" type="number" min="0" max="60" step="0.5" value="5"></div>
+          <div class="field"><label for="raftSpeed" data-i18n="fRaftSpeed">Скорость raft, мм/с</label>
+            <input id="raftSpeed" type="number" min="10" max="200" step="5" value="60"></div>
+          <div class="field"><label for="raftTemp" data-i18n="fRaftTemp">Температура raft, °C (0 = первая зона)</label>
+            <input id="raftTemp" type="number" min="0" max="350" step="1" value="0"></div>
         </div>
         <div class="sep"></div>
         <p class="sub-h" data-i18n="sTrans">Переходы</p>
@@ -522,6 +526,7 @@ const I18N = {
     fBrimLoops: 'Витков', fBrimLayers: 'Слоёв', fBrimGap: 'Зазор от стенки, мм',
     fRaftOn: 'Включить raft', hRaftOn: 'полноценная подложка под модель (вместо brim)',
     fRaftLayers: 'Слоёв raft', fRaftGap: 'Зазор от модели, мм',
+    fRaftSpeed: 'Скорость raft, мм/с', fRaftTemp: 'Температура raft, °C (0 = первая зона)',
     sTrans: 'Переходы', fBeadOn: 'Метка границы зон', hBeadOn: 'полка на первом слое зоны',
     fBeadSize: 'Вынос полки, мм', fDwell: 'Выдержка на смене T, с',
     fParkMode: 'Точка парковки', fParkX: 'Парковка X, мм', fParkY: 'Парковка Y, мм',
@@ -568,6 +573,7 @@ const I18N = {
     fBrimLoops: 'Loops', fBrimLayers: 'Layers', fBrimGap: 'Gap to wall, mm',
     fRaftOn: 'Enable raft', hRaftOn: 'full platform under model (instead of brim)',
     fRaftLayers: 'Raft layers', fRaftGap: 'Gap from model, mm',
+    fRaftSpeed: 'Raft speed, mm/s', fRaftTemp: 'Raft temperature, °C (0 = first zone)',
     sTrans: 'Transitions', fBeadOn: 'Zone boundary mark', hBeadOn: 'step on zone entry layer',
     fBeadSize: 'Step size, mm', fDwell: 'Dwell on temp change, s',
     fParkMode: 'Park position', fParkX: 'Park X, mm', fParkY: 'Park Y, mm',
@@ -599,7 +605,7 @@ function defaults() {
     tStart: 190, tEnd: 220, tStep: 10, band: 10, tempReverse: false,
     lw: 0.42, lh: 0.20,
     quality: 1.2,
-    brimOn: true, brimLoops: 3, brimLayers: 3, brimGap: 0.3, raftOn: false, raftLayers: 3, raftGap: 0.5,
+    brimOn: true, brimLoops: 3, brimLayers: 3, brimGap: 0.3, raftOn: false, raftLayers: 3, raftGap: 5, raftSpeed: 60, raftTemp: 0,
     beadOn: false, beadSize: 0.6, dwell: 5,
     parkMode: 'auto', parkX: 10, parkY: 10,
     retractLen: 0, retractSpeed: 0,
@@ -954,10 +960,10 @@ function validate(p) {
   }
   // --- Raft и габарит с учётом подложки ---
   if (p.raftOn && !p.brimOn) {
-    const rGap = Math.max(0, p.raftGap || 0.5);
+    const rGap = Math.max(0, Number(p.raftGap) || 0);
     if (d.bbox.minX - rGap < 0 || d.bbox.maxX + rGap > p.bedX ||
         d.bbox.minY - rGap < 0 || d.bbox.maxY + rGap > p.bedY) {
-      errs.push({ level: 'error', field: 'raftGap', code: 'bed-raft', msg: `Raft выходит за стол: с зазором ${rGap} мм подложка шире стола` });
+      errs.push({ level: 'error', field: 'raftGap', code: 'bed-raft', msg: `Raft выходит за стол: отступ ${rGap} мм от края модели не помещается (${p.bedX}×${p.bedY} мм)` });
     }
   }
 
@@ -1077,28 +1083,69 @@ function compose(p) {
     }
   }
 
-  // Raft (если включён): полноценная подложка под модель — сплошная заливка
-  // прямоугольника по габаритам траектории + зазор. Печатается в rLayers слоёв,
-  // затем основная печать начинается со смещением.
+  // Raft (если включён): сплошная подложка по форме модели с отступом
+  // raftGap мм от края. Форма берётся из траектории ряда: для каждой полосы
+  // по Y находится диапазон X модели, к нему добавляется отступ. Скорость и
+  // температура плота задаются отдельно (raftSpeed, raftTemp).
   if (effectiveRaftOn) {
+    const margin = Math.max(0, Number(p.raftGap) || 0);
+    const raftT = Number(p.raftTemp) > 0 ? Number(p.raftTemp) : d.ts[0];
+    const raftV = Math.max(10, Number(p.raftSpeed) || 60);   // мм/с
+    const raftF = Math.round(raftV * 60);                    // мм/мин
     out += `\n; --- RAFT ---\n`;
-    const rGap = Math.max(0, p.raftGap || 0.5);
-    const rx0 = d.bbox.minX - rGap, rx1 = d.bbox.maxX + rGap;
-    const ry0 = d.bbox.minY - rGap, ry1 = d.bbox.maxY + rGap;
-    const spacing = p.lw;
-    const numLines = Math.max(1, Math.ceil((ry1 - ry0) / spacing));
+    out += `; Raft: ${rLayers} сл., отступ ${margin} мм, скорость ${raftV} мм/с, температура ${raftT} C\n`;
+
+    // Температура плота: если отличается от первой зоны — переключаем и ждём.
+    const tempChanged = raftT !== d.ts[0];
+    if (tempChanged) {
+      out += `${flv.nozzleSet(raftT)}\n`;
+      out += `${flv.nozzleWait(raftT)}\n`;
+    }
+
+    // Полосы заливки по форме модели: на каждой Y — диапазон X модели + отступ.
+    const outline = d.rowPts || [];
+    const spacing = Math.max(0.1, p.lw);
+    let yMin = Infinity, yMax = -Infinity;
+    for (const q of outline) {
+      if (q.y < yMin) yMin = q.y;
+      if (q.y > yMax) yMax = q.y;
+    }
+    if (!isFinite(yMin)) { yMin = d.bbox.minY; yMax = d.bbox.maxY; }
+    const nBands = Math.max(1, Math.ceil((yMax - yMin) / spacing));
+    const bands = [];
+    for (let bi = 0; bi <= nBands; bi++) {
+      const y = Math.min(yMin + bi * spacing, yMax);
+      let mn = Infinity, mx = -Infinity;
+      for (const q of outline) {
+        if (Math.abs(q.y - y) <= spacing * 0.75) {
+          if (q.x < mn) mn = q.x;
+          if (q.x > mx) mx = q.x;
+        }
+      }
+      if (!isFinite(mn)) continue;
+      bands.push({ y, x0: mn - margin, x1: mx + margin });
+    }
+
     for (let rl = 0; rl < rLayers; rl++) {
       const zRaft = (rl + 1) * p.lh;
       out += `; Raft layer ${rl + 1}/${rLayers}, Z=${zRaft.toFixed(3)}\n`;
-      for (let li = 0; li <= numLines; li++) {
-        const y = Math.min(ry0 + li * spacing, ry1);
-        const xStart = (li % 2 === 0) ? rx0 : rx1;
-        const xEnd = (li % 2 === 0) ? rx1 : rx0;
-        out += `G0 X${xStart.toFixed(3)} Y${y.toFixed(3)} Z${zRaft.toFixed(3)} F3600\n`;
+      for (let bi = 0; bi < bands.length; bi++) {
+        const bd = bands[bi];
+        const xStart = (bi % 2 === 0) ? bd.x0 : bd.x1;
+        const xEnd = (bi % 2 === 0) ? bd.x1 : bd.x0;
+        out += `G0 X${xStart.toFixed(3)} Y${bd.y.toFixed(3)} Z${zRaft.toFixed(3)} F3600\n`;
         const dist = Math.abs(xEnd - xStart);
+        if (dist < 1e-6) continue;
         const e = dist * d.A_line / d.A_fil;
-        out += `G1 X${xEnd.toFixed(3)} Y${y.toFixed(3)} E${e.toFixed(5)} F1800\n`;
+        out += `G1 X${xEnd.toFixed(3)} Y${bd.y.toFixed(3)} E${e.toFixed(5)} F${raftF}\n`;
       }
+    }
+
+    // Возврат к температуре первой зоны для основной печати.
+    if (tempChanged) {
+      out += `; Возврат к температуре первой зоны ${d.ts[0]} C\n`;
+      out += `${flv.nozzleSet(d.ts[0])}\n`;
+      out += `${flv.nozzleWait(d.ts[0])}\n`;
     }
   }
 
@@ -1532,7 +1579,9 @@ if (typeof module !== 'undefined') {
       brimGap: +$('brimGap').value || 0.3,
       raftOn: $('raftOn').checked,
       raftLayers: +$('raftLayers').value || 3,
-      raftGap: +$('raftGap').value || 0.5,
+      raftGap: +$('raftGap').value ?? 5,
+      raftSpeed: +$('raftSpeed').value || 60,
+      raftTemp: +$('raftTemp').value || 0,
       beadOn: $('beadOn').checked,
       beadSize: +$('beadSize').value || 0.6,
       dwell: +$('dwell').value || 5,
@@ -1594,7 +1643,9 @@ if (typeof module !== 'undefined') {
     $('brimGap').value = p.brimGap ?? 0.3;
     $('raftOn').checked = !!p.raftOn;
     $('raftLayers').value = p.raftLayers ?? 3;
-    $('raftGap').value = p.raftGap ?? 0.5;
+    $('raftGap').value = p.raftGap ?? 5;
+    $('raftSpeed').value = p.raftSpeed ?? 60;
+    $('raftTemp').value = p.raftTemp ?? 0;
     $('beadOn').checked = Boolean(p.beadOn);
     $('beadSize').value = p.beadSize ?? 0.6;
     $('dwell').value = p.dwell ?? 5;
@@ -1926,23 +1977,45 @@ if (typeof module !== 'undefined') {
       ctx.setLineDash([]);
     }
 
-    // Raft (подложка) — если включён, рисуем сплошной прямоугольник
+    // Raft (подложка) — если включён, рисуем заливку по форме модели + отступ
     if (curParams.raftOn && !curParams.brimOn) {
-      const rGap = Math.max(0, curParams.raftGap || 0.5);
-      const rx0 = d.bbox.minX - rGap, rx1 = d.bbox.maxX + rGap;
-      const ry0 = d.bbox.minY - rGap, ry1 = d.bbox.maxY + rGap;
+      const margin = Math.max(0, Number(curParams.raftGap) || 0);
+      const outline = d.rowPts || [];
+      const spacing = Math.max(0.1, curParams.lw);
+      let yMin = Infinity, yMax = -Infinity;
+      for (const q of outline) {
+        if (q.y < yMin) yMin = q.y;
+        if (q.y > yMax) yMax = q.y;
+      }
+      if (!isFinite(yMin)) { yMin = d.bbox.minY; yMax = d.bbox.maxY; }
+      const nBands = Math.max(1, Math.ceil((yMax - yMin) / spacing));
+      const left = [], right = [];
+      for (let bi = 0; bi <= nBands; bi++) {
+        const y = Math.min(yMin + bi * spacing, yMax);
+        let mn = Infinity, mx = -Infinity;
+        for (const q of outline) {
+          if (Math.abs(q.y - y) <= spacing * 0.75) {
+            if (q.x < mn) mn = q.x;
+            if (q.x > mx) mx = q.x;
+          }
+        }
+        if (!isFinite(mn)) continue;
+        left.push(project(mn - margin, y, curParams.lh));
+        right.push(project(mx + margin, y, curParams.lh));
+      }
       ctx.fillStyle = 'rgba(136, 136, 136, 0.3)';
       ctx.strokeStyle = '#888';
       ctx.lineWidth = 1;
       ctx.setLineDash([]);
-      const corners = [project(rx0, ry0, curParams.lh), project(rx1, ry0, curParams.lh),
-                       project(rx1, ry1, curParams.lh), project(rx0, ry1, curParams.lh)];
-      ctx.beginPath();
-      ctx.moveTo(corners[0].px, corners[0].py);
-      for (let i = 1; i < corners.length; i++) ctx.lineTo(corners[i].px, corners[i].py);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
+      if (left.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(left[0].px, left[0].py);
+        for (let i = 1; i < left.length; i++) ctx.lineTo(left[i].px, left[i].py);
+        for (let i = right.length - 1; i >= 0; i--) ctx.lineTo(right[i].px, right[i].py);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
     }
 
     // Отрисовка спиралей (шаг по слоям для скорости)

@@ -25,6 +25,11 @@
 - `docs/plan-mvs-matrix-generator.md` — план генератора матрицы MVS, написанный до реализации (v1).
 - `docs/plan-isolated-tests-logic.md` — план логики изолированных тестов FDM: стресс-тест, матрицы пересечений, закрытие пропусков.
 - `README.md` — краткое описание для внешнего читателя.
+- `docs/monetization-and-protection.md` — план монетизации и защиты авторства: лицензионная схема, что защищает и что нет, доход, план против копирования, этапы и риски.
+- `docs/technology-packaging.md` — варианты упаковки проекта как технологии и рекомендуемая последовательность.
+- `docs/project-presentation.md` — презентация проекта (RU); `docs/project-presentation.en.md` — сокращённая версия (EN).
+- `docs/publication-plan.md` — порядок подготовки публичного снимка: что исключить, что проверить перед запуском, как опубликовать позже.
+- `LICENSE` — PolyForm Noncommercial 1.0.0 (личное и некоммерческое использование бесплатно); `COMMERCIAL-LICENSE.md` — порядок запроса корпоративной лицензии.
 - `tools/mvs-matrix.html` — автономный генератор G-code для матрицы MVS (T × Q): слой одной непрерывной траекторией.
 - `docs/MVS_Matrix_Labyrinth_GCode_Generator.html` — первая версия генератора (архив, заменена `tools/mvs-matrix.html`).
 - `docs/MVS_dialoge.md` — переписка по разработке матрицы MVS (исходное задание).
@@ -32,3 +37,6 @@
 - `tests/model.test.mjs` — проверки расчётной модели, запуск `node --test`.
 - `tests/mvs-matrix.test.mjs` — проверки генератора матрицы MVS, запуск `node --test`.
 - `.github/workflows/ci.yml` — CI, тот же прогон на push и pull request.
+- `SECURITY.md` — как сообщать об уязвимостях; `.github/ISSUE_TEMPLATE/` — шаблоны обращений; `.github/pull_request_template.md` — чек-лист проверки вклада.
+
+Публичный снимок готовится в ветке `public` (один корневой коммит, внутренние файлы исключены, push не выполнялся) — см. `docs/publication-plan.md`.

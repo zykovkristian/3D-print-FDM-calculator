@@ -1,0 +1,30 @@
+---
+name: Ошибка
+about: Калькулятор или генератор дают неверный результат
+title: "[Ошибка] "
+labels: bug
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: Что произошло
+      description: Опишите наблюдаемый результат и ожидаемый.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Шаги воспроизведения
+      description: Что нажимали, какие значения вводили.
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Окружение
+      description: Принтер, материал, высота слоя, браузер, версия Node.js (если применимо).
+  - type: textarea
+    id: logs
+    attributes:
+      label: Ошибки консоли
+      description: Текст из консоли браузера (F12 → вкладка Console), если есть.

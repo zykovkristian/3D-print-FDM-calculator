@@ -74,7 +74,10 @@ test('все дуги ряда — полуокружности с радиус�
     const chord = Math.hypot(a.to[0] - a.from[0], a.to[1] - a.from[1]);
     near(chord, 2 * a.r, 1e-6, 'дуга должна быть ровно полуокружностью');
   }
-  near(d.row.stats.minR, p.coreX / 2, 1e-6, 'минимальный радиус — половина X');
+  near(d.sectionMinR[0], Math.min(...d.row.path.filter(s => s.type === 'arc' && s.spiral === 1).map(s => s.r)), 1e-9, 'радиус секции 1');
+  // Без автопрогрессии все секции одинаковы и R_min = core_x/2.
+  const fixed = C.derive({ ...p, autoCore: false });
+  near(fixed.row.stats.minR, p.coreX / 2, 1e-6, 'без автопрогрессии минимальный радиус — половина X');
 });
 
 test('развёртка в точки сохраняет геометрию дуг', () => {
@@ -197,8 +200,49 @@ test('риск-отчёт: запас по кривизне считается �
     near(r.Rreq, (r.v * r.v) / d.a_eff, 1e-6, `R_треб для VS ${r.vs}`);
     assert.ok(r.eMmS > 0 && r.eMmS < 150, `скорость оси E ${r.eMmS} мм/с вне диапазона`);
   }
-  // на быстрых спиралях радиуса не хватает — должен быть срез F
-  assert.ok(risk.rows.some(r => r.capped), 'на быстрых спиралях ожидается срез F');
+  // Автопрогрессия снимает срез: радиус секции растёт вместе с VS.
+  assert.ok(risk.rows.every(r => !r.capped), 'при автопрогрессии среза F быть не должно');
+  // Радиус по секциям растёт монотонно вместе с VS.
+  for (let i = 1; i < risk.rows.length; i++) {
+    assert.ok(risk.rows[i].Rmin > risk.rows[i - 1].Rmin, `радиус секции ${i + 1} должен быть больше предыдущей`);
+  }
+  // С выключенной автопрогрессией на быстрых спиралях срез возвращается.
+  const fixed = { ...p, autoCore: false };
+  const df = C.derive(fixed);
+  const riskFixed = C.riskReport(fixed, df, { pts: df.rowPts, row: df.row });
+  assert.ok(riskFixed.rows.some(r => r.capped), 'без автопрогрессии ожидается срез F');
+});
+
+test('автопрогрессия: core_x растёт с VS, ряд влезает в стол, среза F нет', () => {
+  const C = loadCore();
+  const p = C.defaults();
+  const d = C.derive(p);
+  assert.equal(d.autoCore, true, 'автопрогрессия включена по умолчанию');
+
+  // core_x секций растёт вместе с VS.
+  for (let i = 1; i < d.sectionMinR.length; i++) {
+    assert.ok(d.sectionMinR[i] > d.sectionMinR[i - 1], `радиус секции ${i + 1} должен расти с VS`);
+  }
+  // Ряд влезает в стол A1 mini.
+  assert.ok(d.bbox.minX >= 0 && d.bbox.maxX <= p.bedX, 'ряд вне стола по X');
+  assert.ok(d.bbox.minY >= 0 && d.bbox.maxY <= p.bedY, 'ряд вне стола по Y');
+  assert.ok(d.bbox.width <= 180, `ширина ряда ${d.bbox.width.toFixed(1)} мм больше стола`);
+
+  // Среза F нет ни на одной секции.
+  const risk = C.riskReport(p, d, { pts: d.rowPts, row: d.row });
+  assert.ok(risk.rows.every(r => !r.capped), 'при автопрогрессии срез F недопустим');
+  for (const r of risk.rows) assert.ok(r.margin >= 1, `запас по кривизне для VS ${r.vs} меньше 1`);
+
+  // Остальные инварианты секций одинаковы — отличается только core_x.
+  const fixed = C.derive({ ...p, autoCore: false });
+  const widths = new Set(d.row.path.filter(s => s.type === 'arc').map(s => s.r));
+  assert.ok(widths.size > 1, 'при автопрогрессии радиусы дуг различаются');
+  assert.ok(fixed.sectionMinR.every(r => Math.abs(r - p.coreX / 2) < 1e-9), 'без автопрогрессии радиусы одинаковы');
+
+  // Галочку можно снять — тогда поведение прежнее.
+  const off = C.derive({ ...p, autoCore: false });
+  assert.equal(off.autoCore, false, 'галочка снимается');
+  near(off.r_min, p.coreX / 2, 1e-9, 'без автопрогрессии R_min = core_x/2');
 });
 
 test('детерминизм генерации', () => {
@@ -286,10 +330,13 @@ test('валидатор: число значений VS не равно чис�
 
 test('производные величины конечны: r_min — минимум траектории, не NaN', () => {
   const C = loadCore();
-  const d = C.derive(C.defaults());
+  const p = C.defaults();
+  const d = C.derive(p);
   assert.ok(Number.isFinite(d.r_min), `r_min должен быть числом, получено ${d.r_min}`);
   near(d.r_min, d.row.stats.minR, 1e-9, 'r_min равен минимальному радиусу траектории');
-  near(d.r_min, C.defaults().coreX / 2, 1e-9, 'минимальный радиус — S-петля (core_x/2)');
+  assert.equal(d.sectionMinR.length, d.cells, 'радиус посчитан для каждой секции');
+  // Без автопрогрессии все секции одинаковы и R_min = core_x/2.
+  near(C.derive({ ...p, autoCore: false }).r_min, p.coreX / 2, 1e-9, 'без автопрогрессии R_min = core_x/2');
 });
 
 test('отчёт: колонка «Срез по a» согласована с таблицей рисков', () => {
@@ -297,11 +344,14 @@ test('отчёт: колонка «Срез по a» согласована с �
   const p = C.defaults();
   const d = C.derive(p);
   const risk = C.riskReport(p, d, { pts: d.rowPts, row: d.row });
-  for (const r of risk.rows) {
+  for (let i = 0; i < risk.rows.length; i++) {
+    const r = risk.rows[i];
     const rReq = (r.v * r.v) / d.a_eff;
-    assert.equal(rReq > d.r_min, r.capped, `VS ${r.vs}: колонка отчёта и риск-таблица расходятся`);
+    const rSec = d.sectionMinR[i];
+    assert.equal(rReq > rSec, r.capped, `VS ${r.vs}: колонка отчёта и риск-таблица расходятся`);
   }
-  assert.ok(risk.rows.some(r => r.capped) && risk.rows.some(r => !r.capped), 'в пресете должны быть и срез, и запас');
+  // Автопрогрессия убирает срез у всех секций.
+  assert.ok(risk.rows.every(r => !r.capped), 'при автопрогрессии среза быть не должно');
 });
 
 test('валидатор: brim за столом — ошибка до генерации', () => {

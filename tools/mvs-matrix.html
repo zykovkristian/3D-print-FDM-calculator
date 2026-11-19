@@ -265,6 +265,8 @@ pre.code .g{color:#7fb2e5}
           <div class="field"><label for="coreX" data-i18n="fCoreX">X (расстояние точек S), мм</label>
             <input id="coreX" type="number" min="2" max="60" step="0.5" value="12">
             <div class="hint" id="coreXHint"></div></div>
+          <div class="field"><label>&nbsp;</label>
+            <label class="check"><input id="autoCore" type="checkbox" checked><span><span data-i18n="fAutoCore">Автопрогрессия диаметра</span><small data-i18n="hAutoCore">секция с бо́льшим VS получает больше́й X: срез F снимается, габарит ряда растёт</small></span></label></div>
           <div class="field"><label for="turnsPerBranch" data-i18n="fTurnsPerBranch">Витков на ветвь</label>
             <input id="turnsPerBranch" type="number" min="0.5" max="20" step="0.1" value="2.5"></div>
           <div class="field"><label for="spiralPitchInner" data-i18n="fSpiralPitchInner">Внутренний шаг, мм</label>
@@ -495,6 +497,7 @@ const I18N = {
     fBedT: 'Стол, °C', fFan: 'Обдув, %',
     fVsList: 'Ряд объёмной скорости, мм³/с', fVsMode: 'Ряд VS', fCells: 'Число цилиндров',
     fSpiralPitch: 'Шаг траекторий, мм', fCoreX: 'X (S-петля), мм', fTurnsPerBranch: 'Витков на ветвь',
+    fAutoCore: 'Автопрогрессия диаметра', hAutoCore: 'секция с бо́льшим VS получает больше́й X: срез F снимается, габарит ряда растёт',
     fSpiralPitchInner: 'Внутренний шаг, мм', fInnerLevels: 'Внутренних уровней',
     fSpiralGap: 'Зазор между спиралями, мм', fRowAngle: 'Угол ряда, °', fRotFirst: 'Закрутка 1-й спирали',
     fCloseTails: 'Закрыть хвосты', hCloseTails: 'крайние спирали короче на полуоборот',
@@ -538,6 +541,7 @@ const I18N = {
     fBedT: 'Bed, °C', fFan: 'Fan, %',
     fVsList: 'Volumetric Speed Series, mm³/s', fVsMode: 'VS Series', fCells: 'Cylinders',
     fSpiralPitch: 'Track Pitch, mm', fCoreX: 'X (S-loop), mm', fTurnsPerBranch: 'Turns per Branch',
+    fAutoCore: 'Auto diameter progression', hAutoCore: 'a higher-VS section gets a larger X: the F cut is removed, the row grows wider',
     fSpiralPitchInner: 'Inner Pitch, mm', fInnerLevels: 'Inner Levels',
     fSpiralGap: 'Gap Between Spirals, mm', fRowAngle: 'Row Angle, °', fRotFirst: 'First Spiral Winding',
     fCloseTails: 'Close Tails', hCloseTails: 'edge spirals one half-turn shorter',
@@ -575,7 +579,7 @@ function defaults() {
     fd: 1.75, rho: 1.24, fr: 1.0, price: 2000, bedT: 60, fan: 30,
     // Ряд объёмных скоростей и геометрия спиралей (ядро spiral-row-builder).
     cells: 5, vsMode: 'manual', vsList: '8, 12, 16, 20, 24',
-    spiralPitch: 1.2, spiralPitchInner: null, coreX: 12, turnsPerBranch: 2.5,
+    spiralPitch: 1.2, spiralPitchInner: null, coreX: 12, autoCore: true, turnsPerBranch: 2.5,
     innerLevels: 0, spiralGap: 0, rowAngle: 0, rowCenterX: null, rowCenterY: null,
     rotFirst: 'CCW', closeTails: false, reversePath: false,
     tStart: 190, tEnd: 220, tStep: 10, band: 10,
@@ -627,6 +631,21 @@ function derive(p) {
 
   const A_line = p.lw * p.lh;
   const A_fil = Math.PI * (p.fd / 2) ** 2;
+  const aEff = Math.max(100, p.aMax * 0.8);
+
+  // Требуемый радиус S-петли под VS: R_треб = v²/a_eff. core_x = 2·R.
+  const rReq = v => (v / A_line) ** 2 / aEff;
+  // Автопрогрессия: секция с большим VS получает больший core_x, поэтому срез
+  // F снимается у каждой секции, а габарит ряда остаётся прежним.
+  const coreItems = [];
+  if (p.autoCore) {
+    const margin = Math.max(1, Number(p.coreMargin) || 1.15);
+    const floor = Math.max(2 * p.lw, Number(p.coreFloor) || 4);
+    for (let i = 0; i < cells; i++) {
+      coreItems.push({ coreX: Math.max(floor, margin * 2 * rReq(vs[i])) });
+    }
+  }
+  const autoCoreUsed = coreItems.length > 0;
 
   // ---- Траектория ряда спиралей (ядро из docs/spiral-row-builder.html) ----
   const traj = {
@@ -642,7 +661,8 @@ function derive(p) {
     pitch: p.spiralPitch,
     pitchIn: p.spiralPitchInner,
     innerLevels: p.innerLevels,
-    coreX: p.coreX
+    coreX: p.coreX,
+    items: autoCoreUsed ? coreItems : undefined
   };
   const row = buildSpiralRow(traj);
   const rowPts = segmentsToPoints(row.path, p.quality);
@@ -661,10 +681,14 @@ function derive(p) {
   const spiralCenters = row.spirals.map(q => q.center);
 
   const vMaxPlan = vs.length ? Math.max(...vs) / A_line : 200;
-  const aEff = Math.max(100, p.aMax * 0.8);
-  // Минимальный радиус берём из построенного ряда: это S-петля (core_x/2).
-  // Именно там фактический VS ниже заданного — единственное место среза F.
+  // Минимальный радиус ряда (S-петля самой мелкой секции) и радиус по секциям.
   const r_min = row.stats.minR;
+  // Радиус S-петли каждой секции: у автопрогрессии они разные.
+  const sectionMinR = row.spirals.map(q => {
+    let m = Infinity;
+    for (const s of row.path) if (s.type === 'arc' && s.spiral === q.index) m = Math.min(m, s.r);
+    return Number.isFinite(m) ? m : 0;
+  });
 
   const layersPerZone = Math.max(1, Math.round(p.band / p.lh));
   const totalLayers = layersPerZone * zones;
@@ -685,7 +709,8 @@ function derive(p) {
   return {
     vs, ts, cells, cols, rows, zones,
     A_line, A_fil,
-    v_max: vMaxPlan, a_eff: aEff, r_min,
+    v_max: vMaxPlan, a_eff: aEff, r_min, sectionMinR,
+    autoCore: autoCoreUsed,
     layersPerZone, totalLayers, totalHeight,
     cellCenters, row, rowPts, traj, spiralOuterR,
     R_out: spiralOuterR.length ? Math.max(...spiralOuterR) : 0,
@@ -777,15 +802,17 @@ function checkChain(p, d, chain) {
     out.push({ level: 'error', field: 'spiralPitch', code: 'min-distance', msg: `Минимальное расстояние между дорожками ${minDist.toFixed(2)} мм < ширины линии ${p.lw.toFixed(2)} мм (точка ${minAt})` });
   }
 
-  // 4. Кинематика: минимальный радиус траектории против требуемого по ускорению.
+  // 4. Кинематика: радиус S-петли каждой секции против требуемого по ускорению.
+  //    Секции проверяются отдельно: при автопрогрессии радиусы разные.
   const Rmin = (chain.row && chain.row.stats.minR) || 0;
   for (let i = 0; i < d.vs.length; i++) {
     const v = d.vs[i] / d.A_line;
     const Rreq = (v * v) / d.a_eff;
-    if (Rreq > Rmin + 1e-6) {
+    const Rsec = d.sectionMinR[i] || Rmin;
+    if (Rreq > Rsec + 1e-6) {
       out.push({
         level: 'warn', field: 'coreX', code: 'kinematics',
-        msg: `Спираль ${i + 1} (VS ${d.vs[i]}): требуемый радиус ${Rreq.toFixed(1)} мм > минимального ${Rmin.toFixed(1)} мм — на S-петле F срезается (доля пути ${(100 * 2 * Math.PI * Rmin / (d.row.stats.length / d.cells)).toFixed(0)}%)`
+        msg: `Спираль ${i + 1} (VS ${d.vs[i]}): требуемый радиус ${Rreq.toFixed(1)} мм > радиуса S-петли ${Rsec.toFixed(1)} мм — на петле F срезается (доля пути ≈${(100 * 2 * Math.PI * Rsec / (d.row.stats.length / d.cells)).toFixed(0)}%)`
       });
     }
   }
@@ -914,19 +941,21 @@ function validate(p) {
 
 function riskReport(p, d, chain) {
   const Rmin = (chain && chain.row && chain.row.stats.minR) || 0;
-  const rows = d.vs.map(v => {
+  const rows = d.vs.map((v, i) => {
     const vLin = v / d.A_line;
     const Rreq = (vLin * vLin) / d.a_eff;
-    const vActual = Math.min(vLin, Math.sqrt(d.a_eff * Rmin));
+    // Свой радиус S-петли у секции: при автопрогрессии он зависит от VS.
+    const Rsec = (d.sectionMinR && d.sectionMinR[i]) || Rmin;
+    const vActual = Math.min(vLin, Math.sqrt(d.a_eff * Rsec));
     return {
       vs: v,
       v: vLin,
       F: vLin * 60,
       Rreq,
-      Rmin,
-      // запас = во сколько раз допустимая скорость на самом крутом участке
-      // (S-петля) превышает целевую скорость ячейки
-      margin: vLin > 1e-9 ? Math.sqrt(d.a_eff * Rmin) / vLin : Infinity,
+      Rmin: Rsec,
+      // запас = во сколько раз допустимая скорость на S-петле этой секции
+      // превышает целевую скорость
+      margin: vLin > 1e-9 ? Math.sqrt(d.a_eff * Rsec) / vLin : Infinity,
       capped: vActual < vLin * 0.98,
       vActual,
       eMmS: vLin * d.A_line / d.A_fil     // скорость прутка, мм/с (ось E)
@@ -1262,7 +1291,11 @@ function buildSpiralRow(p) {
   // Позиции центров вдоль оси ряда.
   sp[0].tc = 0;
   for (let i = 1; i < M; i++) sp[i].tc = sp[i - 1].tc + sp[i - 1].u[sp[i - 1].b] + p.gap + sp[i].u[sp[i].a];
-  const shift = (sp[0].tc + sp[M - 1].tc) / 2;
+  // Центрируем по габариту, а не по центрам спиралей: при разных core_x
+  // секции разной ширины, и центрирование по центрам уводит ряд со стола.
+  const tMin = sp[0].tc - sp[0].u[sp[0].a];
+  const tMax = sp[M - 1].tc + sp[M - 1].u[sp[M - 1].b];
+  const shift = (tMin + tMax) / 2;
   sp.forEach(q => { q.tc -= shift; });
 
   const G = (t, n) => [p.cx + t * ux + n * nx, p.cy + t * uy + n * ny];
@@ -1425,6 +1458,7 @@ if (typeof module !== 'undefined') {
       spiralPitch: +$('spiralPitch').value || 1.2,
       spiralPitchInner: +$('spiralPitchInner').value > 0 ? +$('spiralPitchInner').value : null,
       coreX: +$('coreX').value || 12,
+    autoCore: $('autoCore').checked,
       turnsPerBranch: +$('turnsPerBranch').value || 2.5,
       innerLevels: Math.round(+$('innerLevels').value || 0),
       spiralGap: +$('spiralGap').value || 0,
@@ -1482,6 +1516,7 @@ if (typeof module !== 'undefined') {
     $('spiralPitch').value = p.spiralPitch ?? 1.2;
     $('spiralPitchInner').value = p.spiralPitchInner ?? 0;
     $('coreX').value = p.coreX ?? 12;
+    $('autoCore').checked = p.autoCore !== false;
     $('turnsPerBranch').value = p.turnsPerBranch ?? 2.5;
     $('innerLevels').value = p.innerLevels ?? 0;
     $('spiralGap').value = p.spiralGap ?? 0;
@@ -1523,10 +1558,14 @@ if (typeof module !== 'undefined') {
     $('vsList').disabled = curParams.vsMode === 'auto';
 
     $('spiralPitchHint').textContent = `зазор между дорожками ${(curParams.spiralPitch - curParams.lw).toFixed(2)} мм`;
-    $('coreXHint').textContent = `радиус S-петли ${(curParams.coreX / 2).toFixed(1)} мм`;
+    $('coreXHint').textContent = curParams.autoCore
+      ? `не используется: X по секциям ${d.sectionMinR.map(r => (r * 2).toFixed(1)).join('/')} мм`
+      : `радиус S-петли ${(curParams.coreX / 2).toFixed(1)} мм`;
     $('spiralPitchInnerHint').textContent = curParams.spiralPitchInner
       ? `шаг ${curParams.spiralPitchInner} мм` : '0 = как основной';
-    $('cellsHint').textContent = `ряд ${d.cells} шт · ${d.bbox.width.toFixed(0)}×${d.bbox.depth.toFixed(0)} мм · Ø${(d.spiralOuterR[0] || 0).toFixed(1)} мм`;
+    $('cellsHint').textContent = curParams.autoCore
+      ? `ряд ${d.cells} шт · ${d.bbox.width.toFixed(0)}×${d.bbox.depth.toFixed(0)} мм · Ø${(d.spiralOuterR[0] || 0).toFixed(1)}…${(d.spiralOuterR[d.cells - 1] || 0).toFixed(1)} мм`
+      : `ряд ${d.cells} шт · ${d.bbox.width.toFixed(0)}×${d.bbox.depth.toFixed(0)} мм · Ø${(d.spiralOuterR[0] || 0).toFixed(1)} мм`;
     $('vsHint').textContent = curParams.vsMode === 'auto'
       ? `25–75 % от ${curParams.qHot} мм³/с`
       : 'свой ряд';
@@ -1868,7 +1907,9 @@ if (typeof module !== 'undefined') {
       totalPrintTimeSec += timeZoneSec * d.zones;
       const massCellG = (lenCell * d.totalLayers * area * curParams.rho) / 1000;
       const r_req = (vMmS * vMmS) / (d.a_eff || 10000);
-      const isCapped = r_req > (d.r_min || 0);
+      // Свой радиус S-петли у секции: при автопрогрессии он зависит от VS.
+      const rSec = (d.sectionMinR && d.sectionMinR[i]) || d.r_min || 0;
+      const isCapped = r_req > rSec;
 
       return `
         <tr>

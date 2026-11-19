@@ -469,32 +469,89 @@ test('brimLayers=3: brim печатается в 3 слоя (Z растёт)', (
   assert.ok(brimZs.has(6), 'brim должен содержать Z = 0.6 мм');
 });
 
-test('raft: заливка идёт по форме модели с отступом, а не по прямоугольнику', () => {
+test('raft: заливка идёт по форме объединения спиралей с отступом, а не по прямоугольнику', () => {
   const C = loadCore();
-  const p = { ...C.defaults(), brimOn: false, raftOn: true, raftLayers: 2, raftGap: 5 };
+  const p = { ...C.defaults(), brimOn: false, raftOn: true, raftLayers: 2, raftGap: 1.5, raftFirstExpansion: 2 };
   const { gcode } = C.compose(p);
   assert.ok(gcode.includes('--- RAFT ---'), 'должна быть секция RAFT');
   assert.ok(!gcode.includes('--- BRIM ---'), 'brim не должен генерироваться вместе с raft');
 
   const d = C.derive(p);
-  // Первая полоса raft начинается у края модели + отступ, а не у габарита.
+  // Граница плота = объединение окружностей спиралей, увеличенных на отступ.
+  // Нижний слой расширен сильнее (gap + raftFirstExpansion), поэтому общий
+  // диапазон по X берём от самого расширенного слоя.
+  const gap = 1.5 + 2;
+  const circles = d.row.spirals.map(q => ({ x: q.center[0], y: q.center[1], r: q.outerR + gap }));
+  const expMinX = Math.min(...circles.map(c => c.x - c.r));
+  const expMaxX = Math.max(...circles.map(c => c.x + c.r));
+
   const raftX = [];
   let inRaft = false;
   for (const raw of gcode.split('\n')) {
     const l = raw.trim();
     if (l.includes('--- RAFT ---')) { inRaft = true; continue; }
     if (inRaft && l.startsWith('; LAYER')) break;
-    if (inRaft && /^G1/.test(l)) {
+    if (inRaft && /^G[01]/.test(l)) {
       const m = l.match(/X([-\d.]+)/);
       if (m) raftX.push(Number(m[1]));
     }
   }
-  assert.ok(raftX.length > 10, 'raft должен содержать линии заливки');
+  assert.ok(raftX.length > 20, 'raft должен содержать линии заливки');
   const minX = Math.min(...raftX), maxX = Math.max(...raftX);
-  // Отступ от реального края траектории, а не от прямоугольного габарита.
-  assert.ok(minX >= d.bbox.minX - 5.001, `левая граница raft ${minX} слишком далеко от модели`);
-  assert.ok(maxX <= d.bbox.maxX + 5.001, `правая граница raft ${maxX} слишком далеко от модели`);
-  assert.ok(minX > d.bbox.minX - 4.9 || maxX < d.bbox.maxX + 4.9, 'raft не должен быть прямоугольником по габариту');
+  assert.ok(Math.abs(minX - expMinX) < 0.05, `левая граница raft ${minX} ≠ ${expMinX.toFixed(2)}`);
+  assert.ok(Math.abs(maxX - expMaxX) < 0.05, `правая граница raft ${maxX} ≠ ${expMaxX.toFixed(2)}`);
+
+  // Плот повторяет форму объединения окружностей: по Y он намного уже
+  // прямоугольника той же ширины (края — дуги, а не прямые углы).
+  const raftY = [];
+  inRaft = false;
+  for (const raw of gcode.split('\n')) {
+    const l = raw.trim();
+    if (l.includes('--- RAFT ---')) { inRaft = true; continue; }
+    if (inRaft && l.startsWith('; LAYER')) break;
+    if (inRaft && /^G[01]/.test(l)) {
+      const m = l.match(/Y([-\d.]+)/);
+      if (m) raftY.push(Number(m[1]));
+    }
+  }
+  const raftDepth = Math.max(...raftY) - Math.min(...raftY);
+  const rectDepth = (maxX - minX);
+  assert.ok(raftDepth < rectDepth * 0.6, `высота плота ${raftDepth.toFixed(1)} слишком близка к прямоугольнику ${rectDepth.toFixed(1)}`);
+});
+
+test('raft: структура слоёв — сплошной низ, разреженная середина, сплошной верх', () => {
+  const C = loadCore();
+  const p = { ...C.defaults(), brimOn: false, raftOn: true, raftLayers: 3, raftBottomLayers: 1, raftTopLayers: 1, raftDensity: 20 };
+  const { gcode } = C.compose(p);
+  assert.match(gcode, /Raft layer 1\/3 \(solid\)/, 'первый слой плота сплошной');
+  assert.match(gcode, /Raft layer 2\/3 \(20%\)/, 'средний слой разреженный');
+  assert.match(gcode, /Raft layer 3\/3 \(solid\)/, 'верхний слой сплошной');
+});
+
+test('raft: нижний слой расширен сильнее верхних', () => {
+  const C = loadCore();
+  const p = { ...C.defaults(), brimOn: false, raftOn: true, raftLayers: 3, raftGap: 1.5, raftFirstExpansion: 2 };
+  const { gcode } = C.compose(p);
+  // Нижний слой — с отступом 3.5 мм (1.5 + 2), верхние — с отступом 1.5 мм.
+  const circles = (() => {
+    const d = C.derive(p);
+    return d.row.spirals.map(q => ({ x: q.center[0], y: q.center[1], r: q.outerR }));
+  })();
+  const spanAt = (gap, y) => {
+    const spans = [];
+    for (const c of circles) {
+      const r = c.r + gap;
+      const dy = y - c.y;
+      if (Math.abs(dy) > r) continue;
+      const h = Math.sqrt(r * r - dy * dy);
+      spans.push([c.x - h, c.x + h]);
+    }
+    return spans;
+  };
+  const y = circles[0].y;
+  const bottom = spanAt(1.5 + 2, y);
+  const top = spanAt(1.5, y);
+  assert.ok(bottom[0][0] < top[0][0] - 1.9, 'нижний слой плота должен быть шире верхнего');
 });
 
 test('raft: своя скорость и своя температура', () => {
@@ -519,7 +576,8 @@ test('totalHeight учитывает высоту brim', () => {
   const C = loadCore();
   const p = { ...C.defaults(), brimLayers: 3 };
   const d = C.derive(p);
-  const expected = (d.totalLayers + 3) * p.lh;
+  // Brim занимает 3 слоя под моделью, модель начинается на один слой выше.
+  const expected = (3 + 1) * p.lh + d.totalLayers * p.lh;
   assert.ok(Math.abs(d.totalHeight - expected) < 1e-6, `totalHeight ${d.totalHeight} ≠ ${expected}`);
 });
 

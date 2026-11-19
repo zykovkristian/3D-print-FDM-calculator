@@ -9,8 +9,8 @@
 1. **Матрица T × Q в одном слое.** Ряд спиралей с разными объёмными скоростями печатается одной непрерывной траекторией дугами G2/G3; измеряемая длина отделена от дуг-рамп.
 2. **Обратный порядок температур** — чекбокс «Обратный порядок T»: горячая зона снизу, холодная сверху (по умолчанию холодная снизу).
 3. **Обратный обход ряда** включён по умолчанию: зеркалит направление обхода, змейка слоёв остаётся непрерывной.
-4. **Адгезия к столу настраивается**: brim — общий контур вокруг ряда в нескольких слоях; raft — сплошная подложка под модель по форме траектории с отступом от края, со своей скоростью и своей температурой. Brim и raft взаимоисключающие.
-5. **Отдельные параметры плота**: `raftSpeed` (по умолчанию 60 мм/с), `raftTemp` (0 = температура первой зоны), `raftLayers`, `raftGap`.
+4. **Адгезия к столу настраивается**: brim — общий контур вокруг ряда в нескольких слоях; raft — сплошная подложка под модель по форме объединения спиралей: нижний слой расширен сильнее (адгезия к столу), середина разреженная, верхний сплошной (гладкая поверхность под модель), между плотом и моделью зазор контакта 0.1 мм. Brim и raft взаимоисключающие.
+5. **Отдельные параметры плота**: `raftSpeed` (по умолчанию 60 мм/с), `raftTemp` (0 = температура первой зоны), `raftLayers`, `raftGap`, `raftBottomLayers`, `raftTopLayers`, `raftDensity`, `raftContact`, `raftFirstExpansion`.
 6. **Отчёт по зонам**: таблица «зона → температура → диапазон слоёв» вместо построчного перечисления всех слоёв.
 7. **Обдув и ретракт по умолчанию выключены** (0 %): команда `M106` при нулевом обдуве в G-code не выдаётся, ретракт по умолчанию 0 мм.
 8. **Предпросмотр**: по умолчанию открывается вкладка «Слой»; в 3D-виде видны контур brim и заливка плота.
@@ -43,7 +43,7 @@
 
 1. Где: терминал (PowerShell, Git Bash или терминал VS Code), папка репозитория.
 2. Выполните команду: `node --test`
-3. Должен появиться блок `ℹ tests 45`, `ℹ pass 45`, `ℹ fail 0`.
+3. Должен появиться блок `ℹ tests 47`, `ℹ pass 47`, `ℹ fail 0`.
 4. Признак успеха: в выводе нет строки `✖ failing tests`, а счётчик `pass` равен числу выполненных тестов.
 5. Если Node.js не найден: установите Node.js 18+ и откройте терминал заново, затем повторите команду; если падает конкретный тест, его имя указано в секции `failing tests`.
 
@@ -108,7 +108,7 @@ MVS Calibrator is a browser-based calculator for FDM print limits: enter printer
 
 The MVS generator supports reversed temperature order (hot zone at the bottom), a reversed row traversal (on by default), multi-layer brim or a solid raft platform with its own speed and temperature, a per-zone temperature table in the report, and brim/raft outlines in the 3D preview.
 
-Run it: open `tools/filament_test_protocol.html` (calculator) or `index.html` (matrix generator). Run checks: `node --test` — expect `tests 45`, `pass 45`, `fail 0`.
+Run it: open `tools/filament_test_protocol.html` (calculator) or `index.html` (matrix generator). Run checks: `node --test` — expect `tests 47`, `pass 47`, `fail 0`.
 
 Personal and other permitted noncommercial use is free under the PolyForm Noncommercial 1.0.0 license in `LICENSE`. Organizations need a separate commercial license; see `COMMERCIAL-LICENSE.md`. This is source-available, not an OSI-approved open-source license.
 

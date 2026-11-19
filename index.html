@@ -327,12 +327,22 @@ pre.code .g{color:#7fb2e5}
           <label class="check"><input id="raftOn" type="checkbox"><span><span data-i18n="fRaftOn">Включить raft</span><small data-i18n="hRaftOn">полноценная подложка под модель (вместо brim)</small></span></label>
           <div class="field"><label for="raftLayers" data-i18n="fRaftLayers">Слоёв raft</label>
             <input id="raftLayers" type="number" min="1" max="6" step="1" value="3"></div>
-          <div class="field"><label for="raftGap" data-i18n="fRaftGap">Зазор от модели, мм</label>
-            <input id="raftGap" type="number" min="0" max="60" step="0.5" value="5"></div>
+          <div class="field"><label for="raftGap" data-i18n="fRaftGap">Расширение от модели, мм</label>
+            <input id="raftGap" type="number" min="0" max="60" step="0.1" value="1.5"></div>
           <div class="field"><label for="raftSpeed" data-i18n="fRaftSpeed">Скорость raft, мм/с</label>
             <input id="raftSpeed" type="number" min="10" max="200" step="5" value="60"></div>
           <div class="field"><label for="raftTemp" data-i18n="fRaftTemp">Температура raft, °C (0 = первая зона)</label>
             <input id="raftTemp" type="number" min="0" max="350" step="1" value="0"></div>
+          <div class="field"><label for="raftBottomLayers" data-i18n="fRaftBottom">Слоёв низа (сплошных)</label>
+            <input id="raftBottomLayers" type="number" min="0" max="6" step="1" value="1"></div>
+          <div class="field"><label for="raftTopLayers" data-i18n="fRaftTop">Слоёв верха (сплошных)</label>
+            <input id="raftTopLayers" type="number" min="0" max="6" step="1" value="1"></div>
+          <div class="field"><label for="raftDensity" data-i18n="fRaftDensity">Плотность средних слоёв, %</label>
+            <input id="raftDensity" type="number" min="1" max="100" step="5" value="20"></div>
+          <div class="field"><label for="raftContact" data-i18n="fRaftContact">Зазор контакта с моделью, мм</label>
+            <input id="raftContact" type="number" min="0" max="1" step="0.05" value="0.1"></div>
+          <div class="field"><label for="raftFirstExpansion" data-i18n="fRaftFirstExp">Расширение нижнего слоя, мм</label>
+            <input id="raftFirstExpansion" type="number" min="0" max="20" step="0.5" value="2"></div>
         </div>
         <div class="sep"></div>
         <p class="sub-h" data-i18n="sTrans">Переходы</p>
@@ -527,6 +537,9 @@ const I18N = {
     fRaftOn: 'Включить raft', hRaftOn: 'полноценная подложка под модель (вместо brim)',
     fRaftLayers: 'Слоёв raft', fRaftGap: 'Зазор от модели, мм',
     fRaftSpeed: 'Скорость raft, мм/с', fRaftTemp: 'Температура raft, °C (0 = первая зона)',
+    fRaftBottom: 'Слоёв низа (сплошных)', fRaftTop: 'Слоёв верха (сплошных)',
+    fRaftDensity: 'Плотность средних слоёв, %', fRaftContact: 'Зазор контакта с моделью, мм',
+    fRaftFirstExp: 'Расширение нижнего слоя, мм',
     sTrans: 'Переходы', fBeadOn: 'Метка границы зон', hBeadOn: 'полка на первом слое зоны',
     fBeadSize: 'Вынос полки, мм', fDwell: 'Выдержка на смене T, с',
     fParkMode: 'Точка парковки', fParkX: 'Парковка X, мм', fParkY: 'Парковка Y, мм',
@@ -574,6 +587,9 @@ const I18N = {
     fRaftOn: 'Enable raft', hRaftOn: 'full platform under model (instead of brim)',
     fRaftLayers: 'Raft layers', fRaftGap: 'Gap from model, mm',
     fRaftSpeed: 'Raft speed, mm/s', fRaftTemp: 'Raft temperature, °C (0 = first zone)',
+    fRaftBottom: 'Bottom solid layers', fRaftTop: 'Top solid layers',
+    fRaftDensity: 'Middle layer density, %', fRaftContact: 'Contact gap to model, mm',
+    fRaftFirstExp: 'Bottom layer expansion, mm',
     sTrans: 'Transitions', fBeadOn: 'Zone boundary mark', hBeadOn: 'step on zone entry layer',
     fBeadSize: 'Step size, mm', fDwell: 'Dwell on temp change, s',
     fParkMode: 'Park position', fParkX: 'Park X, mm', fParkY: 'Park Y, mm',
@@ -605,7 +621,8 @@ function defaults() {
     tStart: 190, tEnd: 220, tStep: 10, band: 10, tempReverse: false,
     lw: 0.42, lh: 0.20,
     quality: 1.2,
-    brimOn: true, brimLoops: 3, brimLayers: 3, brimGap: 0.3, raftOn: false, raftLayers: 3, raftGap: 5, raftSpeed: 60, raftTemp: 0,
+    brimOn: true, brimLoops: 3, brimLayers: 3, brimGap: 0.3, raftOn: false, raftLayers: 3, raftGap: 1.5, raftSpeed: 60, raftTemp: 0,
+    raftBottomLayers: 1, raftTopLayers: 1, raftDensity: 20, raftContact: 0.1, raftFirstExpansion: 2,
     beadOn: false, beadSize: 0.6, dwell: 5,
     parkMode: 'auto', parkX: 10, parkY: 10,
     retractLen: 0, retractSpeed: 0,
@@ -717,8 +734,16 @@ function derive(p) {
   const effectiveRaftOn = p.raftOn && !p.brimOn;
   const bLayers = effectiveBrimOn ? Math.max(1, Math.min(6, p.brimLayers || 3)) : 0;
   const rLayers = effectiveRaftOn ? Math.max(1, Math.min(6, p.raftLayers || 3)) : 0;
+  // Высота, на которой начинается печать модели. Brim печатается слоями под
+  // моделью, поэтому модель идёт на один слой выше. Raft — сплошная
+  // подложка: модель начинается на её верхней поверхности + зазор контакта
+  // (raft_contact_distance в слайсерах).
+  const contactGap = effectiveRaftOn ? Math.max(0, Number(p.raftContact) || 0) : 0;
+  const modelBaseZ = effectiveRaftOn
+    ? rLayers * p.lh + contactGap
+    : (bLayers + 1) * p.lh;
   const adhesionLayers = Math.max(bLayers, rLayers);
-  const totalHeight = (totalLayers + adhesionLayers) * p.lh;
+  const totalHeight = modelBaseZ + totalLayers * p.lh;
 
   // Центры ячеек (совпадают с центрами спиралей ряда)
   const cellCenters = [];
@@ -737,7 +762,7 @@ function derive(p) {
     A_line, A_fil,
     v_max: vMaxPlan, a_eff: aEff, r_min, sectionMinR,
     autoCore: autoCoreUsed,
-    layersPerZone, totalLayers, totalHeight,
+    layersPerZone, totalLayers, totalHeight, modelBaseZ,
     cellCenters, row, rowPts, traj, spiralOuterR,
     R_out: spiralOuterR.length ? Math.max(...spiralOuterR) : 0,
     bbox: { width: bboxWidth, depth: bboxDepth, minX, maxX, minY, maxY, centerX, centerY }
@@ -883,6 +908,162 @@ function measureChain(p, d, chain) {
 /* ============ ПРОВЕРКИ ГЕОМЕТРИИ ТРАЕКТОРИИ ============ */
 
 // Проверки параметров до генерации: стол, температура, кинематика, геометрия.
+
+// Геометрия плота. Спирали ряда — окружности разного радиуса с центрами на
+// одной прямой, касающиеся соседей. Плот = объединение этих окружностей,
+// увеличенных на расширение gap: получается «стадион» — две прямые касательные
+// между крайними окружностями и внешние дуги по краям.
+
+// Окружности спиралей, увеличенные на gap. Спирали ряда — окружности
+// разного радиуса с центрами на одной прямой, поэтому их объединение —
+// «стадион»: внешние дуги крайних окружностей и общие внешние касательные
+// между соседними.
+function raftCircles(d, gap) {
+  const spirals = (d.row && d.row.spirals) || [];
+  return spirals.map(q => ({ x: q.center[0], y: q.center[1], r: q.outerR + gap }));
+}
+
+// Пересечение двух окружностей: точки p1, p2 или null.
+function circleIntersect(A, B) {
+  const dx = B.x - A.x, dy = B.y - A.y;
+  const d = Math.hypot(dx, dy);
+  if (d < 1e-9 || d > A.r + B.r || d <= Math.abs(A.r - B.r)) return null;
+  const a = (A.r * A.r - B.r * B.r + d * d) / (2 * d);
+  const h2 = A.r * A.r - a * a;
+  if (h2 < 0) return null;
+  const h = Math.sqrt(h2);
+  const mx = A.x + a * dx / d, my = A.y + a * dy / d;
+  const px = -dy / d, py = dx / d;
+  return [[mx + px * h, my + py * h], [mx - px * h, my - py * h]];
+}
+
+// Контур объединения окружностей (против часовой стрелки). Внешняя граница
+// состоит из дуг окружностей: у каждой окружности видна часть вне соседей.
+// Соседние окружности перекрываются, поэтому граница проходит через точки их
+// пересечения.
+function raftOutline(d, gap) {
+  const cs = raftCircles(d, gap);
+  const N = cs.length;
+  if (!N) return [];
+  const pts = [];
+  const arc = (c, a0, a1) => {
+    let span = a1 - a0;
+    while (span < 0) span += 2 * Math.PI;
+    const steps = Math.max(6, Math.ceil(span * c.r / 1.5));
+    for (let i = 0; i <= steps; i++) {
+      const a = a0 + span * i / steps;
+      pts.push([c.x + c.r * Math.cos(a), c.y + c.r * Math.sin(a)]);
+    }
+  };
+  if (N === 1) { arc(cs[0], Math.PI / 2, 3 * Math.PI / 2); return pts; }
+
+  // Ось ряда: от центра первой окружности к центру последней.
+  const A0 = cs[0], BN = cs[N - 1];
+  const dx = BN.x - A0.x, dy = BN.y - A0.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len, uy = dy / len;    // вдоль ряда
+  const nx = -uy, ny = ux;               // нормаль ряда («верх»)
+
+  // Для каждой пары соседей — углы точек пересечения на обеих окружностях.
+  // upR[i]: угол верхнего пересечения на окружности i с правым соседом;
+  // upL[i]: угол верхнего пересечения на окружности i с левым соседом.
+  const upR = new Array(N).fill(null), upL = new Array(N).fill(null);
+  for (let i = 0; i + 1 < N; i++) {
+    const inter = circleIntersect(cs[i], cs[i + 1]);
+    if (!inter) continue;
+    // «Верхняя» точка — та, что со стороны нормали ряда.
+    let up = inter[0], dn = inter[1];
+    if ((up[0] - cs[i].x) * nx + (up[1] - cs[i].y) * ny < (dn[0] - cs[i].x) * nx + (dn[1] - cs[i].y) * ny) {
+      up = inter[1]; dn = inter[0];
+    }
+    upR[i] = Math.atan2(up[1] - cs[i].y, up[0] - cs[i].x);
+    upL[i + 1] = Math.atan2(up[1] - cs[i + 1].y, up[0] - cs[i + 1].x);
+  }
+
+  // Обход против часовой стрелки: снизу слева направо, затем вверх по правой
+  // окружности, затем сверху справа налево.
+  // Нижняя часть: дуга от нижнего пересечения с левым соседом до нижнего
+  // пересечения с правым (у первой — от левой точки до нижней).
+  for (let i = 0; i < N; i++) {
+    const c = cs[i];
+    let a0, a1;
+    if (i === 0) {
+      a0 = Math.PI;                                  // левая точка окружности
+      a1 = (upR[i] != null) ? -upR[i] : 0;           // нижнее пересечение справа
+    } else if (i === N - 1) {
+      a0 = (upL[i] != null) ? -upL[i] : Math.PI;     // нижнее пересечение слева
+      a1 = 0;                                         // правая точка окружности
+    } else {
+      a0 = (upL[i] != null) ? -upL[i] : Math.PI;
+      a1 = (upR[i] != null) ? -upR[i] : 0;
+    }
+    arc(c, a0, a1);
+  }
+  // Верхняя часть: от правой точки последней окружности к левой точке первой.
+  for (let i = N - 1; i >= 0; i--) {
+    const c = cs[i];
+    let a0, a1;
+    if (i === N - 1) {
+      a0 = 0;                                        // правая точка
+      a1 = (upL[i] != null) ? upL[i] : Math.PI / 2;
+    } else if (i === 0) {
+      a0 = (upR[i] != null) ? upR[i] : Math.PI / 2;
+      a1 = Math.PI / 2;                              // верхняя точка
+    } else {
+      a0 = (upR[i] != null) ? upR[i] : Math.PI / 2;
+      a1 = (upL[i] != null) ? upL[i] : Math.PI / 2;
+    }
+    arc(c, a0, a1);
+  }
+  return pts;
+}
+
+// Внутренние горизонтальные отрезки заливки на высоте y: пересечение
+// объединения окружностей с прямой y. Возвращает отрезки [x0, x1].
+function raftSpans(d, gap, y) {
+  const cs = raftCircles(d, gap);
+  const spans = [];
+  for (const c of cs) {
+    const dy = y - c.y;
+    if (Math.abs(dy) > c.r) continue;
+    const h = Math.sqrt(Math.max(0, c.r * c.r - dy * dy));
+    spans.push([c.x - h, c.x + h]);
+  }
+  if (!spans.length) return [];
+  spans.sort((a, b) => a[0] - b[0]);
+  const merged = [spans[0].slice()];
+  for (let i = 1; i < spans.length; i++) {
+    const lastS = merged[merged.length - 1];
+    if (spans[i][0] <= lastS[1] + 1e-9) lastS[1] = Math.max(lastS[1], spans[i][1]);
+    else merged.push(spans[i].slice());
+  }
+  return merged;
+}
+
+// Габарит объединения окружностей с расширением gap.
+function raftBBox(d, gap) {
+  const cs = raftCircles(d, gap);
+  if (!cs.length) return null;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const c of cs) {
+    minX = Math.min(minX, c.x - c.r); maxX = Math.max(maxX, c.x + c.r);
+    minY = Math.min(minY, c.y - c.r); maxY = Math.max(maxY, c.y + c.r);
+  }
+  return { minX, maxX, minY, maxY };
+}
+
+// Габарит объединения окружностей с расширением gap.
+function raftBBox(d, gap) {
+  const cs = raftCircles(d, gap);
+  if (!cs.length) return null;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const c of cs) {
+    minX = Math.min(minX, c.x - c.r); maxX = Math.max(maxX, c.x + c.r);
+    minY = Math.min(minY, c.y - c.r); maxY = Math.max(maxY, c.y + c.r);
+  }
+  return { minX, maxX, minY, maxY };
+}
+
 function validate(p) {
   const errs = [];
   const d = derive(p);
@@ -961,9 +1142,14 @@ function validate(p) {
   // --- Raft и габарит с учётом подложки ---
   if (p.raftOn && !p.brimOn) {
     const rGap = Math.max(0, Number(p.raftGap) || 0);
-    if (d.bbox.minX - rGap < 0 || d.bbox.maxX + rGap > p.bedX ||
-        d.bbox.minY - rGap < 0 || d.bbox.maxY + rGap > p.bedY) {
-      errs.push({ level: 'error', field: 'raftGap', code: 'bed-raft', msg: `Raft выходит за стол: отступ ${rGap} мм от края модели не помещается (${p.bedX}×${p.bedY} мм)` });
+    const firstExp = Math.max(0, Number(p.raftFirstExpansion) || 0);
+    const rLayers = Math.max(1, Math.min(6, Number(p.raftLayers) || 3));
+    const bottom = Math.max(0, Math.min(rLayers, Math.round(Number(p.raftBottomLayers) || 0)));
+    // Нижний слой плота расширен сильнее — он и выходит за край стола первым.
+    const worstGap = bottom > 0 ? rGap + firstExp : rGap;
+    const rb = raftBBox(d, worstGap);
+    if (rb && (rb.minX < 0 || rb.maxX > p.bedX || rb.minY < 0 || rb.maxY > p.bedY)) {
+      errs.push({ level: 'error', field: 'raftGap', code: 'bed-raft', msg: `Raft выходит за стол: отступ ${worstGap} мм от края модели даёт габарит ${rb.maxX - rb.minX}×${rb.maxY - rb.minY} мм при столе ${p.bedX}×${p.bedY} мм` });
     }
   }
 
@@ -1045,6 +1231,7 @@ function compose(p) {
   const bLayers = effectiveBrimOn ? Math.max(1, Math.min(6, p.brimLayers || 3)) : 0;
   const rLayers = effectiveRaftOn ? Math.max(1, Math.min(6, p.raftLayers || 3)) : 0;
   const adhesionLayers = Math.max(bLayers, rLayers);
+  const modelBaseZ = d.modelBaseZ;
   if (effectiveBrimOn) {
     out += `\n; --- BRIM ---\n`;
     const loops = Math.max(1, Math.min(8, p.brimLoops || 3));
@@ -1083,17 +1270,25 @@ function compose(p) {
     }
   }
 
-  // Raft (если включён): сплошная подложка по форме модели с отступом
-  // raftGap мм от края. Форма берётся из траектории ряда: для каждой полосы
-  // по Y находится диапазон X модели, к нему добавляется отступ. Скорость и
-  // температура плота задаются отдельно (raftSpeed, raftTemp).
+  // Raft (если включён): сплошная подложка под модель по форме ряда спиралей.
+  // Структура как в слайсерах: нижние слои сплошные (с увеличенным
+  // расширением — ради адгезии к столу), средние разреженные, верхние
+  // сплошные (гладкая поверхность под модель). Между плотом и моделью —
+  // зазор контакта raftContact. Скорость и температура — свои.
   if (effectiveRaftOn) {
     const margin = Math.max(0, Number(p.raftGap) || 0);
+    const bottomLayers = Math.max(0, Math.min(rLayers, Math.round(Number(p.raftBottomLayers) || 0)));
+    const topLayers = Math.max(0, Math.min(rLayers - bottomLayers, Math.round(Number(p.raftTopLayers) || 0)));
+    const density = Math.max(1, Math.min(100, Math.round(Number(p.raftDensity) || 20))) / 100;
+    const contact = Math.max(0, Number(p.raftContact) || 0);
+    const firstExp = Math.max(0, Number(p.raftFirstExpansion) || 0);
     const raftT = Number(p.raftTemp) > 0 ? Number(p.raftTemp) : d.ts[0];
     const raftV = Math.max(10, Number(p.raftSpeed) || 60);   // мм/с
     const raftF = Math.round(raftV * 60);                    // мм/мин
+
     out += `\n; --- RAFT ---\n`;
-    out += `; Raft: ${rLayers} сл., отступ ${margin} мм, скорость ${raftV} мм/с, температура ${raftT} C\n`;
+    out += `; Raft: ${rLayers} сл. (${bottomLayers} сплошных снизу, ${topLayers} сплошных сверху, средние ${Math.round(density * 100)}%),\n`;
+    out += `;   расширение ${margin} мм (низ +${firstExp} мм), зазор контакта ${contact} мм, скорость ${raftV} мм/с, температура ${raftT} C\n`;
 
     // Температура плота: если отличается от первой зоны — переключаем и ждём.
     const tempChanged = raftT !== d.ts[0];
@@ -1102,43 +1297,62 @@ function compose(p) {
       out += `${flv.nozzleWait(raftT)}\n`;
     }
 
-    // Полосы заливки по форме модели: на каждой Y — диапазон X модели + отступ.
-    const outline = d.rowPts || [];
-    const spacing = Math.max(0.1, p.lw);
-    let yMin = Infinity, yMax = -Infinity;
-    for (const q of outline) {
-      if (q.y < yMin) yMin = q.y;
-      if (q.y > yMax) yMax = q.y;
-    }
-    if (!isFinite(yMin)) { yMin = d.bbox.minY; yMax = d.bbox.maxY; }
-    const nBands = Math.max(1, Math.ceil((yMax - yMin) / spacing));
-    const bands = [];
-    for (let bi = 0; bi <= nBands; bi++) {
-      const y = Math.min(yMin + bi * spacing, yMax);
-      let mn = Infinity, mx = -Infinity;
-      for (const q of outline) {
-        if (Math.abs(q.y - y) <= spacing * 0.75) {
-          if (q.x < mn) mn = q.x;
-          if (q.x > mx) mx = q.x;
-        }
+    // Контур плота: объединение окружностей спиралей с расширением.
+    const outline = raftOutline(d, margin);
+    if (outline.length > 2) {
+      // Периметр плота: замкнутая петля по контуру (обход против часовой).
+      out += `; Raft perimeter (${outline.length} точек)\n`;
+      out += `G0 X${outline[0][0].toFixed(3)} Y${outline[0][1].toFixed(3)} Z${p.lh.toFixed(3)} F3600\n`;
+      for (let i = 1; i <= outline.length; i++) {
+        const q = outline[i % outline.length];
+        const dist = Math.hypot(q[0] - outline[i - 1][0], q[1] - outline[i - 1][1]);
+        const e = dist * d.A_line / d.A_fil;
+        out += `G1 X${q[0].toFixed(3)} Y${q[1].toFixed(3)} E${e.toFixed(5)} F${raftF}\n`;
       }
-      if (!isFinite(mn)) continue;
-      bands.push({ y, x0: mn - margin, x1: mx + margin });
     }
 
-    for (let rl = 0; rl < rLayers; rl++) {
-      const zRaft = (rl + 1) * p.lh;
-      out += `; Raft layer ${rl + 1}/${rLayers}, Z=${zRaft.toFixed(3)}\n`;
-      for (let bi = 0; bi < bands.length; bi++) {
-        const bd = bands[bi];
-        const xStart = (bi % 2 === 0) ? bd.x0 : bd.x1;
-        const xEnd = (bi % 2 === 0) ? bd.x1 : bd.x0;
-        out += `G0 X${xStart.toFixed(3)} Y${bd.y.toFixed(3)} Z${zRaft.toFixed(3)} F3600\n`;
-        const dist = Math.abs(xEnd - xStart);
-        if (dist < 1e-6) continue;
-        const e = dist * d.A_line / d.A_fil;
-        out += `G1 X${xEnd.toFixed(3)} Y${bd.y.toFixed(3)} E${e.toFixed(5)} F${raftF}\n`;
+    // Слои плота: снизу вверх. Нижние — сплошные, средние — разреженные,
+    // верхние — сплошные. Заливка идёт горизонтальными полосами по Y внутри
+    // контура; направление чередуется (монотонный обход: перемещения между
+    // полосами минимальны, нахлёст полос между слоями лучше).
+    const bboxR = raftBBox(d, margin);
+    if (bboxR) {
+      const yTop = bboxR.maxY, yBot = bboxR.minY;
+      for (let rl = 0; rl < rLayers; rl++) {
+        const zRaft = (rl + 1) * p.lh;
+        const isBottom = rl < bottomLayers;
+        const isTop = rl >= rLayers - topLayers;
+        const solid = isBottom || isTop;
+        // Расширение нижнего слоя больше — он держит модель на столе.
+        const gapLayer = (isBottom ? margin + firstExp : margin);
+        // Шаг полос: сплошной слой — шаг ширины линии, разреженный — реже.
+        const step = solid ? p.lw : p.lw / density;
+        out += `; Raft layer ${rl + 1}/${rLayers}${solid ? ' (solid)' : ` (${Math.round(density * 100)}%)`}, Z=${zRaft.toFixed(3)}\n`;
+        const nBands = Math.max(1, Math.ceil((yTop - yBot) / step));
+        let dir = 1;
+        for (let bi = 0; bi <= nBands; bi++) {
+          const y = Math.min(yBot + bi * step, yTop);
+          const spans = raftSpans(d, gapLayer, y);
+          for (const sp of spans) {
+            const x0 = sp[0], x1 = sp[1];
+            const xStart = dir > 0 ? x0 : x1;
+            const xEnd = dir > 0 ? x1 : x0;
+            dir = -dir;
+            const dist = Math.abs(xEnd - xStart);
+            if (dist < 1e-6) continue;
+            out += `G0 X${xStart.toFixed(3)} Y${y.toFixed(3)} Z${zRaft.toFixed(3)} F3600\n`;
+            const e = dist * d.A_line / d.A_fil;
+            out += `G1 X${xEnd.toFixed(3)} Y${y.toFixed(3)} E${e.toFixed(5)} F${raftF}\n`;
+          }
+        }
       }
+    }
+
+    // Зазор контакта: модель печатается на 0.1 мм выше верха плота (как в
+    // Bambu/Orca: raft_contact_distance), чтобы верхний слой плота не слипался
+    // с первым слоем модели.
+    if (contact > 0) {
+      out += `; Contact gap ${contact} mm\n`;
     }
 
     // Возврат к температуре первой зоны для основной печати.
@@ -1182,7 +1396,7 @@ function compose(p) {
     if (zi > 0) {
       out += `; Transition: park and wait for temp stabilization\n`;
       out += `G1 E-${p.retractLen.toFixed(2)} F${p.retractSpeed * 60}\n`;
-      out += `G0 Z${((zi * d.layersPerZone + 1) * p.lh + 2.0).toFixed(3)} F1200\n`;
+      out += `G0 Z${(modelBaseZ + zi * d.layersPerZone * p.lh + 2.0).toFixed(3)} F1200\n`;
       out += `G0 X${parkX.toFixed(3)} Y${parkY.toFixed(3)} F6000\n`;
       out += `${flv.nozzleSet(targetT)}\n`;
       out += `${flv.nozzleWait(targetT)}\n`;
@@ -1191,7 +1405,7 @@ function compose(p) {
 
     for (let li = 0; li < d.layersPerZone; li++) {
       const globalLayer = zi * d.layersPerZone + li;
-      const zCur = (globalLayer + 1 + adhesionLayers) * p.lh;
+      const zCur = modelBaseZ + globalLayer * p.lh;
       const isBead = p.beadOn && li === 0 && zi > 0;
       // Змейка: на нечётных слоях ряд проходится в обратную сторону, поэтому
       // конец слоя попадает в начало следующего — между слоями нет перемещений.
@@ -1582,6 +1796,11 @@ if (typeof module !== 'undefined') {
       raftGap: +$('raftGap').value ?? 5,
       raftSpeed: +$('raftSpeed').value || 60,
       raftTemp: +$('raftTemp').value || 0,
+      raftBottomLayers: +$('raftBottomLayers').value ?? 1,
+      raftTopLayers: +$('raftTopLayers').value ?? 1,
+      raftDensity: +$('raftDensity').value ?? 20,
+      raftContact: +$('raftContact').value ?? 0.1,
+      raftFirstExpansion: +$('raftFirstExpansion').value ?? 2,
       beadOn: $('beadOn').checked,
       beadSize: +$('beadSize').value || 0.6,
       dwell: +$('dwell').value || 5,
@@ -1646,6 +1865,11 @@ if (typeof module !== 'undefined') {
     $('raftGap').value = p.raftGap ?? 5;
     $('raftSpeed').value = p.raftSpeed ?? 60;
     $('raftTemp').value = p.raftTemp ?? 0;
+    $('raftBottomLayers').value = p.raftBottomLayers ?? 1;
+    $('raftTopLayers').value = p.raftTopLayers ?? 1;
+    $('raftDensity').value = p.raftDensity ?? 20;
+    $('raftContact').value = p.raftContact ?? 0.1;
+    $('raftFirstExpansion').value = p.raftFirstExpansion ?? 2;
     $('beadOn').checked = Boolean(p.beadOn);
     $('beadSize').value = p.beadSize ?? 0.6;
     $('dwell').value = p.dwell ?? 5;
@@ -1977,41 +2201,25 @@ if (typeof module !== 'undefined') {
       ctx.setLineDash([]);
     }
 
-    // Raft (подложка) — если включён, рисуем заливку по форме модели + отступ
+    // Raft (подложка) — если включён, рисуем контур плота: объединение
+    // окружностей спиралей с отступом (нижний слой расширен сильнее).
     if (curParams.raftOn && !curParams.brimOn) {
       const margin = Math.max(0, Number(curParams.raftGap) || 0);
-      const outline = d.rowPts || [];
-      const spacing = Math.max(0.1, curParams.lw);
-      let yMin = Infinity, yMax = -Infinity;
-      for (const q of outline) {
-        if (q.y < yMin) yMin = q.y;
-        if (q.y > yMax) yMax = q.y;
-      }
-      if (!isFinite(yMin)) { yMin = d.bbox.minY; yMax = d.bbox.maxY; }
-      const nBands = Math.max(1, Math.ceil((yMax - yMin) / spacing));
-      const left = [], right = [];
-      for (let bi = 0; bi <= nBands; bi++) {
-        const y = Math.min(yMin + bi * spacing, yMax);
-        let mn = Infinity, mx = -Infinity;
-        for (const q of outline) {
-          if (Math.abs(q.y - y) <= spacing * 0.75) {
-            if (q.x < mn) mn = q.x;
-            if (q.x > mx) mx = q.x;
-          }
-        }
-        if (!isFinite(mn)) continue;
-        left.push(project(mn - margin, y, curParams.lh));
-        right.push(project(mx + margin, y, curParams.lh));
-      }
+      const firstExp = Math.max(0, Number(curParams.raftFirstExpansion) || 0);
+      const bottomLayers = Math.max(0, Math.round(Number(curParams.raftBottomLayers) || 0));
+      const contour = raftOutline(d, margin + (bottomLayers > 0 ? firstExp : 0));
       ctx.fillStyle = 'rgba(136, 136, 136, 0.3)';
       ctx.strokeStyle = '#888';
       ctx.lineWidth = 1;
       ctx.setLineDash([]);
-      if (left.length > 1) {
+      if (contour.length > 2) {
         ctx.beginPath();
-        ctx.moveTo(left[0].px, left[0].py);
-        for (let i = 1; i < left.length; i++) ctx.lineTo(left[i].px, left[i].py);
-        for (let i = right.length - 1; i >= 0; i--) ctx.lineTo(right[i].px, right[i].py);
+        const p0 = project(contour[0][0], contour[0][1], curParams.lh);
+        ctx.moveTo(p0.px, p0.py);
+        for (let i = 1; i < contour.length; i++) {
+          const pr = project(contour[i][0], contour[i][1], curParams.lh);
+          ctx.lineTo(pr.px, pr.py);
+        }
         ctx.closePath();
         ctx.fill();
         ctx.stroke();

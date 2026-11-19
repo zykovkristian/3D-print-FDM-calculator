@@ -8,8 +8,8 @@ PA → ретракция → обдув). Задача: поставить по
 ответ по заданию скорости подачи (§2.5); источники вынесены в §10.
 
 Источники (в репозитории): `docs/test-protocol.md`, `docs/design-notes.md`,
-`docs/temperature-flow-matrix.md`, `docs/speed-limit-analysis.md`,
-`docs/calibration-research.md`, `docs/parameter-testing-methods-research.md`, код
+`docs/research/temperature-flow-matrix.md`, `docs/research/speed-limit-analysis.md`,
+`docs/research/calibration-research.md`, `docs/research/parameter-testing-methods-research.md`, код
 `index.html` (`planOf`, `GEN`, `analyzeStrands`).
 
 Итог: **логика рабочая; после уточнений заказчика остаются три технические поправки —

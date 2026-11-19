@@ -9,8 +9,8 @@
 1. `AGENTS.md` и `context.md` — внутренние правила и состояние проекта.
 2. `docs/session-log.md` — машинный журнал сессии.
 3. `docs/MVS_dialoge.md` — рабочая переписка.
-4. `docs/plan-isolated-tests-logic.md` — внутренний план с локальным путём.
-5. `docs/monetization-and-protection.md`, `docs/technology-packaging.md`, `docs/publication-plan.md` — внутренняя стратегия и порядок выпуска.
+4. `docs/plans/plan-isolated-tests-logic.md` — внутренний план с локальным путём.
+5. `docs/internal/monetization-and-protection.md`, `docs/internal/technology-packaging.md`, `docs/internal/publication-plan.md` — внутренняя стратегия и порядок выпуска.
 6. `.kilo/` и любые локальные секреты/учётные данные.
 
 ## Перед реальным запуском

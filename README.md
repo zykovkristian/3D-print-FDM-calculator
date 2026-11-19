@@ -52,17 +52,17 @@
 | `tools/spiral-s.html`, `tools/stand-centers.html` | Схемы и стенды сравнения, собранные скриптами выше |
 | `docs/design-notes.md` | Допущения модели, источники данных, границы и открытые вопросы |
 | `docs/test-protocol.md` | Протокол тестов: порядок, алгоритмы, поля ввода, корректировка |
-| `docs/mvs-matrix-geometry.md` | Геометрия траектории матрицы MVS |
-| `docs/mvs-matrix-risks.md` | Анализ рисков: пороги плавности, механики, температуры, пределы принтера |
-| `docs/plan-vs-scaled-diameters.md` | Прогрессивный диаметр секций по VS: как снимается срез F без выхода за стол, цена для объективности, контрольные опыты |
+| `docs/mvs/mvs-matrix-geometry.md` | Геометрия траектории матрицы MVS |
+| `docs/mvs/mvs-matrix-risks.md` | Анализ рисков: пороги плавности, механики, температуры, пределы принтера |
+| `docs/plans/plan-vs-scaled-diameters.md` | Прогрессивный диаметр секций по VS: как снимается срез F без выхода за стол, цена для объективности, контрольные опыты |
 | `docs/generated/plan-vs-scaled-diameters.svg` | Схема трёх вариантов прогрессии диаметра (строится `tools/stand-vs-diameters.mjs`) |
-| `docs/temperature-flow-matrix.md` | Ресёрч матрицы «температура × поток» |
-| `docs/speed-limit-analysis.md` | Что в границах скорости считается, а что измеряется |
-| `docs/calibration-research.md` | Сравнение методик калибровки Orca, Ellis, Teaching Tech |
-| `docs/parameter-testing-methods-research.md` | Научная критика методов тестирования, противоречия между источниками |
-| `docs/spiral-row-builder.html` | Исходный генератор ряда спиралей (чистая функция без DOM) |
+| `docs/research/temperature-flow-matrix.md` | Ресёрч матрицы «температура × поток» |
+| `docs/research/speed-limit-analysis.md` | Что в границах скорости считается, а что измеряется |
+| `docs/research/calibration-research.md` | Сравнение методик калибровки Orca, Ellis, Teaching Tech |
+| `docs/research/parameter-testing-methods-research.md` | Научная критика методов тестирования, противоречия между источниками |
+| `tools/spiral-row-builder.html` | Исходный генератор ряда спиралей (чистая функция без DOM) |
 | `docs/archive/MVS_Matrix_Labyrinth_GCode_Generator.html` | Архив первой версии генератора (заменена `tools/mvs-matrix.html`) |
-| `docs/defect-matrix.html` | Визуализация матрицы дефектов |
+| `tools/defect-matrix.html` | Визуализация матрицы дефектов |
 | `docs/technologies.md` | Ссылки на внешние методики и источники |
 | `docs/project-presentation.md` | Презентация проекта (RU) |
 | `docs/project-presentation.en.md` | Краткая презентация (EN) |

@@ -651,7 +651,7 @@ function derive(p) {
   }
   const autoCoreUsed = coreItems.length > 0;
 
-  // ---- Траектория ряда спиралей (ядро из docs/spiral-row-builder.html) ----
+  // ---- Траектория ряда спиралей (ядро из tools/spiral-row-builder.html) ----
   const traj = {
     count: cells,
     angle: p.rowAngle || 0,
@@ -1240,7 +1240,7 @@ function audit(gcode, p) {
 }
 
 /* ============ ТРАЕКТОРИЯ РЯДА СПИРАЛЕЙ ============
-   Ядро перенесено из docs/spiral-row-builder.html (чистая геометрия без DOM).
+   Ядро перенесено из tools/spiral-row-builder.html (чистая геометрия без DOM).
    Траектория слоя — цепочка полуокружностей: у каждой спирали ветвь inward
    (от внешнего конца диаметра к центру), затем S-петля в центре (две
    полуокружности радиуса core_x/2), затем ветвь outward к противоположному

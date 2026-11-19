@@ -39,7 +39,7 @@
 - `docs/MVS_dialoge.md` — переписка по разработке матрицы MVS (исходное задание).
 - `docs/assets/image1.png`, `docs/assets/image2.png`, `docs/assets/image.png` — референсы формы матрицы (ряд цилиндров, вид сверху двойной спирали).
 - `tests/model.test.mjs` — проверки расчётной модели, запуск `node --test`.
-- `tests/mvs-matrix.test.mjs` — проверки генератора матрицы MVS, запуск `node --test`.
+- `tests/mvs-matrix.test.mjs` — проверки генератора матрицы MVS, запуск `node --test` (42 теста).
 - `.github/workflows/ci.yml` — CI, тот же прогон на push и pull request.
 - `SECURITY.md` — как сообщать об уязвимостях; `.github/ISSUE_TEMPLATE/` — шаблоны обращений; `.github/pull_request_template.md` — чек-лист проверки вклада.
 

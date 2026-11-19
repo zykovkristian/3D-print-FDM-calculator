@@ -1183,6 +1183,16 @@ function raftBBox(d, gap) {
   return { minX, maxX, minY, maxY };
 }
 
+// Цвет температурной зоны: по ФАКТИЧЕСКОЙ температуре, а не по индексу зоны.
+// Индекс зон меняется при инверсии порядка (горячая снизу / сверху), а цвет
+// обязан следовать за температурой. 220 °C → красный (hue 0), 190 °C → синий
+// (hue 220).
+function tempHue(t, tMin, tMax) {
+  const span = (tMax - tMin);
+  const uT = span > 0 ? (t - tMin) / span : 0;
+  return Math.round(220 - uT * 220);
+}
+
 function validate(p) {
   const errs = [];
   const d = derive(p);
@@ -1816,7 +1826,7 @@ if (typeof module !== 'undefined') {
   module.exports = {
     PRESETS, FLAVORS, I18N, defaults, derive,
     buildSpiralRow, rowLanes, rowLocalArcs, segmentsToPoints,
-    checkChain, measureChain, riskReport, validate, compose, audit
+    checkChain, measureChain, riskReport, validate, compose, audit, tempHue
   };
 }
 
@@ -2378,8 +2388,7 @@ if (typeof module !== 'undefined') {
           // горячей зоны к холодной, и цвет обязан следовать за температурой.
           const tMin = d.ts.length ? Math.min(...d.ts) : 0;
           const tMax = d.ts.length ? Math.max(...d.ts) : 1;
-          const uT = (tMax > tMin) ? (d.ts[zIdx] - tMin) / (tMax - tMin) : 0;
-          color = `hsl(${Math.round(220 - uT * 220)}, 85%, 60%)`;
+          color = `hsl(${tempHue(d.ts[zIdx], tMin, tMax)}, 85%, 60%)`;
         }
 
         ctx.strokeStyle = color;
@@ -2483,6 +2492,7 @@ if (typeof module !== 'undefined') {
         <table>
           <thead><tr><th>Граница теста</th><th>Значение</th></tr></thead>
           <tbody>
+            <tr><td>Измерительных точек на печати (ячейки × температуры)</td><td class="mono">${d.vs.length * d.zones}</td></tr>
             <tr><td>Повторов на точку (VS × T)</td><td class="mono">1</td></tr>
             <tr><td>Контрольный образец в начале сессии</td><td class="mono">нет</td></tr>
             <tr><td>Прогрев при смене температуры</td><td class="mono">${Math.round(Number(curParams.dwell) || 0)} с + пауза на прогреве</td></tr>

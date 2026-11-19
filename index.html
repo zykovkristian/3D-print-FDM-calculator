@@ -698,7 +698,8 @@ function derive(p) {
 
   const layersPerZone = Math.max(1, Math.round(p.band / p.lh));
   const totalLayers = layersPerZone * zones;
-  const totalHeight = totalLayers * p.lh;
+  const bLayers = p.brimOn ? Math.max(1, Math.min(6, p.brimLayers || 3)) : 0;
+  const totalHeight = (totalLayers + bLayers) * p.lh;
 
   // Центры ячеек (совпадают с центрами спиралей ряда)
   const cellCenters = [];
@@ -1013,10 +1014,10 @@ function compose(p) {
 
   // Brim (если включен): общий контур вокруг всего ряда спиралей —
   // скруглённый прямоугольник по габаритам траектории.
+  const bLayers = p.brimOn ? Math.max(1, Math.min(6, p.brimLayers || 3)) : 0;
   if (p.brimOn) {
     out += `\n; --- BRIM ---\n`;
     const loops = Math.max(1, Math.min(8, p.brimLoops || 3));
-    const bLayers = Math.max(1, Math.min(6, p.brimLayers || 3));   // кайма — N слоёв для адгезии первого слоя
     const bGap = Math.max(0, p.brimGap || 0.3);
     const bx0 = d.bbox.minX - bGap, bx1 = d.bbox.maxX + bGap;
     const by0 = d.bbox.minY - bGap, by1 = d.bbox.maxY + bGap;
@@ -1094,7 +1095,7 @@ function compose(p) {
 
     for (let li = 0; li < d.layersPerZone; li++) {
       const globalLayer = zi * d.layersPerZone + li;
-      const zCur = (globalLayer + 1) * p.lh;
+      const zCur = (globalLayer + 1 + bLayers) * p.lh;
       const isBead = p.beadOn && li === 0 && zi > 0;
       // Змейка: на нечётных слоях ряд проходится в обратную сторону, поэтому
       // конец слоя попадает в начало следующего — между слоями нет перемещений.

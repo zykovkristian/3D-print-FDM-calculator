@@ -356,7 +356,7 @@ test('отчёт: колонка «Срез по a» согласована с �
 
 test('валидатор: brim за столом — ошибка до генерации', () => {
   const C = loadCore();
-  const p = { ...C.defaults(), rowCenterX: 85 };
+  const p = { ...C.defaults(), brimOn: true, raftOn: false, rowCenterX: 85 };
   const d = C.derive(p);
   assert.ok(d.bbox.minX >= 0 && d.bbox.maxX <= p.bedX, 'сам ряд помещается в стол');
   assert.ok(C.validate(p).some(i => i.code === 'bed-brim' && i.level === 'error'), 'нужна ошибка bed-brim');
@@ -364,7 +364,7 @@ test('валидатор: brim за столом — ошибка до гене�
 
 test('валидатор: brim в несколько слоёв — поддержан, без предупреждения', () => {
   const C = loadCore();
-  const p = { ...C.defaults(), brimLayers: 3 };
+  const p = { ...C.defaults(), brimOn: true, raftOn: false, brimLayers: 3 };
   assert.ok(!C.validate(p).some(i => i.code === 'brim-layers'), 'предупреждения brim-layers больше не должно быть');
   // Brim печатается в 3 слоя: G-code содержит Z = 0.2, 0.4, 0.6 в brim-секции.
   const { gcode } = C.compose(p);
@@ -408,7 +408,7 @@ test('Flow Ratio выводится в G-code командой M221', () => {
 
 test('Z экструзии не убывает на пресете с brim', () => {
   const C = loadCore();
-  const gcode = C.compose(C.defaults()).gcode;
+  const gcode = C.compose({ ...C.defaults(), brimOn: true, raftOn: false }).gcode;
   // Brim печатается в несколько слоёв (Z растёт): проверяем монотонность brim.
   const lines = gcode.split('\n');
   let brimStart = 0, brimEnd = 0;
@@ -468,7 +468,7 @@ test('fan=50: команда M106 присутствует в G-code', () => {
 
 test('brimLayers=3: brim печатается в 3 слоя (Z растёт)', () => {
   const C = loadCore();
-  const { gcode } = C.compose({ ...C.defaults(), brimLayers: 3 });
+  const { gcode } = C.compose({ ...C.defaults(), brimOn: true, raftOn: false, brimLayers: 3 });
   const z = extrusionZ(gcode);
   const brimZs = new Set(z.map(v => Math.round(v * 10)));
   assert.ok(brimZs.has(2), 'brim должен содержать Z = 0.2 мм');
@@ -579,6 +579,86 @@ test('raft: отступ 30 мм не помещается на стол A1 mini
   assert.ok(issues.some(i => i.code === 'bed-raft' && i.level === 'error'), 'нужна ошибка bed-raft при отступе 30 мм');
 });
 
+test('raft: периметр печатается на каждом слое (замкнутый край)', () => {
+  const C = loadCore();
+  const p = { ...C.defaults(), brimOn: false, raftOn: true, raftLayers: 3 };
+  const { gcode } = C.compose(p);
+  const per = (gcode.match(/; Raft perimeter/g) || []).length;
+  assert.equal(per, 3, `периметр должен быть на каждом из 3 слоёв, найдено ${per}`);
+});
+
+test('raft: заливка соседних слоёв идёт перекрестно (±45°)', () => {
+  const C = loadCore();
+  const p = { ...C.defaults(), brimOn: false, raftOn: true, raftLayers: 3, raftBottomLayers: 2, raftTopLayers: 1 };
+  const { gcode } = C.compose(p);
+
+  // Разбор секции RAFT по слоям. Длинные отрезки (> 5 мм) — это линии заливки,
+  // короткие — сегменты периметра (дуги).
+  const segsByLayer = {};
+  let cur = null, x = 0, y = 0;
+  for (const raw of gcode.split('\n')) {
+    const l = raw.trim();
+    if (l.startsWith('; ===') || l.startsWith('; LAYER') || l.startsWith('; ZONE')) { cur = null; continue; }
+    const lm = l.match(/^; Raft layer (\d+)\//);
+    if (lm) { cur = Number(lm[1]); segsByLayer[cur] = []; continue; }
+    const g = l.match(/^G([01])\b X([-\d.]+) Y([-\d.]+)/);
+    if (!g) continue;
+    const nx = Number(g[2]), ny = Number(g[3]);
+    if (g[1] === '1' && cur) {
+      if (Math.hypot(nx - x, ny - y) > 5) segsByLayer[cur].push([x, y, nx, ny]);
+    }
+    x = nx; y = ny;
+  }
+
+  // Угол заливки слоя, приведённый к [0; π): усреднение по удвоенному углу.
+  const angleOf = segs => {
+    let sx = 0, sy = 0;
+    for (const s of segs) {
+      const a = Math.atan2(s[3] - s[1], s[2] - s[0]);
+      sx += Math.cos(2 * a); sy += Math.sin(2 * a);
+    }
+    return 0.5 * Math.atan2(sy, sx);
+  };
+
+  assert.ok(segsByLayer[1] && segsByLayer[1].length > 5, 'в слое 1 должны быть линии заливки');
+  assert.ok(segsByLayer[2] && segsByLayer[2].length > 5, 'в слое 2 должны быть линии заливки');
+  const a1 = angleOf(segsByLayer[1]), a2 = angleOf(segsByLayer[2]);
+  let d = Math.abs(a1 - a2);
+  if (d > Math.PI / 2) d = Math.PI - d;
+  assert.ok(Math.abs(d - Math.PI / 2) < 0.2,
+    `углы заливки соседних слоёв не перекрестны: ${(a1 * 180 / Math.PI).toFixed(1)}° и ${(a2 * 180 / Math.PI).toFixed(1)}°`);
+});
+
+test('raft: первый слой медленнее, верхние — заданной скоростью', () => {
+  const C = loadCore();
+  const p = { ...C.defaults(), brimOn: false, raftOn: true, raftLayers: 2, raftSpeed: 100, raftFirstSpeed: 40 };
+  const { gcode } = C.compose(p);
+  let cur = null;
+  const firstF = new Set(), otherF = new Set();
+  for (const raw of gcode.split('\n')) {
+    const l = raw.trim();
+    if (l.startsWith('; ===')) { cur = null; continue; }
+    const lm = l.match(/^; Raft layer (\d+)\//);
+    if (lm) { cur = Number(lm[1]); continue; }
+    if (!cur || !/^G1\b/.test(l)) continue;
+    const fm = l.match(/\bF(\d+)/);
+    if (!fm) continue;
+    (cur === 1 ? firstF : otherF).add(fm[1]);
+  }
+  assert.deepEqual([...firstF], ['2400'], `первый слой должен идти только на F2400, есть ${[...firstF]}`);
+  assert.ok(otherF.has('6000'), `верхние слои должны идти на F6000, есть ${[...otherF]}`);
+});
+
+test('raft: включён по умолчанию, brim — нет', () => {
+  const C = loadCore();
+  const p = C.defaults();
+  assert.equal(p.raftOn, true, 'raft должен быть включён по умолчанию');
+  assert.equal(p.brimOn, false, 'brim по умолчанию выключен');
+  const { gcode } = C.compose(p);
+  assert.ok(gcode.includes('--- RAFT ---'), 'G-code по умолчанию содержит секцию RAFT');
+  assert.ok(!gcode.includes('--- BRIM ---'), 'G-code по умолчанию не содержит секцию BRIM');
+});
+
 test('AUTO-план: окно каждой точки (VS × T) не короче заданного минимума', () => {
   const C = loadCore();
   const p = { ...C.defaults(), vsMode: 'plan', minPointSec: 60, maxPrintMin: 240 };
@@ -628,7 +708,7 @@ test('раскраска карты T: цвет по фактической те
 
 test('totalHeight учитывает высоту brim', () => {
   const C = loadCore();
-  const p = { ...C.defaults(), brimLayers: 3 };
+  const p = { ...C.defaults(), brimOn: true, raftOn: false, brimLayers: 3 };
   const d = C.derive(p);
   // Brim занимает 3 слоя под моделью, модель начинается на один слой выше.
   const expected = (3 + 1) * p.lh + d.totalLayers * p.lh;

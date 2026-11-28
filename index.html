@@ -1166,7 +1166,8 @@ function spansAt(cs, y) {
 // поворачиваем в «горизонтальную» систему, считаем полосы по Y повёрнутой
 // системы и возвращаем отрезки в мировые координаты. Шаг полос step, порядок
 // обхода полос чередуется (монотонный проход без лишних перемещений).
-function raftFillLines(d, gap, angle, step) {
+// Путь заливки слоя — непрерывная зигзагообразная полилиния.
+function raftFillPath(d, gap, angle, step) {
   const cs = raftCircles(d, gap);
   if (!cs.length) return [];
   let cx = 0, cy = 0;
@@ -1184,21 +1185,26 @@ function raftFillLines(d, gap, angle, step) {
   const rcs = cs.map(c => { const [rx, ry] = toRot(c.x, c.y); return { x: rx, y: ry, r: c.r }; });
   let minY = Infinity, maxY = -Infinity;
   for (const c of rcs) { minY = Math.min(minY, c.y - c.r); maxY = Math.max(maxY, c.y + c.r); }
-  const lines = [];
+  const pts = [];
   const n = Math.max(1, Math.ceil((maxY - minY) / step));
-  let flip = false;
+  let stripIndex = 0;
   for (let i = 0; i <= n; i++) {
     const y = Math.min(minY + i * step, maxY);
     let spans = spansAt(rcs, y);
     if (!spans.length) continue;
-    if (flip) spans = spans.slice().reverse();
-    flip = !flip;
+    // Зигзаг: чётные полосы — слева направо, нечётные — справа налево.
+    const reverseStrip = (stripIndex % 2 !== 0);
+    if (reverseStrip) {
+      spans = spans.slice().reverse().map(s => [s[1], s[0]]);
+    }
+    stripIndex++;
     for (const s of spans) {
       const a = toWorld(s[0], y), b = toWorld(s[1], y);
-      lines.push([a[0], a[1], b[0], b[1]]);
+      pts.push(a);
+      pts.push(b);
     }
   }
-  return lines;
+  return pts;
 }
 
 // Габарит объединения окружностей с расширением gap.
@@ -1491,14 +1497,17 @@ function compose(p) {
         }
       }
 
-      // Заливка слоя под углом angle (перекрестная с соседним слоем).
-      const lines = raftFillLines(d, gapLayer, angle, step);
-      for (const ln of lines) {
-        const dist = Math.hypot(ln[2] - ln[0], ln[3] - ln[1]);
-        if (dist < 1e-6) continue;
-        out += `G0 X${ln[0].toFixed(3)} Y${ln[1].toFixed(3)} Z${zRaft.toFixed(3)} F3600\n`;
-        const e = dist * d.A_line / d.A_fil;
-        out += `G1 X${ln[2].toFixed(3)} Y${ln[3].toFixed(3)} E${e.toFixed(5)} F${layerF}\n`;
+      // Заливка слоя — непрерывная зигзагообразная полилиния (без холостых
+      // возвратов «от края до края»): один G0 к началу, затем цепочка G1.
+      const path = raftFillPath(d, gapLayer, angle, step);
+      if (path.length > 1) {
+        out += `G0 X${path[0][0].toFixed(3)} Y${path[0][1].toFixed(3)} Z${zRaft.toFixed(3)} F3600\n`;
+        for (let i = 1; i < path.length; i++) {
+          const dist = Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]);
+          if (dist < 1e-6) continue;
+          const e = dist * d.A_line / d.A_fil;
+          out += `G1 X${path[i][0].toFixed(3)} Y${path[i][1].toFixed(3)} E${e.toFixed(5)} F${layerF}\n`;
+        }
       }
     }
 

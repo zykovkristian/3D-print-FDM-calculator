@@ -526,13 +526,13 @@ test('raft: заливка идёт по форме объединения сп�
   assert.ok(raftDepth < rectDepth * 0.6, `высота плота ${raftDepth.toFixed(1)} слишком близка к прямоугольнику ${rectDepth.toFixed(1)}`);
 });
 
-test('raft: структура слоёв — сплошной низ, разреженная середина, сплошной верх', () => {
+test('raft: все слои плота сплошные (100 % заполнение)', () => {
   const C = loadCore();
   const p = { ...C.defaults(), brimOn: false, raftOn: true, raftLayers: 3, raftBottomLayers: 1, raftTopLayers: 1, raftDensity: 20 };
   const { gcode } = C.compose(p);
   assert.match(gcode, /Raft layer 1\/3 \(solid\)/, 'первый слой плота сплошной');
-  assert.match(gcode, /Raft layer 2\/3 \(20%\)/, 'средний слой разреженный');
-  assert.match(gcode, /Raft layer 3\/3 \(solid\)/, 'верхний слой сплошной');
+  assert.match(gcode, /Raft layer 2\/3 \(solid\)/, 'средний слой плота сплошной');
+  assert.match(gcode, /Raft layer 3\/3 \(solid\)/, 'верхний слой плота сплошной');
 });
 
 test('raft: нижний слой расширен сильнее верхних', () => {
@@ -629,7 +629,7 @@ test('raft: заливка соседних слоёв идёт перекрес
     `углы заливки соседних слоёв не перекрестны: ${(a1 * 180 / Math.PI).toFixed(1)}° и ${(a2 * 180 / Math.PI).toFixed(1)}°`);
 });
 
-test('raft: первый слой медленнее, верхние — заданной скоростью', () => {
+test('raft: все слои печатаются с одинаковой базовой скоростью', () => {
   const C = loadCore();
   const p = { ...C.defaults(), brimOn: false, raftOn: true, raftLayers: 2, raftSpeed: 100, raftFirstSpeed: 40 };
   const { gcode } = C.compose(p);
@@ -645,7 +645,7 @@ test('raft: первый слой медленнее, верхние — зад�
     if (!fm) continue;
     (cur === 1 ? firstF : otherF).add(fm[1]);
   }
-  assert.deepEqual([...firstF], ['2400'], `первый слой должен идти только на F2400, есть ${[...firstF]}`);
+  assert.ok(firstF.has('6000'), `первый слой должен идти на F6000, есть ${[...firstF]}`);
   assert.ok(otherF.has('6000'), `верхние слои должны идти на F6000, есть ${[...otherF]}`);
 });
 

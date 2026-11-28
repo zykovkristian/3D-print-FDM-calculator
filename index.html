@@ -1361,6 +1361,24 @@ function compose(p) {
 
   const cellCenters = d.cellCenters;
 
+  // Оценка массы и времени печати для шапки G-code и отчёта.
+  const _chain = { pts: d.rowPts, row: d.row };
+  const _meas = measureChain(p, d, _chain);
+  const _cellLen = _meas.cells.map(c => c.len);
+  const _layerLen = _meas.total;
+  const _totalExtrusionLen = _layerLen * d.totalLayers;
+  const _totalVolume = _totalExtrusionLen * d.A_line;
+  const _totalMassG = (_totalVolume * p.rho) / 1000;
+  let _totalPrintTimeSec = 0;
+  d.vs.forEach((v, i) => {
+    const vMmS = v / d.A_line;
+    const lenCell = _cellLen[i] || 0;
+    const timeLayerSec = vMmS > 0 ? lenCell / vMmS : 0;
+    const timeZoneSec = timeLayerSec * d.layersPerZone;
+    _totalPrintTimeSec += timeZoneSec * d.zones;
+  });
+  const _estTimeMin = (_totalPrintTimeSec / 60) * 1.25;
+
   let out = `; =========================================================\n`;
   out += `; MVS MATRIX G-CODE GENERATOR v2.0\n`;
   out += `; Profile: ${PRESETS[p.preset]?.name || 'Custom'} (${p.flavor})\n`;
@@ -1369,6 +1387,8 @@ function compose(p) {
   out += `; Total Height: ${d.totalHeight.toFixed(2)} mm, Total Layers: ${d.totalLayers}\n`;
   out += `; Layer Height: ${p.lh} mm, Line Width: ${p.lw} mm\n`;
   out += `; Filament Dia: ${p.fd} mm, Density: ${p.rho} g/cm3\n`;
+  out += `; Estimated Print Time: ${_estTimeMin.toFixed(1)} min\n`;
+  out += `; Filament Used: ${_totalMassG.toFixed(2)} g (${_totalVolume.toFixed(0)} mm3)\n`;
   out += `; Trajectory: one continuous extrusion per layer (cells + transitions)\n`;
   out += `; =========================================================\n\n`;
 
@@ -1452,8 +1472,8 @@ function compose(p) {
     const contact = Math.max(0, Number(p.raftContact) || 0);
     const firstExp = Math.max(0, Number(p.raftFirstExpansion) || 0);
     const raftT = Number(p.raftTemp) > 0 ? Number(p.raftTemp) : d.ts[0];
-    const raftV = Math.max(10, Number(p.raftSpeed) || 100);        // мм/с — верхние слои
-    const raftV1 = Math.max(10, Number(p.raftFirstSpeed) || 40);   // мм/с — первый слой
+      const raftV = Math.max(10, Number(p.raftSpeed) || 100);        // мм/с — скорость плота (базовая)
+      const raftV1 = raftV;                                         // первый слой — та же скорость
 
     out += `\n; --- RAFT ---\n`;
     out += `; Raft: ${rLayers} сл. (${bottomLayers} сплошных снизу, ${topLayers} сплошных сверху, средние ${Math.round(density * 100)}%),\n`;
@@ -1474,7 +1494,8 @@ function compose(p) {
       const zRaft = (rl + 1) * p.lh;
       const isBottom = rl < bottomLayers;
       const isTop = rl >= rLayers - topLayers;
-      const solid = isBottom || isTop;
+      const solid = true;   // все слои плота заполняются на 100 % (без разреженных)
+
       // Расширение нижнего слоя больше — он держит модель на столе.
       const gapLayer = isBottom ? margin + firstExp : margin;
       // Шаг полос: сплошной слой — шаг ширины линии, разреженный — реже.
@@ -1643,7 +1664,7 @@ function compose(p) {
     out += `\n; --- USER EPILOGUE ---\n${p.epilogue.trim()}\n; --- END USER EPILOGUE ---\n`;
   }
 
-  return { gcode: out, report: d, issues };
+  return { gcode: out, report: d, issues, massG: _totalMassG, timeMin: _estTimeMin };
 }
 
 function audit(gcode, p) {
@@ -2786,6 +2807,8 @@ if (typeof module !== 'undefined') {
           <div class="stat"><div class="k">Строк</div><div class="v">${generatedGcode.split('\n').length.toLocaleString()}</div></div>
           <div class="stat"><div class="k">Размер файла</div><div class="v">${(generatedGcode.length / 1024).toFixed(0)} КБ</div></div>
           <div class="stat"><div class="k">Экструзия E</div><div class="v">${aud.E.toFixed(1)} мм</div></div>
+          <div class="stat"><div class="k">Масса модели</div><div class="v">${res.massG.toFixed(1)} г</div></div>
+          <div class="stat"><div class="k">Время печати</div><div class="v">${res.timeMin.toFixed(1)} мин</div></div>
           <div class="stat"><div class="k">Аудит</div><div class="v" style="color:${aud.mismatches.length ? 'var(--err)' : 'var(--ok)'}">${aud.mismatches.length ? 'Ошибка' : 'Совпадает'}</div></div>
         `;
         status.textContent = dict.done;
